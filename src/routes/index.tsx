@@ -7,9 +7,17 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Sol Mai Peluquería · Reservá tu turno" },
-      { name: "description", content: "Peluquería boutique en Santa Fe Capital. Reservá tu turno de peluquería, maquillaje o uñas en minutos." },
+      {
+        name: "description",
+        content:
+          "Peluquería boutique en Santa Fe Capital. Reservá tu turno de peluquería, maquillaje o uñas en minutos.",
+      },
       { property: "og:title", content: "Sol Mai Peluquería · Reservá tu turno" },
-      { property: "og:description", content: "Belleza serena, a tu medida. Color y cuidado capilar con productos Itely Hairfashion." },
+      {
+        property: "og:description",
+        content:
+          "Belleza serena, a tu medida. Color y cuidado capilar con productos Itely Hairfashion.",
+      },
     ],
   }),
   component: Index,
@@ -18,6 +26,10 @@ export const Route = createFileRoute("/")({
 function Index() {
   const [mode, setMode] = useState<"landing" | "wizard">("landing");
 
+  const seeServices = () => {
+    document.getElementById("servicios")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   if (mode === "wizard") return <BookingWizard onExit={() => setMode("landing")} />;
-  return <Landing onStart={() => setMode("wizard")} onSeeServices={() => setMode("wizard")} />;
+  return <Landing onStart={() => setMode("wizard")} onSeeServices={seeServices} />;
 }
