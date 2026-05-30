@@ -72,7 +72,12 @@ export function buildBookingRequestPayload({
   customer,
   isCustomerRecognized,
 }: BookingRequestPayloadDraftData): unknown {
-  const totals = computeTotals({ service, extras: chosenExtras });
+  const totals = computeTotals({
+    category,
+    service,
+    extras: chosenExtras,
+    personalization: personal,
+  });
 
   return {
     customer: buildCustomerIdentity(customer, isCustomerRecognized),
@@ -169,10 +174,11 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
       category,
       service,
       extras: chosenExtras,
+      personalization: personal,
       date: date ? (mockDates.find((mockDate) => mockDate.iso === date)?.label ?? null) : null,
       time,
     }),
-    [category, chosenExtras, date, service, time],
+    [category, chosenExtras, date, personal, service, time],
   );
 
   const canNext = useMemo(() => {

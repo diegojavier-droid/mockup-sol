@@ -1,4 +1,4 @@
-import type { CategoryId, Extra, Service } from "@/lib/booking-data";
+import type { CategoryId, Extra, Personalization, Service } from "@/lib/booking-data";
 import { categories } from "@/lib/booking-data";
 import { computeTotals } from "@/lib/booking-totals";
 
@@ -6,6 +6,7 @@ export interface SummaryData {
   category: CategoryId | null;
   service: Service | null;
   extras: Extra[];
+  personalization: Personalization;
   date: string | null;
   time: string | null;
 }

@@ -1,18 +1,12 @@
-import type { Extra, Service } from "@/lib/booking-data";
+import type { CategoryId, Extra, Personalization, Service } from "@/lib/booking-data";
+import { bookingRules } from "@/lib/booking-rules";
+import type { BookingModifierRule } from "@/lib/booking-rules";
 
 export interface BookingTotalsData {
+  category: CategoryId | null;
   service: Service | null;
   extras: Extra[];
-}
-
-function totalDurationMin(service: Service | null) {
-  if (!service) return 0;
-
-  const hours = service.duration.match(/(\d+)\s*h(?:\s+(\d+))?/);
-  const minutes = service.duration.match(/(\d+)\s*min/);
-  const remainderMinutes = minutes?.[1] ?? hours?.[2];
-
-  return (hours ? Number(hours[1]) * 60 : 0) + (remainderMinutes ? Number(remainderMinutes) : 0);
+  personalization?: Personalization;
 }
 
 function fmtDuration(min: number) {
@@ -26,19 +20,72 @@ function fmtDuration(min: number) {
   return `${m} min`;
 }
 
-function parsePrice(price: string) {
-  return Number(price.replace(/[^\d]/g, "")) || 0;
-}
-
 function fmtPrice(price: number) {
   return "$" + price.toLocaleString("es-AR");
 }
 
-export function computeTotals(data: BookingTotalsData) {
-  const durationMinutes = totalDurationMin(data.service) + data.extras.length * 15;
+function modifierAppliesToService(modifier: BookingModifierRule, service: Service | null) {
+  if (!service) return false;
+
+  if (modifier.excludedServiceIds?.includes(service.id)) return false;
+
+  const hasServiceScope = Boolean(
+    modifier.appliesToServiceIds?.length || modifier.appliesToServiceTags?.length,
+  );
+
+  if (!hasServiceScope) return true;
+
+  return Boolean(
+    modifier.appliesToServiceIds?.includes(service.id) ||
+    (service.tag && modifier.appliesToServiceTags?.includes(service.tag)),
+  );
+}
+
+function getPersonalizationModifier({
+  category,
+  service,
+  personalization,
+}: Pick<BookingTotalsData, "category" | "service" | "personalization">) {
+  if (!category || !personalization) {
+    return { durationMinutes: 0, priceAmount: 0 };
+  }
+
+  const rules = bookingRules[category].personalizationModifiers;
+
+  return Object.entries(personalization).reduce(
+    (totals, [fieldId, option]) => {
+      const modifier = rules[fieldId]?.[option];
+
+      if (!modifier || !modifierAppliesToService(modifier, service)) return totals;
+
+      return {
+        durationMinutes: totals.durationMinutes + modifier.durationMinutes,
+        priceAmount: totals.priceAmount + modifier.priceAmount,
+      };
+    },
+    { durationMinutes: 0, priceAmount: 0 },
+  );
+}
+
+export function computeBookingTotals({
+  category,
+  service,
+  extras,
+  personalization,
+}: BookingTotalsData) {
+  const extrasDurationMinutes = extras.reduce((acc, extra) => acc + extra.durationMinutes, 0);
+  const extrasPriceAmount = extras.reduce((acc, extra) => acc + extra.priceAmount, 0);
+  const personalizationModifier = getPersonalizationModifier({
+    category,
+    service,
+    personalization,
+  });
+  const durationMinutes =
+    (service?.durationMinutes ?? 0) +
+    extrasDurationMinutes +
+    personalizationModifier.durationMinutes;
   const rawPriceAmount =
-    parsePrice(data.service?.price ?? "") +
-    data.extras.reduce((acc, extra) => acc + parsePrice(extra.price), 0);
+    (service?.priceAmount ?? 0) + extrasPriceAmount + personalizationModifier.priceAmount;
   const priceAmount = rawPriceAmount > 0 ? rawPriceAmount : null;
 
   return {
@@ -49,3 +96,5 @@ export function computeTotals(data: BookingTotalsData) {
     priceIsEstimated: true,
   };
 }
+
+export const computeTotals = computeBookingTotals;

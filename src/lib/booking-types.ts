@@ -14,14 +14,18 @@ export interface Service {
   name: string;
   desc: string;
   duration: string;
+  durationMinutes: number;
   price: string;
+  priceAmount: number;
   tag?: Tag;
 }
 
 export interface Extra {
   id: string;
   name: string;
+  durationMinutes: number;
   price: string;
+  priceAmount: number;
 }
 
 export interface PersonalizationField {
