@@ -3,6 +3,7 @@ import heroImage from "@/assets/sol-mai-hero.jpg";
 import peluImg from "@/assets/sol-mai-peluqueria.jpg";
 import makeImg from "@/assets/sol-mai-maquillaje.jpg";
 import nailsImg from "@/assets/sol-mai-unas.jpg";
+import solMaiLogo from "@/assets/sol-mai-logo-header.png";
 
 const categoryImages: Record<string, string> = {
   peluqueria: peluImg,
@@ -21,15 +22,15 @@ export function Landing({
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-6 lg:px-8">
         <div className="flex items-center gap-3">
-          <div
-            aria-hidden="true"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card font-serif text-lg text-champagne-deep"
-          >
-            S
-          </div>
-          <div>
-            <p className="font-serif text-xl leading-none text-foreground">Sol Mai</p>
-            <p className="mt-1 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+          <div className="flex flex-col items-start">
+            <div className="relative h-11 w-[172px] overflow-hidden sm:h-14 sm:w-[216px]">
+              <img
+                src={solMaiLogo}
+                alt="Sol Mai Peluquería"
+                className="absolute -left-[63px] -top-[63px] h-[190px] w-auto max-w-none object-contain sm:-left-[79px] sm:-top-[79px] sm:h-[238px]"
+              />
+            </div>
+            <p className="mt-0.5 text-[9px] uppercase tracking-[0.28em] text-muted-foreground sm:text-[10px]">
               Peluquería
             </p>
           </div>
