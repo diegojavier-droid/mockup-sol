@@ -18,8 +18,8 @@ export function WizardNavigation({
 
   return (
     <>
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 py-3 backdrop-blur-md lg:hidden">
-        <div className="mb-3">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 backdrop-blur-md lg:hidden">
+        <div className="mb-2">
           <SummaryPanel data={data} variant="bottom" />
         </div>
         <div className="flex gap-2">
@@ -45,7 +45,7 @@ function NavBackButton({ onBack, step }: { onBack: () => void; step: number }) {
     <button
       type="button"
       onClick={onBack}
-      className="flex-1 rounded-full border border-border bg-card px-6 py-3.5 font-serif text-base text-foreground/80 shadow-sm transition-all hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:px-8"
+      className="flex-1 rounded-full border border-border bg-card px-4 py-2.5 font-serif text-sm text-foreground/80 shadow-sm transition-all hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:px-8 lg:py-3.5 lg:text-base"
     >
       ← {step === 0 ? "Cerrar" : "Atrás"}
     </button>
@@ -58,7 +58,7 @@ function NavNextButton({ canNext, onNext }: { canNext: boolean; onNext: () => vo
       type="button"
       onClick={onNext}
       disabled={!canNext}
-      className="flex-[1.4] rounded-full bg-primary px-8 py-3.5 font-serif text-base text-primary-foreground shadow-[0_14px_30px_-14px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:px-10"
+      className="flex-[1.2] rounded-full bg-primary px-5 py-2.5 font-serif text-sm text-primary-foreground shadow-[0_14px_30px_-14px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:px-10 lg:py-3.5 lg:text-base"
     >
       Continuar →
     </button>
