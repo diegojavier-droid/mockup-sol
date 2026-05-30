@@ -87,8 +87,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Sol-Mai-Peluqueria-maqueta" },
       { name: "twitter:description", content: "Mockup del sistema Sol Mai Peluquería" },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/909iPZmA30WSTZqPynZ4HaAJDJa2/social-images/social-1780141968595-ChatGPT_Image_29_may_2026,_21_36_08.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/909iPZmA30WSTZqPynZ4HaAJDJa2/social-images/social-1780141968595-ChatGPT_Image_29_may_2026,_21_36_08.webp" },
+      {
+        property: "og:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/909iPZmA30WSTZqPynZ4HaAJDJa2/social-images/social-1780141968595-ChatGPT_Image_29_may_2026,_21_36_08.webp",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/909iPZmA30WSTZqPynZ4HaAJDJa2/social-images/social-1780141968595-ChatGPT_Image_29_may_2026,_21_36_08.webp",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

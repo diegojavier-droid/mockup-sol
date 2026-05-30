@@ -22,8 +22,14 @@ const categoryImages: Record<CategoryId, string> = {
   unas: nailsImg,
 };
 
-export function BookingWizard({ onExit }: { onExit: () => void }) {
-  const wizard = useBookingWizard(onExit);
+export function BookingWizard({
+  initialCategory,
+  onExit,
+}: {
+  initialCategory?: CategoryId;
+  onExit: () => void;
+}) {
+  const wizard = useBookingWizard(onExit, initialCategory);
 
   if (wizard.confirmed) return <BookingConfirmation data={wizard.data} onClose={onExit} />;
 

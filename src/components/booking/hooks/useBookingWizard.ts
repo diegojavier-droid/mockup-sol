@@ -10,9 +10,9 @@ import {
 import type { SummaryData } from "../SummaryPanel";
 import { BOOKING_STEPS } from "../wizard/booking-steps";
 
-export function useBookingWizard(onExit: () => void) {
+export function useBookingWizard(onExit: () => void, initialCategory?: CategoryId) {
   const [step, setStep] = useState(0);
-  const [category, setCategory] = useState<CategoryId | null>(null);
+  const [category, setCategory] = useState<CategoryId | null>(initialCategory ?? null);
   const [service, setService] = useState<Service | null>(null);
   const [personal, setPersonal] = useState<Personalization>({});
   const [chosenExtras, setChosenExtras] = useState<Extra[]>([]);

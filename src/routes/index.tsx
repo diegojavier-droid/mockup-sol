@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Landing } from "@/components/booking/Landing";
 import { BookingWizard } from "@/components/booking/BookingWizard";
+import type { CategoryId } from "@/lib/booking-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,11 +26,25 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [mode, setMode] = useState<"landing" | "wizard">("landing");
+  const [initialCategory, setInitialCategory] = useState<CategoryId | undefined>();
 
   const seeServices = () => {
     document.getElementById("servicios")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  if (mode === "wizard") return <BookingWizard onExit={() => setMode("landing")} />;
-  return <Landing onStart={() => setMode("wizard")} onSeeServices={seeServices} />;
+  const handleStartBooking = (categoryId?: CategoryId) => {
+    setInitialCategory(categoryId);
+    setMode("wizard");
+  };
+
+  const handleExitBooking = () => {
+    setMode("landing");
+    setInitialCategory(undefined);
+  };
+
+  if (mode === "wizard") {
+    return <BookingWizard initialCategory={initialCategory} onExit={handleExitBooking} />;
+  }
+
+  return <Landing onStart={handleStartBooking} onSeeServices={seeServices} />;
 }
