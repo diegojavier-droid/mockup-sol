@@ -1,4 +1,14 @@
 import { categories, services } from "@/lib/booking-data";
+import heroImage from "@/assets/sol-mai-hero.jpg";
+import peluImg from "@/assets/sol-mai-peluqueria.jpg";
+import makeImg from "@/assets/sol-mai-maquillaje.jpg";
+import nailsImg from "@/assets/sol-mai-unas.jpg";
+
+const categoryImages: Record<string, string> = {
+  peluqueria: peluImg,
+  maquillaje: makeImg,
+  unas: nailsImg,
+};
 
 export function Landing({
   onStart,
@@ -8,55 +18,65 @@ export function Landing({
   onSeeServices: () => void;
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-ivory via-cream to-sand/40">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 lg:px-8">
-        <div>
-          <p className="font-serif text-xl leading-none text-foreground">Sol Mai</p>
-          <p className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-            Peluquería boutique
-          </p>
+    <div className="min-h-screen bg-background">
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-6 lg:px-8">
+        <div className="flex items-center gap-3">
+          <div
+            aria-hidden="true"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card font-serif text-lg text-champagne-deep"
+          >
+            S
+          </div>
+          <div>
+            <p className="font-serif text-xl leading-none text-foreground">Sol Mai</p>
+            <p className="mt-1 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+              Peluquería boutique
+            </p>
+          </div>
         </div>
         <button
           type="button"
           onClick={onSeeServices}
-          className="hidden text-xs uppercase tracking-[0.18em] text-foreground/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:block"
+          className="hidden text-xs uppercase tracking-[0.22em] text-foreground/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:block"
         >
           Servicios
         </button>
       </header>
 
       <main className="mx-auto max-w-6xl px-5 lg:px-8">
-        <section className="grid items-center gap-10 pb-16 pt-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-24 lg:pt-12">
+        <section className="grid items-center gap-12 pb-20 pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-28 lg:pt-12">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-foreground/70 backdrop-blur">
-              <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" /> Santa Fe Capital
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] text-foreground/70 backdrop-blur">
+              <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
+              Santa Fe Capital
             </span>
-            <h1 className="mt-5 font-serif text-5xl leading-[1.05] text-foreground sm:text-6xl lg:text-7xl">
+            <h1 className="mt-6 font-serif text-[2.8rem] leading-[1.02] text-foreground sm:text-6xl lg:text-[4.5rem]">
               Belleza serena,
               <br />
-              <span className="text-champagne-deep">a tu medida.</span>
+              <em className="not-italic text-champagne-deep">a tu medida.</em>
             </h1>
-            <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground">
-              Peluquería, maquillaje y uñas en un espacio cálido y luminoso. Color y cuidado capilar
-              con productos Itely Hairfashion.
+            <div className="mt-6 h-px w-16 bg-champagne-deep/40" />
+            <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
+              Peluquería, maquillaje y uñas en un espacio cálido y luminoso. Color y cuidado
+              capilar con productos Itely Hairfashion, en el corazón de Santa Fe.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={onStart}
-                className="rounded-2xl bg-primary px-7 py-4 font-serif text-lg text-primary-foreground shadow-[0_20px_40px_-20px_rgba(80,55,30,0.45)] transition-all hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-full bg-primary px-8 py-4 font-serif text-lg text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] hover:shadow-[0_22px_44px_-18px_rgba(80,55,30,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Reservar turno
               </button>
               <button
                 type="button"
                 onClick={onSeeServices}
-                className="rounded-2xl border border-border bg-card/80 px-7 py-4 font-serif text-lg text-foreground transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-full border border-border bg-card/80 px-8 py-4 font-serif text-lg text-foreground transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Ver servicios
               </button>
             </div>
-            <div className="mt-10 grid max-w-md grid-cols-3 gap-6 text-center">
+            <div className="mt-12 grid max-w-md grid-cols-3 gap-6 border-t border-border/60 pt-6 text-left">
               <Stat n="12+" l="años de oficio" />
               <Stat n="Itely" l="Hairfashion" />
               <Stat n="3" l="especialidades" />
@@ -64,61 +84,82 @@ export function Landing({
           </div>
 
           <div className="relative">
-            <div className="aspect-[4/5] overflow-hidden rounded-[2rem] bg-gradient-to-br from-blonde/70 via-cream to-sand shadow-[0_40px_80px_-40px_rgba(120,90,60,0.45)]">
-              <div className="flex h-full flex-col items-center justify-center gap-6 p-10 text-center">
-                <div className="font-serif text-[140px] leading-none text-champagne-deep/80">S</div>
-                <p className="font-serif text-2xl text-foreground/80">Sol Mai</p>
-                <p className="max-w-[18ch] text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                  Peluquería · Maquillaje · Uñas
-                </p>
-              </div>
+            <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-cream shadow-[0_50px_90px_-50px_rgba(120,90,60,0.5)]">
+              <img
+                src={heroImage}
+                alt="Interior cálido y luminoso de Sol Mai Peluquería"
+                width={1024}
+                height={1280}
+                className="h-[520px] w-full object-cover lg:h-[600px]"
+              />
             </div>
-            <div className="absolute -bottom-6 -left-4 hidden rounded-2xl border border-border bg-card/90 p-4 shadow-lg backdrop-blur sm:block">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Próximo turno
+            <div className="absolute -bottom-5 left-5 hidden rounded-2xl border border-border bg-card/95 px-5 py-3 shadow-lg backdrop-blur sm:block">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Próximo turno disponible
               </p>
-              <p className="mt-1 font-serif text-lg">Mañana · 11:30</p>
+              <p className="mt-1 font-serif text-lg text-foreground">Mañana · 11:30</p>
+            </div>
+            <div className="absolute -top-4 -right-3 hidden rotate-3 rounded-full border border-border bg-card px-4 py-2 font-serif text-xs text-foreground/80 shadow-md sm:block">
+              ✦ Itely Hairfashion
             </div>
           </div>
         </section>
 
-        <section id="servicios" className="border-t border-border/60 pb-24 pt-16">
+        <section id="servicios" className="border-t border-border/60 pb-24 pt-20">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
                 Especialidades
               </p>
-              <h2 className="mt-2 font-serif text-4xl text-foreground">Lo que hacemos</h2>
+              <h2 className="mt-3 font-serif text-4xl text-foreground lg:text-5xl">
+                Lo que hacemos
+              </h2>
+              <div className="mt-4 h-px w-12 bg-champagne-deep/40" />
             </div>
             <button
               type="button"
               onClick={onStart}
-              className="hidden text-sm text-champagne-deep hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:block"
+              className="hidden text-sm text-champagne-deep underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:block"
             >
               Reservar →
             </button>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          <div className="mt-10 grid gap-5 sm:grid-cols-3">
             {categories.map((c) => (
-              <div key={c.id} className="rounded-2xl border border-border bg-card p-6">
-                <div className="flex h-20 items-center justify-center rounded-xl bg-gradient-to-br from-cream to-sand/60 text-4xl text-champagne-deep">
-                  {c.emoji}
+              <article
+                key={c.id}
+                className="group overflow-hidden rounded-3xl border border-border bg-card transition-all hover:border-champagne hover:shadow-[0_30px_50px_-35px_rgba(120,90,60,0.35)]"
+              >
+                <div className="overflow-hidden">
+                  <img
+                    src={categoryImages[c.id]}
+                    alt={c.name}
+                    loading="lazy"
+                    width={800}
+                    height={800}
+                    className="h-52 w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                  />
                 </div>
-                <h3 className="mt-4 font-serif text-xl">{c.name}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{c.tagline}</p>
-                <p className="mt-3 text-[11px] uppercase tracking-wider text-muted-foreground">
-                  {services[c.id].length} servicios
-                </p>
-              </div>
+                <div className="p-6">
+                  <h3 className="font-serif text-2xl text-foreground">{c.name}</h3>
+                  <p className="mt-1.5 text-sm text-muted-foreground">{c.tagline}</p>
+                  <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4">
+                    <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                      {services[c.id].length} servicios
+                    </span>
+                    <span className="font-serif text-sm text-champagne-deep">Reservar →</span>
+                  </div>
+                </div>
+              </article>
             ))}
           </div>
 
-          <div className="mt-10 flex justify-center">
+          <div className="mt-14 flex justify-center">
             <button
               type="button"
               onClick={onStart}
-              className="rounded-2xl bg-primary px-8 py-4 font-serif text-lg text-primary-foreground transition-all hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="rounded-full bg-primary px-10 py-4 font-serif text-lg text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               Reservar mi turno
             </button>
@@ -137,7 +178,7 @@ function Stat({ n, l }: { n: string; l: string }) {
   return (
     <div>
       <p className="font-serif text-2xl text-foreground">{n}</p>
-      <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{l}</p>
+      <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{l}</p>
     </div>
   );
 }

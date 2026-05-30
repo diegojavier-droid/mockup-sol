@@ -16,6 +16,15 @@ import { cn } from "@/lib/utils";
 import { Stepper } from "./Stepper";
 import { computeTotals } from "@/lib/booking-totals";
 import { SummaryPanel, type SummaryData } from "./SummaryPanel";
+import peluImg from "@/assets/sol-mai-peluqueria.jpg";
+import makeImg from "@/assets/sol-mai-maquillaje.jpg";
+import nailsImg from "@/assets/sol-mai-unas.jpg";
+
+const categoryImages: Record<CategoryId, string> = {
+  peluqueria: peluImg,
+  maquillaje: makeImg,
+  unas: nailsImg,
+};
 
 type Personalization = Record<string, string>;
 
@@ -103,7 +112,7 @@ export function BookingWizard({ onExit }: { onExit: () => void }) {
                 title="¿Qué te gustaría reservar?"
                 subtitle="Elegí una categoría para comenzar."
               >
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-5 sm:grid-cols-3">
                   {categories.map((currentCategory) => {
                     const selected = category === currentCategory.id;
 
@@ -114,21 +123,31 @@ export function BookingWizard({ onExit }: { onExit: () => void }) {
                         aria-pressed={selected}
                         onClick={() => chooseCategory(currentCategory.id)}
                         className={cn(
-                          "group relative overflow-hidden rounded-2xl border p-6 text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                          "group relative overflow-hidden rounded-3xl border bg-card text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                           selected
-                            ? "border-champagne-deep bg-card shadow-[0_20px_40px_-25px_rgba(120,90,60,0.35)]"
-                            : "border-border bg-card hover:border-champagne hover:shadow-[0_20px_40px_-30px_rgba(120,90,60,0.25)]",
+                            ? "border-champagne-deep shadow-[0_25px_45px_-25px_rgba(120,90,60,0.4)] ring-1 ring-champagne-deep/30"
+                            : "border-border hover:border-champagne hover:shadow-[0_25px_45px_-30px_rgba(120,90,60,0.3)] hover:-translate-y-0.5",
                         )}
                       >
-                        <div className="flex h-24 items-center justify-center rounded-xl bg-gradient-to-br from-cream to-sand/60 text-4xl text-champagne-deep">
-                          {currentCategory.emoji}
+                        <div className="relative overflow-hidden">
+                          <img
+                            src={categoryImages[currentCategory.id]}
+                            alt={currentCategory.name}
+                            loading="lazy"
+                            width={800}
+                            height={800}
+                            className="h-40 w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                          />
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card/30 via-transparent to-transparent" />
                         </div>
-                        <h3 className="mt-4 font-serif text-2xl text-foreground">
-                          {currentCategory.name}
-                        </h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {currentCategory.tagline}
-                        </p>
+                        <div className="p-5">
+                          <h3 className="font-serif text-2xl text-foreground">
+                            {currentCategory.name}
+                          </h3>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {currentCategory.tagline}
+                          </p>
+                        </div>
                         {selected && <SelectedMark />}
                       </button>
                     );
@@ -369,9 +388,9 @@ export function BookingWizard({ onExit }: { onExit: () => void }) {
                 <button
                   type="button"
                   onClick={() => setConfirmed(true)}
-                  className="mt-6 w-full rounded-2xl bg-primary py-4 font-serif text-lg text-primary-foreground transition-all hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="mt-6 w-full rounded-full bg-primary py-4 font-serif text-lg text-primary-foreground shadow-[0_20px_40px_-18px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
-                  Confirmar interés
+                  Confirmar interés ✦
                 </button>
                 <p className="mt-3 text-center text-xs text-muted-foreground">
                   El salón confirmará el turno por WhatsApp.
@@ -495,9 +514,9 @@ function NavBackButton({ onBack, step }: { onBack: () => void; step: number }) {
     <button
       type="button"
       onClick={onBack}
-      className="flex-1 rounded-xl border border-border bg-background px-6 py-3 text-sm text-foreground/80 shadow-sm transition-all hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:bg-card"
+      className="flex-1 rounded-full border border-border bg-card px-6 py-3.5 font-serif text-base text-foreground/80 shadow-sm transition-all hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:px-8"
     >
-      {step === 0 ? "Cerrar" : "Atrás"}
+      ← {step === 0 ? "Cerrar" : "Atrás"}
     </button>
   );
 }
@@ -508,9 +527,9 @@ function NavNextButton({ canNext, onNext }: { canNext: boolean; onNext: () => vo
       type="button"
       onClick={onNext}
       disabled={!canNext}
-      className="flex-[1.4] rounded-xl bg-primary px-8 py-3 text-sm font-medium text-primary-foreground shadow-md transition-all disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none"
+      className="flex-[1.4] rounded-full bg-primary px-8 py-3.5 font-serif text-base text-primary-foreground shadow-[0_14px_30px_-14px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:px-10"
     >
-      Continuar
+      Continuar →
     </button>
   );
 }
@@ -574,27 +593,57 @@ function Field({ label, value }: { label: string; value: string }) {
 
 function Confirmation({ data, onClose }: { data: SummaryData; onClose: () => void }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-ivory via-cream to-sand/40 px-4">
-      <div className="w-full max-w-md rounded-3xl border border-border bg-card p-8 text-center shadow-[0_30px_60px_-30px_rgba(120,90,60,0.3)]">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-champagne text-2xl text-champagne-deep">
-          ✓
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+      <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-border bg-card text-center shadow-[0_40px_80px_-40px_rgba(120,90,60,0.4)]">
+        <div className="bg-gradient-to-b from-cream/80 to-card px-8 pb-6 pt-10">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-champagne-deep/30 bg-champagne text-2xl text-champagne-deep">
+            ✓
+          </div>
+          <p className="mt-5 text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+            Reserva enviada
+          </p>
+          <h2 className="mt-2 font-serif text-4xl leading-tight text-foreground">¡Gracias!</h2>
+          <div className="mx-auto mt-4 h-px w-10 bg-champagne-deep/40" />
         </div>
-        <h2 className="mt-5 font-serif text-3xl text-foreground">¡Gracias!</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Recibimos tu interés de reserva para {data.service?.name ?? "tu servicio"} el {data.date}{" "}
-          a las {data.time}.
-        </p>
-        <p className="mt-4 rounded-xl bg-cream p-4 text-xs leading-relaxed text-foreground/70">
-          El salón confirmará el turno por WhatsApp a la brevedad. Si necesitás reprogramar, también
-          podés escribirnos por ahí.
-        </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-6 w-full rounded-xl bg-primary py-3 text-sm text-primary-foreground transition-all hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          Volver al inicio
-        </button>
+
+        <div className="space-y-5 px-8 pb-8 pt-6">
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Recibimos tu interés de reserva.
+          </p>
+          <div className="rounded-2xl border border-border bg-cream/40 px-5 py-4 text-left">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Servicio
+            </p>
+            <p className="mt-1 font-serif text-lg text-foreground">
+              {data.service?.name ?? "Tu servicio"}
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border/70 pt-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Fecha
+                </p>
+                <p className="mt-0.5 font-serif text-base text-foreground">{data.date ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Hora
+                </p>
+                <p className="mt-0.5 font-serif text-base text-foreground">{data.time ?? "—"}</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            El salón confirmará tu turno por WhatsApp a la brevedad. Si necesitás reprogramar,
+            también podés escribirnos por ahí.
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-full bg-primary py-4 font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Volver al inicio
+          </button>
+        </div>
       </div>
     </div>
   );
