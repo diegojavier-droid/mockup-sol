@@ -70,9 +70,7 @@ export function SummaryPanel({
             <Row label="Servicio" value={data.service?.name ?? "—"} />
             <Row
               label="Extras"
-              value={
-                data.extras.length ? data.extras.map((extra) => extra.name).join(", ") : "—"
-              }
+              value={data.extras.length ? data.extras.map((extra) => extra.name).join(", ") : "—"}
             />
             <div className="grid grid-cols-2 gap-3">
               <Row label="Fecha" value={data.date ?? "—"} />
