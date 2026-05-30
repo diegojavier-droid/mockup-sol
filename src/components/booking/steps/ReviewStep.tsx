@@ -8,16 +8,23 @@ export function ReviewStep({
   customer,
   data,
   personal,
+  error,
   onConfirm,
 }: {
   customer: CustomerFormState;
   data: SummaryData;
   personal: Personalization;
+  error: string | null;
   onConfirm: () => void;
 }) {
   return (
     <StepShell title="Revisemos tu reserva" subtitle="Si todo está bien, confirmá tu interés.">
       <BookingSummaryDetails customer={customer} data={data} personal={personal} />
+      {error && (
+        <p className="mt-5 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </p>
+      )}
       <button
         type="button"
         onClick={onConfirm}

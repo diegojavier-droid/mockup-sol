@@ -39,10 +39,17 @@ function fmtPrice(price: number) {
 }
 
 export function computeTotals(data: BookingTotalsData) {
-  const dur = totalDurationMin(data.service) + data.extras.length * 15;
-  const price =
+  const durationMinutes = totalDurationMin(data.service) + data.extras.length * 15;
+  const rawPriceAmount =
     parsePrice(data.service?.price ?? "") +
     data.extras.reduce((acc, extra) => acc + parsePrice(extra.price), 0);
+  const priceAmount = rawPriceAmount > 0 ? rawPriceAmount : null;
 
-  return { dur: fmtDuration(dur), price: price ? fmtPrice(price) : "—" };
+  return {
+    dur: fmtDuration(durationMinutes),
+    durationMinutes,
+    price: priceAmount ? fmtPrice(priceAmount) : "—",
+    priceAmount,
+    priceIsEstimated: true,
+  };
 }
