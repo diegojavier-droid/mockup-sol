@@ -388,9 +388,9 @@ export function BookingWizard({ onExit }: { onExit: () => void }) {
                 <button
                   type="button"
                   onClick={() => setConfirmed(true)}
-                  className="mt-6 w-full rounded-2xl bg-primary py-4 font-serif text-lg text-primary-foreground transition-all hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="mt-6 w-full rounded-full bg-primary py-4 font-serif text-lg text-primary-foreground shadow-[0_20px_40px_-18px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
-                  Confirmar interés
+                  Confirmar interés ✦
                 </button>
                 <p className="mt-3 text-center text-xs text-muted-foreground">
                   El salón confirmará el turno por WhatsApp.
