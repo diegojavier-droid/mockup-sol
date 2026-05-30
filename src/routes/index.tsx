@@ -11,13 +11,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Peluquería boutique en Santa Fe Capital. Reservá tu turno de peluquería, maquillaje o uñas en minutos.",
+          "Peluquería en Santa Fe Capital. Reservá tu turno de peluquería, maquillaje o uñas en minutos.",
       },
       { property: "og:title", content: "Sol Mai Peluquería · Reservá tu turno" },
       {
         property: "og:description",
-        content:
-          "Belleza serena, a tu medida. Color y cuidado capilar con productos Itely Hairfashion.",
+        content: "Belleza, a tu medida. Color y cuidado capilar con productos Itely Hairfashion.",
       },
     ],
   }),

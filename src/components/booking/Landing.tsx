@@ -30,7 +30,7 @@ export function Landing({
           <div>
             <p className="font-serif text-xl leading-none text-foreground">Sol Mai</p>
             <p className="mt-1 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-              Peluquería boutique
+              Peluquería
             </p>
           </div>
         </div>
@@ -51,7 +51,7 @@ export function Landing({
               Santa Fe Capital
             </span>
             <h1 className="mt-6 font-serif text-[2.8rem] leading-[1.02] text-foreground sm:text-6xl lg:text-[4.5rem]">
-              Belleza serena,
+              Belleza,
               <br />
               <em className="not-italic text-champagne-deep">a tu medida.</em>
             </h1>
