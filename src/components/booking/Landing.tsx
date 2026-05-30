@@ -57,8 +57,8 @@ export function Landing({
             </h1>
             <div className="mt-6 h-px w-16 bg-champagne-deep/40" />
             <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
-              Peluquería, maquillaje y uñas en un espacio cálido y luminoso. Color y cuidado
-              capilar con productos Itely Hairfashion, en el corazón de Santa Fe.
+              Peluquería, maquillaje y uñas en un espacio cálido y luminoso. Color y cuidado capilar
+              con productos Itely Hairfashion, en el corazón de Santa Fe.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <button
