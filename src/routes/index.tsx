@@ -1,29 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { Landing } from "@/components/booking/Landing";
+import { BookingWizard } from "@/components/booking/BookingWizard";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "Sol Mai Peluquería · Reservá tu turno" },
+      { name: "description", content: "Peluquería boutique en Santa Fe Capital. Reservá tu turno de peluquería, maquillaje o uñas en minutos." },
+      { property: "og:title", content: "Sol Mai Peluquería · Reservá tu turno" },
+      { property: "og:description", content: "Belleza serena, a tu medida. Color y cuidado capilar con productos Itely Hairfashion." },
     ],
   }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
+  const [mode, setMode] = useState<"landing" | "wizard">("landing");
+
+  if (mode === "wizard") return <BookingWizard onExit={() => setMode("landing")} />;
+  return <Landing onStart={() => setMode("wizard")} onSeeServices={() => setMode("wizard")} />;
 }
