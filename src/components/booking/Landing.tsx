@@ -22,7 +22,7 @@ export function Landing({
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-6 lg:px-8">
         <div className="flex items-center gap-3">
-          <div className="flex flex-col items-start">
+          <div className="inline-flex flex-col items-center">
             <div className="relative h-11 w-[172px] overflow-hidden sm:h-14 sm:w-[216px]">
               <img
                 src={solMaiLogo}
@@ -30,7 +30,7 @@ export function Landing({
                 className="absolute -left-[63px] -top-[63px] h-[190px] w-auto max-w-none object-contain sm:-left-[79px] sm:-top-[79px] sm:h-[238px]"
               />
             </div>
-            <p className="mt-0.5 text-[9px] uppercase tracking-[0.28em] text-muted-foreground sm:text-[10px]">
+            <p className="mt-0.5 w-full text-center text-[9px] uppercase tracking-[0.28em] text-muted-foreground sm:text-[10px]">
               Peluquería
             </p>
           </div>
