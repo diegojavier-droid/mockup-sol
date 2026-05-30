@@ -1,4 +1,4 @@
-import { categories, services } from "@/lib/booking-data";
+import { categories, services, type CategoryId } from "@/lib/booking-data";
 import heroImage from "@/assets/sol-mai-hero.jpg";
 import peluImg from "@/assets/sol-mai-peluqueria.jpg";
 import makeImg from "@/assets/sol-mai-maquillaje.jpg";
@@ -14,7 +14,7 @@ export function Landing({
   onStart,
   onSeeServices,
 }: {
-  onStart: () => void;
+  onStart: (categoryId?: CategoryId) => void;
   onSeeServices: () => void;
 }) {
   return (
@@ -148,7 +148,14 @@ export function Landing({
                     <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                       {services[c.id].length} servicios
                     </span>
-                    <span className="font-serif text-sm text-champagne-deep">Reservar →</span>
+                    <button
+                      type="button"
+                      onClick={() => onStart(c.id)}
+                      className="cursor-pointer rounded-full px-2 py-1 font-serif text-sm text-champagne-deep underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                      aria-label={`Reservar ${c.name}`}
+                    >
+                      Reservar →
+                    </button>
                   </div>
                 </div>
               </article>
