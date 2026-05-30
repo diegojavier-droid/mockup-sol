@@ -19,6 +19,9 @@ export const bookingStatusSchema = z.literal("requested");
 
 export const recurringBookingFrequencySchema = z.enum(["daily", "weekly", "biweekly", "monthly"]);
 
+const emptyStringToUndefined = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+
 export const customerContactSchema: z.ZodType<CustomerContact> = z.object({
   whatsapp: z.string().trim().min(1, "WhatsApp es requerido"),
   email: z.string().trim().email("Email inválido").nullish(),
@@ -37,8 +40,11 @@ export const customerIdentitySchema: z.ZodType<CustomerIdentity> = z.object({
 
 export const returningCustomerLookupSchema: z.ZodType<ReturningCustomerLookup> = z
   .object({
-    whatsapp: z.string().trim().min(1).optional(),
-    email: z.string().trim().email("Email inválido").nullish(),
+    whatsapp: z.preprocess(emptyStringToUndefined, z.string().trim().min(1).optional()),
+    email: z.preprocess(
+      emptyStringToUndefined,
+      z.string().trim().email("Email inválido").nullish(),
+    ),
   })
   .refine((lookup) => Boolean(lookup.whatsapp || lookup.email), {
     message: "Informá WhatsApp o email para buscar la clienta",
