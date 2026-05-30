@@ -8,15 +8,11 @@ export interface BookingTotalsData {
 function totalDurationMin(service: Service | null) {
   if (!service) return 0;
 
-  const hours = service.duration.match(/(\d+)\s*h/);
+  const hours = service.duration.match(/(\d+)\s*h(?:\s+(\d+))?/);
   const minutes = service.duration.match(/(\d+)\s*min/);
-  const hasHalfHour = /h\s*30/.test(service.duration);
+  const remainderMinutes = minutes?.[1] ?? hours?.[2];
 
-  return (
-    (hours ? Number(hours[1]) * 60 : 0) +
-    (hasHalfHour ? 30 : 0) +
-    (minutes ? Number(minutes[1]) : 0)
-  );
+  return (hours ? Number(hours[1]) * 60 : 0) + (remainderMinutes ? Number(remainderMinutes) : 0);
 }
 
 function fmtDuration(min: number) {
