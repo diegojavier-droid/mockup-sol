@@ -1,16 +1,25 @@
 import { categories, services } from "@/lib/booking-data";
 
-export function Landing({ onStart, onSeeServices }: { onStart: () => void; onSeeServices: () => void }) {
+export function Landing({
+  onStart,
+  onSeeServices,
+}: {
+  onStart: () => void;
+  onSeeServices: () => void;
+}) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-ivory via-cream to-sand/40">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 lg:px-8">
         <div>
           <p className="font-serif text-xl leading-none text-foreground">Sol Mai</p>
-          <p className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">Peluquería boutique</p>
+          <p className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+            Peluquería boutique
+          </p>
         </div>
         <button
+          type="button"
           onClick={onSeeServices}
-          className="hidden text-xs uppercase tracking-[0.18em] text-foreground/70 hover:text-foreground sm:block"
+          className="hidden text-xs uppercase tracking-[0.18em] text-foreground/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:block"
         >
           Servicios
         </button>
@@ -23,7 +32,8 @@ export function Landing({ onStart, onSeeServices }: { onStart: () => void; onSee
               <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" /> Santa Fe Capital
             </span>
             <h1 className="mt-5 font-serif text-5xl leading-[1.05] text-foreground sm:text-6xl lg:text-7xl">
-              Belleza serena,<br />
+              Belleza serena,
+              <br />
               <span className="text-champagne-deep">a tu medida.</span>
             </h1>
             <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground">
@@ -32,14 +42,16 @@ export function Landing({ onStart, onSeeServices }: { onStart: () => void; onSee
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <button
+                type="button"
                 onClick={onStart}
-                className="rounded-2xl bg-primary px-7 py-4 font-serif text-lg text-primary-foreground shadow-[0_20px_40px_-20px_rgba(80,55,30,0.45)] transition-all hover:opacity-95"
+                className="rounded-2xl bg-primary px-7 py-4 font-serif text-lg text-primary-foreground shadow-[0_20px_40px_-20px_rgba(80,55,30,0.45)] transition-all hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Reservar turno
               </button>
               <button
+                type="button"
                 onClick={onSeeServices}
-                className="rounded-2xl border border-border bg-card/80 px-7 py-4 font-serif text-lg text-foreground transition-all hover:bg-card"
+                className="rounded-2xl border border-border bg-card/80 px-7 py-4 font-serif text-lg text-foreground transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Ver servicios
               </button>
@@ -57,12 +69,14 @@ export function Landing({ onStart, onSeeServices }: { onStart: () => void; onSee
                 <div className="font-serif text-[140px] leading-none text-champagne-deep/80">S</div>
                 <p className="font-serif text-2xl text-foreground/80">Sol Mai</p>
                 <p className="max-w-[18ch] text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                  Hair · Make-up · Nails
+                  Peluquería · Maquillaje · Uñas
                 </p>
               </div>
             </div>
             <div className="absolute -bottom-6 -left-4 hidden rounded-2xl border border-border bg-card/90 p-4 shadow-lg backdrop-blur sm:block">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Próximo turno</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Próximo turno
+              </p>
               <p className="mt-1 font-serif text-lg">Mañana · 11:30</p>
             </div>
           </div>
@@ -71,10 +85,16 @@ export function Landing({ onStart, onSeeServices }: { onStart: () => void; onSee
         <section id="servicios" className="border-t border-border/60 pb-24 pt-16">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Especialidades</p>
+              <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                Especialidades
+              </p>
               <h2 className="mt-2 font-serif text-4xl text-foreground">Lo que hacemos</h2>
             </div>
-            <button onClick={onStart} className="hidden text-sm text-champagne-deep hover:underline sm:block">
+            <button
+              type="button"
+              onClick={onStart}
+              className="hidden text-sm text-champagne-deep hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:block"
+            >
               Reservar →
             </button>
           </div>
@@ -96,8 +116,9 @@ export function Landing({ onStart, onSeeServices }: { onStart: () => void; onSee
 
           <div className="mt-10 flex justify-center">
             <button
+              type="button"
               onClick={onStart}
-              className="rounded-2xl bg-primary px-8 py-4 font-serif text-lg text-primary-foreground transition-all hover:opacity-95"
+              className="rounded-2xl bg-primary px-8 py-4 font-serif text-lg text-primary-foreground transition-all hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               Reservar mi turno
             </button>
