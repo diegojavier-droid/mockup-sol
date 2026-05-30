@@ -23,24 +23,22 @@ export function SummaryPanel({
 
   if (variant === "bottom") {
     return (
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Tu reserva
-          </p>
-          <p className="mt-0.5 truncate font-serif text-base text-foreground">
+          <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Tu reserva</p>
+          <p className="mt-0.5 truncate font-serif text-[15px] leading-tight text-foreground">
             {data.service?.name ?? cat?.name ?? "Sin elegir"}
           </p>
-          <p className="truncate text-[11px] text-muted-foreground">
+          <p className="truncate text-[10px] leading-tight text-muted-foreground">
             {dur} ·{" "}
             {data.extras.length > 0
               ? `${data.extras.length} extra${data.extras.length > 1 ? "s" : ""}`
               : "sin extras"}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Estimado</p>
-          <p className="font-serif text-xl text-foreground">{price}</p>
+        <div className="shrink-0 text-right">
+          <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Estimado</p>
+          <p className="font-serif text-lg leading-tight text-foreground">{price}</p>
         </div>
       </div>
     );
