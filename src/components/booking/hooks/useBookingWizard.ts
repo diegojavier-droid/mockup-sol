@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
-import { customerContactSchema, customerIdentitySchema } from "@/lib/booking-schema";
-import type { CustomerIdentityInput } from "@/lib/booking-schema";
+import {
+  bookingRequestPayloadSchema,
+  customerContactSchema,
+  customerIdentitySchema,
+} from "@/lib/booking-schema";
+import type { BookingRequestPayloadInput, CustomerIdentityInput } from "@/lib/booking-schema";
 import {
   mockDates,
   personalizationFields,
@@ -9,6 +13,7 @@ import {
   type Personalization,
   type Service,
 } from "@/lib/booking-data";
+import { computeTotals } from "@/lib/booking-totals";
 import type { SummaryData } from "../SummaryPanel";
 import { BOOKING_STEP_INDEX, BOOKING_STEPS } from "../wizard/booking-steps";
 import type {
@@ -29,9 +34,12 @@ const normalizeLookup = (value: string) =>
     .toLowerCase()
     .replace(/[\s()-]/g, "");
 
-function buildCustomerIdentity(customer: CustomerFormState): CustomerIdentityInput {
+export function buildCustomerIdentity(
+  customer: CustomerFormState,
+  isRecognized = false,
+): CustomerIdentityInput {
   return {
-    type: "unknown",
+    type: isRecognized ? "returning" : "unknown",
     firstName: customer.firstName,
     contact: {
       whatsapp: customer.whatsapp,
@@ -40,6 +48,48 @@ function buildCustomerIdentity(customer: CustomerFormState): CustomerIdentityInp
       acceptsTransactionalMessages: true,
       acceptsMarketingMessages: false,
     },
+  };
+}
+
+interface BookingRequestPayloadDraftData {
+  category: CategoryId | null;
+  service: Service | null;
+  personal: Personalization;
+  chosenExtras: Extra[];
+  date: string | null;
+  time: string | null;
+  customer: CustomerFormState;
+  isCustomerRecognized: boolean;
+}
+
+export function buildBookingRequestPayload({
+  category,
+  service,
+  personal,
+  chosenExtras,
+  date,
+  time,
+  customer,
+  isCustomerRecognized,
+}: BookingRequestPayloadDraftData): unknown {
+  const totals = computeTotals({ service, extras: chosenExtras });
+
+  return {
+    customer: buildCustomerIdentity(customer, isCustomerRecognized),
+    selection: {
+      categoryId: category,
+      serviceId: service?.id,
+      extraIds: chosenExtras.map((extra) => extra.id),
+      personalization: personal,
+      dateId: date,
+      time,
+    },
+    totals: {
+      durationMinutes: totals.durationMinutes,
+      priceAmount: totals.priceAmount,
+      priceIsEstimated: totals.priceIsEstimated,
+    },
+    status: "requested",
   };
 }
 
@@ -112,6 +162,7 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
   const [customerTouched, setCustomerTouched] = useState<CustomerTouched>({});
   const [isCustomerRecognized, setIsCustomerRecognized] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [bookingRequestError, setBookingRequestError] = useState<string | null>(null);
 
   const data: SummaryData = useMemo(
     () => ({
@@ -198,6 +249,34 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
   const customerValidationErrors = validateCustomer(customer);
   const customerErrors = getVisibleCustomerErrors(customerValidationErrors, customerTouched);
 
+  const confirmBookingRequest = () => {
+    setBookingRequestError(null);
+
+    const payload = buildBookingRequestPayload({
+      category,
+      service,
+      personal,
+      chosenExtras,
+      date,
+      time,
+      customer,
+      isCustomerRecognized,
+    });
+    const payloadResult = bookingRequestPayloadSchema.safeParse(payload);
+
+    if (!payloadResult.success) {
+      console.error("Booking request payload validation error", payloadResult.error);
+      setBookingRequestError(
+        "No pudimos preparar la solicitud. Revisá tus datos o intentá nuevamente.",
+      );
+      return;
+    }
+
+    const bookingRequestPayload: BookingRequestPayloadInput = payloadResult.data;
+    console.log("Booking request payload", bookingRequestPayload);
+    setConfirmed(true);
+  };
+
   const next = () => setStep((currentStep) => Math.min(currentStep + 1, BOOKING_STEPS.length - 1));
   const back = () => {
     if (step === BOOKING_STEP_INDEX.category) return onExit();
@@ -205,6 +284,7 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
   };
 
   return {
+    bookingRequestError,
     canNext,
     category,
     chooseCategory,
@@ -213,6 +293,7 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
     choosePersonalization,
     chooseService,
     chosenExtras,
+    confirmBookingRequest,
     confirmed,
     customer,
     customerErrors,
@@ -223,7 +304,6 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
     personal,
     service,
     isCustomerRecognized,
-    setConfirmed,
     setTime,
     step,
     time,

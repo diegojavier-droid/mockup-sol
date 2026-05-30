@@ -100,7 +100,8 @@ export function BookingWizard({
                 customer={wizard.customer}
                 data={wizard.data}
                 personal={wizard.personal}
-                onConfirm={() => wizard.setConfirmed(true)}
+                error={wizard.bookingRequestError}
+                onConfirm={wizard.confirmBookingRequest}
               />
             )}
           </div>
