@@ -4,6 +4,7 @@ export const BOOKING_STEPS = [
   "Detalles",
   "Extras",
   "Fecha y hora",
+  "Tus datos",
   "Resumen",
 ] as const;
 

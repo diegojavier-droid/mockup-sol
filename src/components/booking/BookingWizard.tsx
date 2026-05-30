@@ -2,6 +2,7 @@ import { Stepper } from "./Stepper";
 import { SummaryPanel } from "./SummaryPanel";
 import { useBookingWizard } from "./hooks/useBookingWizard";
 import { CategoryStep } from "./steps/CategoryStep";
+import { CustomerDataStep } from "./steps/CustomerDataStep";
 import { DateTimeStep } from "./steps/DateTimeStep";
 import { ExtrasStep } from "./steps/ExtrasStep";
 import { PersonalizationStep } from "./steps/PersonalizationStep";
@@ -86,6 +87,15 @@ export function BookingWizard({
             )}
 
             {wizard.step === 5 && (
+              <CustomerDataStep
+                customer={wizard.customer}
+                errors={wizard.customerErrors}
+                isRecognized={wizard.isCustomerRecognized}
+                onChangeCustomerField={wizard.chooseCustomerField}
+              />
+            )}
+
+            {wizard.step === 6 && (
               <ReviewStep
                 data={wizard.data}
                 personal={wizard.personal}
