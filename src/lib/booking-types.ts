@@ -38,3 +38,69 @@ export interface MockDate {
 }
 
 export type Personalization = Record<string, string>;
+
+export type ContactChannel = "whatsapp" | "email" | "phone";
+
+export type CustomerType = "new" | "returning" | "unknown";
+
+export interface CustomerContact {
+  whatsapp: string;
+  email?: string | null;
+  phone?: string | null;
+  preferredContactChannel: ContactChannel;
+  acceptsTransactionalMessages: boolean;
+  acceptsMarketingMessages: boolean;
+}
+
+export interface CustomerIdentity {
+  type: CustomerType;
+  firstName: string;
+  lastName?: string | null;
+  contact: CustomerContact;
+}
+
+export interface ReturningCustomerLookup {
+  whatsapp?: string;
+  email?: string | null;
+}
+
+export type BookingStatus = "requested";
+
+export interface BookingSelection {
+  categoryId: CategoryId;
+  serviceId: string;
+  extraIds?: string[];
+  personalization?: Personalization;
+  dateId: string;
+  time: string;
+}
+
+export interface BookingTotals {
+  durationMinutes: number;
+  priceAmount: number | null;
+  priceIsEstimated: boolean;
+}
+
+export type RecurringBookingFrequency = "daily" | "weekly" | "biweekly" | "monthly";
+
+export interface RecurringBookingPreference {
+  frequency: RecurringBookingFrequency;
+  preferredWeekdays?: number[];
+  preferredTime?: string | null;
+  notes?: string | null;
+}
+
+export interface BookingRequestPayload {
+  customer: CustomerIdentity;
+  selection: BookingSelection;
+  totals: BookingTotals;
+  recurringPreference?: RecurringBookingPreference | null;
+  status: BookingStatus;
+}
+
+export interface BookingRequestResult {
+  ok: boolean;
+  status: BookingStatus;
+  requestId?: string | null;
+  message?: string | null;
+}
