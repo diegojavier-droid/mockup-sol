@@ -1,20 +1,23 @@
 import type { Personalization } from "@/lib/booking-data";
+import type { CustomerFormState } from "./CustomerDataStep";
 import { BookingSummaryDetails } from "../summary/BookingSummaryDetails";
 import type { SummaryData } from "../SummaryPanel";
 import { StepShell } from "../wizard/StepShell";
 
 export function ReviewStep({
+  customer,
   data,
   personal,
   onConfirm,
 }: {
+  customer: CustomerFormState;
   data: SummaryData;
   personal: Personalization;
   onConfirm: () => void;
 }) {
   return (
     <StepShell title="Revisemos tu reserva" subtitle="Si todo está bien, confirmá tu interés.">
-      <BookingSummaryDetails data={data} personal={personal} />
+      <BookingSummaryDetails customer={customer} data={data} personal={personal} />
       <button
         type="button"
         onClick={onConfirm}

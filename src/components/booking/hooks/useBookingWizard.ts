@@ -10,8 +10,13 @@ import {
   type Service,
 } from "@/lib/booking-data";
 import type { SummaryData } from "../SummaryPanel";
-import { BOOKING_STEPS } from "../wizard/booking-steps";
-import type { CustomerErrors, CustomerField, CustomerFormState } from "../steps/CustomerDataStep";
+import { BOOKING_STEP_INDEX, BOOKING_STEPS } from "../wizard/booking-steps";
+import type {
+  CustomerErrors,
+  CustomerField,
+  CustomerFormState,
+  CustomerTouched,
+} from "../steps/CustomerDataStep";
 
 const mockReturningCustomers: CustomerFormState[] = [
   { firstName: "Mai", whatsapp: "342 555 1234", email: "mai@solmai.com" },
@@ -51,9 +56,23 @@ function findMockCustomer(customer: CustomerFormState) {
 }
 
 function validateCustomer(customer: CustomerFormState): CustomerErrors {
-  const contactResult = customerContactSchema.safeParse(buildCustomerIdentity(customer).contact);
   const identityResult = customerIdentitySchema.safeParse(buildCustomerIdentity(customer));
+  const contactResult = customerContactSchema.safeParse(buildCustomerIdentity(customer).contact);
   const errors: CustomerErrors = {};
+
+  if (!identityResult.success) {
+    for (const issue of identityResult.error.issues) {
+      const [section, field] = issue.path;
+
+      if (section === "firstName") {
+        errors.firstName = issue.message;
+      }
+
+      if (section === "contact" && (field === "whatsapp" || field === "email")) {
+        errors[field] = issue.message;
+      }
+    }
+  }
 
   if (!contactResult.success) {
     for (const issue of contactResult.error.issues) {
@@ -65,17 +84,16 @@ function validateCustomer(customer: CustomerFormState): CustomerErrors {
     }
   }
 
-  if (!identityResult.success) {
-    for (const issue of identityResult.error.issues) {
-      const field = issue.path[0];
-
-      if (field === "firstName") {
-        errors.firstName = issue.message;
-      }
-    }
-  }
-
   return errors;
+}
+
+function getVisibleCustomerErrors(
+  errors: CustomerErrors,
+  touched: CustomerTouched,
+): CustomerErrors {
+  return Object.fromEntries(
+    Object.entries(errors).filter(([field]) => touched[field as CustomerField]),
+  ) as CustomerErrors;
 }
 
 export function useBookingWizard(onExit: () => void, initialCategory?: CategoryId) {
@@ -91,6 +109,7 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
     whatsapp: "",
     email: "",
   });
+  const [customerTouched, setCustomerTouched] = useState<CustomerTouched>({});
   const [isCustomerRecognized, setIsCustomerRecognized] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
@@ -106,16 +125,17 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
   );
 
   const canNext = useMemo(() => {
-    if (step === 0) return !!category;
-    if (step === 1) return !!service;
-    if (step === 2) {
+    if (step === BOOKING_STEP_INDEX.category) return !!category;
+    if (step === BOOKING_STEP_INDEX.service) return !!service;
+    if (step === BOOKING_STEP_INDEX.details) {
       return category
         ? personalizationFields[category].every((field) => personal[field.id])
         : false;
     }
-    if (step === 3) return true;
-    if (step === 4) return !!date && !!time;
-    if (step === 5) return Object.keys(validateCustomer(customer)).length === 0;
+    if (step === BOOKING_STEP_INDEX.extras) return true;
+    if (step === BOOKING_STEP_INDEX.dateTime) return !!date && !!time;
+    if (step === BOOKING_STEP_INDEX.customerData)
+      return Object.keys(validateCustomer(customer)).length === 0;
     return true;
   }, [category, customer, date, personal, service, step, time]);
 
@@ -151,6 +171,7 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
   };
 
   const chooseCustomerField = (field: CustomerField, value: string) => {
+    setCustomerTouched((current) => ({ ...current, [field]: true }));
     setCustomer((current) => {
       const nextCustomer = { ...current, [field]: value };
 
@@ -159,7 +180,12 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
 
         if (mockCustomer) {
           setIsCustomerRecognized(true);
-          return mockCustomer;
+
+          return {
+            firstName: current.firstName.trim() ? current.firstName : mockCustomer.firstName,
+            whatsapp: nextCustomer.whatsapp.trim() ? nextCustomer.whatsapp : mockCustomer.whatsapp,
+            email: nextCustomer.email.trim() ? nextCustomer.email : mockCustomer.email,
+          };
         }
 
         setIsCustomerRecognized(false);
@@ -169,11 +195,12 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
     });
   };
 
-  const customerErrors = validateCustomer(customer);
+  const customerValidationErrors = validateCustomer(customer);
+  const customerErrors = getVisibleCustomerErrors(customerValidationErrors, customerTouched);
 
   const next = () => setStep((currentStep) => Math.min(currentStep + 1, BOOKING_STEPS.length - 1));
   const back = () => {
-    if (step === 0) return onExit();
+    if (step === BOOKING_STEP_INDEX.category) return onExit();
     setStep((currentStep) => currentStep - 1);
   };
 

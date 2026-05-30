@@ -1,11 +1,14 @@
 import { categories, personalizationFields, type Personalization } from "@/lib/booking-data";
 import { computeTotals } from "@/lib/booking-totals";
+import type { CustomerFormState } from "../steps/CustomerDataStep";
 import type { SummaryData } from "../SummaryPanel";
 
 export function BookingSummaryDetails({
+  customer,
   data,
   personal,
 }: {
+  customer?: CustomerFormState;
   data: SummaryData;
   personal: Personalization;
 }) {
@@ -23,6 +26,17 @@ export function BookingSummaryDetails({
         <Field label="Duración estimada" value={dur} />
         <Field label="Precio estimado" value={price} />
       </div>
+
+      {customer && (
+        <div className="mt-5 border-t border-border pt-5">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Tus datos</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Field label="Nombre" value={customer.firstName || "—"} />
+            <Field label="WhatsApp" value={customer.whatsapp || "—"} />
+            <Field label="Email" value={customer.email || "—"} />
+          </div>
+        </div>
+      )}
 
       {data.extras.length > 0 && (
         <div className="mt-5 border-t border-border pt-5">

@@ -9,6 +9,7 @@ export interface CustomerFormState {
 }
 
 export type CustomerErrors = Partial<Record<CustomerField, string>>;
+export type CustomerTouched = Partial<Record<CustomerField, boolean>>;
 
 export function CustomerDataStep({
   customer,
@@ -65,8 +66,7 @@ export function CustomerDataStep({
         </div>
 
         <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
-          No necesitás crear cuenta: el salón usa estos datos solo para reconocer tu reserva y
-          responderte por WhatsApp.
+          Te vamos a contactar por WhatsApp para confirmar el turno y coordinar cualquier detalle.
         </p>
       </div>
     </StepShell>
