@@ -211,7 +211,7 @@ function getInitialService(initialSelection?: BookingInitialSelection): Service 
 function getInitialStep(
   initialSelection?: BookingInitialSelection,
   initialService?: Service | null,
-) {
+): WizardStep {
   if (!initialSelection?.categoryId) return BOOKING_STEP_INDEX.category;
   if (!initialService) return BOOKING_STEP_INDEX.service;
 
@@ -227,8 +227,8 @@ export function useBookingWizard(
 ) {
   const initialService = getInitialService(initialSelection);
   const initialStep = getInitialStep(initialSelection, initialService);
-  const initialStepRef = useRef(initialStep);
-  const [step, setStep] = useState(initialStep);
+  const initialStepRef = useRef<WizardStep>(initialStep);
+  const [step, setStep] = useState<WizardStep>(initialStep);
   const [category, setCategory] = useState<CategoryId | null>(initialSelection?.categoryId ?? null);
   const [service, setService] = useState<Service | null>(initialService);
   const [personal, setPersonal] = useState<Personalization>({});
