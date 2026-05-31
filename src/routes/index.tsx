@@ -26,24 +26,29 @@ export const Route = createFileRoute("/")({
 function Index() {
   const [mode, setMode] = useState<"landing" | "wizard">("landing");
   const [initialCategory, setInitialCategory] = useState<CategoryId | undefined>();
+  const [initialServiceId, setInitialServiceId] = useState<string | undefined>();
 
-  const seeServices = () => {
-    document.getElementById("servicios")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const handleStartBooking = (categoryId?: CategoryId) => {
+  const handleStartBooking = (categoryId?: CategoryId, serviceId?: string) => {
     setInitialCategory(categoryId);
+    setInitialServiceId(serviceId);
     setMode("wizard");
   };
 
   const handleExitBooking = () => {
     setMode("landing");
     setInitialCategory(undefined);
+    setInitialServiceId(undefined);
   };
 
   if (mode === "wizard") {
-    return <BookingWizard initialCategory={initialCategory} onExit={handleExitBooking} />;
+    return (
+      <BookingWizard
+        initialCategory={initialCategory}
+        initialServiceId={initialServiceId}
+        onExit={handleExitBooking}
+      />
+    );
   }
 
-  return <Landing onStart={handleStartBooking} onSeeServices={seeServices} />;
+  return <Landing onStart={handleStartBooking} />;
 }

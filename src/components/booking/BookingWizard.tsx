@@ -26,12 +26,17 @@ const categoryImages: Record<CategoryId, string> = {
 
 export function BookingWizard({
   initialCategory,
+  initialServiceId,
   onExit,
 }: {
   initialCategory?: CategoryId;
+  initialServiceId?: string;
   onExit: () => void;
 }) {
-  const wizard = useBookingWizard(onExit, initialCategory);
+  const wizard = useBookingWizard(onExit, {
+    categoryId: initialCategory,
+    serviceId: initialServiceId,
+  });
   const stepContentRef = useRef<HTMLDivElement>(null);
   const previousStepRef = useRef(wizard.step);
   const selectedServiceIdRef = useRef<string | null>(null);

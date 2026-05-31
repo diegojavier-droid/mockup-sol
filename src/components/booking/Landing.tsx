@@ -1,4 +1,5 @@
-import { categories, services, type CategoryId } from "@/lib/booking-data";
+import { useMemo, useState } from "react";
+import { categories, services, type CategoryId, type Service, type Tag } from "@/lib/booking-data";
 import heroImage from "@/assets/sol-mai-hero.jpg";
 import peluImg from "@/assets/sol-mai-peluqueria.jpg";
 import makeImg from "@/assets/sol-mai-maquillaje.jpg";
@@ -11,13 +12,44 @@ const categoryImages: Record<string, string> = {
   unas: nailsImg,
 };
 
+const tagLabels: Record<Tag, string> = {
+  popular: "Popular",
+  color: "Color",
+  tratamiento: "Tratamiento",
+  evento: "Evento",
+  combinado: "Combinado",
+};
+
+const allServices = categories.flatMap((category) =>
+  services[category.id].map((service) => ({
+    ...service,
+    categoryId: category.id,
+    categoryName: category.name,
+  })),
+);
+
+type PublicService = Service & { categoryId: CategoryId; categoryName: string };
+
 export function Landing({
   onStart,
-  onSeeServices,
 }: {
-  onStart: (categoryId?: CategoryId) => void;
-  onSeeServices: () => void;
+  onStart: (categoryId?: CategoryId, serviceId?: string) => void;
 }) {
+  const [activeCategory, setActiveCategory] = useState<CategoryId | "todos">("todos");
+
+  const filteredServices = useMemo(() => {
+    if (activeCategory === "todos") return allServices;
+
+    return allServices.filter((service) => service.categoryId === activeCategory);
+  }, [activeCategory]);
+
+  const scrollToServices = (categoryId: CategoryId | "todos" = "todos") => {
+    setActiveCategory(categoryId);
+    window.requestAnimationFrame(() => {
+      document.getElementById("servicios")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-6 lg:px-8">
@@ -37,7 +69,7 @@ export function Landing({
         </div>
         <button
           type="button"
-          onClick={onSeeServices}
+          onClick={() => scrollToServices()}
           className="hidden text-xs uppercase tracking-[0.22em] text-foreground/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:block"
         >
           Servicios
@@ -71,7 +103,7 @@ export function Landing({
               </button>
               <button
                 type="button"
-                onClick={onSeeServices}
+                onClick={() => scrollToServices()}
                 className="rounded-full border border-border bg-card/80 px-8 py-4 font-serif text-lg text-foreground transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Ver servicios
@@ -106,7 +138,7 @@ export function Landing({
           </div>
         </section>
 
-        <section id="servicios" className="border-t border-border/60 pb-24 pt-20">
+        <section id="areas" className="border-t border-border/60 pb-20 pt-20">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
@@ -119,10 +151,10 @@ export function Landing({
             </div>
             <button
               type="button"
-              onClick={() => onStart()}
+              onClick={() => scrollToServices()}
               className="hidden text-sm text-champagne-deep underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:block"
             >
-              Reservar →
+              Ver servicios →
             </button>
           </div>
 
@@ -145,32 +177,72 @@ export function Landing({
                 <div className="p-6">
                   <h3 className="font-serif text-2xl text-foreground">{c.name}</h3>
                   <p className="mt-1.5 text-sm text-muted-foreground">{c.tagline}</p>
-                  <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4">
                     <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                       {services[c.id].length} servicios
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => onStart(c.id)}
-                      className="cursor-pointer rounded-full px-2 py-1 font-serif text-sm text-champagne-deep underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-                      aria-label={`Reservar ${c.name}`}
-                    >
-                      Reservar →
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => scrollToServices(c.id)}
+                        className="cursor-pointer rounded-full px-2 py-1 font-serif text-sm text-champagne-deep underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                        aria-label={`Ver servicios de ${c.name}`}
+                      >
+                        Ver servicios
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onStart(c.id)}
+                        className="cursor-pointer rounded-full px-2 py-1 font-serif text-sm text-champagne-deep underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                        aria-label={`Reservar ${c.name}`}
+                      >
+                        Reservar →
+                      </button>
+                    </div>
                   </div>
                 </div>
               </article>
             ))}
           </div>
+        </section>
 
-          <div className="mt-14 flex justify-center">
-            <button
-              type="button"
-              onClick={() => onStart()}
-              className="rounded-full bg-primary px-10 py-4 font-serif text-lg text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              Reservar mi turno
-            </button>
+        <section id="servicios" className="scroll-mt-8 border-t border-border/60 pb-24 pt-20">
+          <div className="max-w-2xl">
+            <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+              Catálogo público
+            </p>
+            <h2 className="mt-3 font-serif text-4xl text-foreground lg:text-5xl">Servicios</h2>
+            <div className="mt-4 h-px w-12 bg-champagne-deep/40" />
+            <p className="mt-5 text-base leading-relaxed text-muted-foreground">
+              Explorá tratamientos, duración estimada y valores orientativos antes de elegir tu
+              turno. Cuando encuentres el servicio ideal, podés reservarlo directamente.
+            </p>
+          </div>
+
+          <div className="mt-8 flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible">
+            <FilterChip
+              active={activeCategory === "todos"}
+              label="Todos"
+              onClick={() => scrollToServices("todos")}
+            />
+            {categories.map((category) => (
+              <FilterChip
+                key={category.id}
+                active={activeCategory === category.id}
+                label={category.name}
+                onClick={() => scrollToServices(category.id)}
+              />
+            ))}
+          </div>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredServices.map((service) => (
+              <ServiceCatalogCard
+                key={`${service.categoryId}-${service.id}`}
+                service={service}
+                onReserve={() => onStart(service.categoryId, service.id)}
+              />
+            ))}
           </div>
         </section>
       </main>
@@ -179,6 +251,78 @@ export function Landing({
         Sol Mai Peluquería · Santa Fe Capital · Representante Itely Hairfashion
       </footer>
     </div>
+  );
+}
+
+function ServiceCatalogCard({
+  service,
+  onReserve,
+}: {
+  service: PublicService;
+  onReserve: () => void;
+}) {
+  return (
+    <article className="flex h-full flex-col rounded-3xl border border-border bg-card p-5 shadow-[0_24px_50px_-42px_rgba(120,90,60,0.35)] transition-all hover:border-champagne hover:shadow-[0_30px_55px_-40px_rgba(120,90,60,0.45)]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            {service.categoryName}
+          </p>
+          <h3 className="mt-2 font-serif text-2xl leading-tight text-foreground">{service.name}</h3>
+        </div>
+        {service.tag ? (
+          <span className="shrink-0 rounded-full border border-champagne/50 bg-cream px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-champagne-deep">
+            {tagLabels[service.tag]}
+          </span>
+        ) : null}
+      </div>
+
+      <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{service.desc}</p>
+
+      <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-cream/50 p-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Duración</p>
+          <p className="mt-1 font-serif text-base text-foreground">{service.duration}</p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Precio</p>
+          <p className="mt-1 font-serif text-base text-foreground">Desde {service.price}</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={onReserve}
+        className="mt-5 rounded-full bg-primary px-5 py-3 font-serif text-base text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+        aria-label={`Reservar ${service.name}`}
+      >
+        Reservar
+      </button>
+    </article>
+  );
+}
+
+function FilterChip({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground hover:border-champagne hover:text-champagne-deep"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
