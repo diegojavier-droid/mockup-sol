@@ -38,7 +38,7 @@ export const customerIdentitySchema: z.ZodType<CustomerIdentity> = z.object({
   contact: customerContactSchema,
 });
 
-export const returningCustomerLookupSchema: z.ZodType<ReturningCustomerLookup> = z
+export const returningCustomerLookupSchema = z
   .object({
     whatsapp: z.preprocess(emptyStringToUndefined, z.string().trim().min(1).optional()),
     email: z.preprocess(
@@ -48,7 +48,7 @@ export const returningCustomerLookupSchema: z.ZodType<ReturningCustomerLookup> =
   })
   .refine((lookup) => Boolean(lookup.whatsapp || lookup.email), {
     message: "Informá WhatsApp o email para buscar la clienta",
-  });
+  }) satisfies z.ZodType<ReturningCustomerLookup, z.ZodTypeDef, unknown>;
 
 export const bookingSelectionSchema: z.ZodType<BookingSelection> = z.object({
   categoryId: z.enum(["peluqueria", "maquillaje", "unas"]),

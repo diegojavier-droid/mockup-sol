@@ -23,7 +23,8 @@ import type {
   BookingReturnTarget,
 } from "../booking-navigation-types";
 import type { SummaryData } from "../SummaryPanel";
-import { BOOKING_STEP_INDEX, BOOKING_STEPS } from "../wizard/booking-steps";
+import { BOOKING_STEP_INDEX, FINAL_BOOKING_STEP } from "../wizard/booking-steps";
+import type { WizardStep } from "../wizard/booking-steps";
 import type {
   CustomerErrors,
   CustomerField,
@@ -205,7 +206,7 @@ function getInitialService(initialSelection?: BookingInitialSelection): Service 
 function getInitialStep(
   initialSelection?: BookingInitialSelection,
   initialService?: Service | null,
-) {
+): WizardStep {
   if (!initialSelection?.categoryId) return BOOKING_STEP_INDEX.category;
   if (!initialService) return BOOKING_STEP_INDEX.service;
 
@@ -213,6 +214,12 @@ function getInitialStep(
     ? BOOKING_STEP_INDEX.details
     : BOOKING_STEP_INDEX.extras;
 }
+
+const clampWizardStep = (step: number): WizardStep => {
+  const clampedStep = Math.min(Math.max(step, BOOKING_STEP_INDEX.category), FINAL_BOOKING_STEP);
+
+  return clampedStep as WizardStep;
+};
 
 export function useBookingWizard(
   onExit: () => void,
@@ -222,7 +229,7 @@ export function useBookingWizard(
   const initialService = getInitialService(initialSelection);
   const initialStep = getInitialStep(initialSelection, initialService);
   const initialStepRef = useRef(initialStep);
-  const [step, setStep] = useState(initialStep);
+  const [step, setStep] = useState<WizardStep>(initialStep);
   const [category, setCategory] = useState<CategoryId | null>(initialSelection?.categoryId ?? null);
   const [service, setService] = useState<Service | null>(initialService);
   const [personal, setPersonal] = useState<Personalization>({});
@@ -389,7 +396,7 @@ export function useBookingWizard(
     setConfirmed(true);
   };
 
-  const next = () => setStep((currentStep) => Math.min(currentStep + 1, BOOKING_STEPS.length - 1));
+  const next = () => setStep((currentStep) => clampWizardStep(currentStep + 1));
   const back = () => {
     const shouldExitToReturnTarget =
       navigationContext &&
@@ -407,7 +414,7 @@ export function useBookingWizard(
       resetSelectedTurnDetails();
     }
 
-    setStep((currentStep) => currentStep - 1);
+    setStep((currentStep) => clampWizardStep(currentStep - 1));
   };
 
   return {
