@@ -18,6 +18,8 @@ export interface Service {
   price: string;
   priceAmount: number;
   tag?: Tag;
+  imageUrl?: string;
+  visual?: string;
 }
 
 export interface Extra {
