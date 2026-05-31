@@ -1,17 +1,22 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { categories, services, type CategoryId } from "@/lib/booking-data";
+import type { StartBookingInput } from "./booking-navigation-types";
 import { BookingCategoryCard } from "./shared/BookingCategoryCard";
 import { BookingServiceCard } from "./shared/BookingServiceCard";
 import heroImage from "@/assets/sol-mai-hero.jpg";
 import solMaiLogo from "@/assets/sol-mai-logo-header.png";
 
 export function Landing({
+  onSelectPublicCategory,
   onStart,
+  restoreServicesViewKey,
+  selectedCategory,
 }: {
-  onStart: (categoryId?: CategoryId, serviceId?: string) => void;
+  onSelectPublicCategory: (categoryId: CategoryId | null) => void;
+  onStart: (input: StartBookingInput) => void;
+  restoreServicesViewKey: number;
+  selectedCategory: CategoryId | null;
 }) {
-  const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
-
   const selectedCategoryData = selectedCategory
     ? categories.find((category) => category.id === selectedCategory)
     : null;
@@ -24,13 +29,25 @@ export function Landing({
   };
 
   const showSpecialtyServices = (categoryId: CategoryId) => {
-    setSelectedCategory(categoryId);
+    onSelectPublicCategory(categoryId);
     window.requestAnimationFrame(() => {
       document
         .getElementById("servicios-especialidad")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
+
+  useEffect(() => {
+    if (!selectedCategory || restoreServicesViewKey === 0) return;
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      document
+        .getElementById("servicios-especialidad")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [restoreServicesViewKey, selectedCategory]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -75,7 +92,13 @@ export function Landing({
             <div className="mt-5 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
               <button
                 type="button"
-                onClick={() => onStart()}
+                onClick={() =>
+                  onStart({
+                    entryPoint: "hero-reserve",
+                    initialSelection: {},
+                    returnTarget: { type: "landing" },
+                  })
+                }
                 className="rounded-full bg-primary px-7 py-3 font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] hover:shadow-[0_22px_44px_-18px_rgba(80,55,30,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Reservar turno
@@ -149,7 +172,7 @@ export function Landing({
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedCategory(null);
+                  onSelectPublicCategory(null);
                   window.requestAnimationFrame(() => {
                     document.getElementById("areas")?.scrollIntoView({ behavior: "smooth" });
                   });
@@ -167,7 +190,16 @@ export function Landing({
                   key={`${selectedCategory}-${service.id}`}
                   service={service}
                   variant="public"
-                  onClick={() => onStart(selectedCategory, service.id)}
+                  onClick={() =>
+                    onStart({
+                      entryPoint: "public-catalog",
+                      initialSelection: {
+                        categoryId: selectedCategory,
+                        serviceId: service.id,
+                      },
+                      returnTarget: { type: "catalog", categoryId: selectedCategory },
+                    })
+                  }
                 />
               ))}
             </div>
