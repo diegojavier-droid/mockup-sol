@@ -112,7 +112,7 @@ export function Landing({
                 onClick={scrollToSpecialties}
                 className="rounded-full border border-border bg-card/80 px-7 py-3 font-serif text-base text-foreground transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                Ver opciones
+                Ver servicios
               </button>
             </div>
             <div className="mt-6 hidden max-w-md grid-cols-3 gap-6 border-t border-border/60 pt-5 text-left sm:grid">
