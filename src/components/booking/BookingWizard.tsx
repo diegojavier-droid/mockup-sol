@@ -13,21 +13,36 @@ import { BookingConfirmation } from "./summary/BookingConfirmation";
 import { BOOKING_STEP_INDEX, BOOKING_STEPS } from "./wizard/booking-steps";
 import { BookingHeader } from "./wizard/BookingHeader";
 import { WizardNavigation } from "./wizard/WizardNavigation";
+import type { BookingEntryPoint, BookingReturnTarget } from "./booking-navigation-types";
 import type { CategoryId } from "@/lib/booking-data";
 
 export function BookingWizard({
+  entryPoint,
   initialCategory,
   initialServiceId,
   onExit,
+  onExitToTarget,
+  returnTarget,
 }: {
+  entryPoint: BookingEntryPoint;
   initialCategory?: CategoryId;
   initialServiceId?: string;
   onExit: () => void;
+  onExitToTarget: (target: BookingReturnTarget) => void;
+  returnTarget: BookingReturnTarget;
 }) {
-  const wizard = useBookingWizard(onExit, {
-    categoryId: initialCategory,
-    serviceId: initialServiceId,
-  });
+  const wizard = useBookingWizard(
+    onExit,
+    {
+      categoryId: initialCategory,
+      serviceId: initialServiceId,
+    },
+    {
+      entryPoint,
+      onExitToTarget,
+      returnTarget,
+    },
+  );
   const stepContentRef = useRef<HTMLDivElement>(null);
   const previousStepRef = useRef(wizard.step);
   const selectedServiceIdRef = useRef<string | null>(null);

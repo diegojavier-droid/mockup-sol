@@ -2,6 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Landing } from "@/components/booking/Landing";
 import { BookingWizard } from "@/components/booking/BookingWizard";
+import type {
+  BookingEntryPoint,
+  BookingReturnTarget,
+  StartBookingInput,
+} from "@/components/booking/booking-navigation-types";
 import type { CategoryId } from "@/lib/booking-data";
 
 export const Route = createFileRoute("/")({
@@ -27,28 +32,77 @@ function Index() {
   const [mode, setMode] = useState<"landing" | "wizard">("landing");
   const [initialCategory, setInitialCategory] = useState<CategoryId | undefined>();
   const [initialServiceId, setInitialServiceId] = useState<string | undefined>();
+  const [entryPoint, setEntryPoint] = useState<BookingEntryPoint | undefined>();
+  const [returnTarget, setReturnTarget] = useState<BookingReturnTarget | undefined>();
+  const [selectedPublicCategory, setSelectedPublicCategory] = useState<CategoryId | null>(null);
+  const [restoreServicesViewKey, setRestoreServicesViewKey] = useState(0);
 
-  const handleStartBooking = (categoryId?: CategoryId, serviceId?: string) => {
-    setInitialCategory(categoryId);
-    setInitialServiceId(serviceId);
+  const clearBookingContext = () => {
+    setInitialCategory(undefined);
+    setInitialServiceId(undefined);
+    setEntryPoint(undefined);
+    setReturnTarget(undefined);
+  };
+
+  const handleStartBooking = ({
+    initialSelection,
+    entryPoint: nextEntryPoint,
+    returnTarget: nextReturnTarget,
+  }: StartBookingInput) => {
+    setInitialCategory(initialSelection?.categoryId);
+    setInitialServiceId(initialSelection?.serviceId);
+    setEntryPoint(nextEntryPoint);
+    setReturnTarget(nextReturnTarget);
     setMode("wizard");
   };
 
   const handleExitBooking = () => {
     setMode("landing");
-    setInitialCategory(undefined);
-    setInitialServiceId(undefined);
+    setSelectedPublicCategory(null);
+    setRestoreServicesViewKey(0);
+    clearBookingContext();
+  };
+
+  const handleExitBookingToTarget = (target: BookingReturnTarget) => {
+    setMode("landing");
+    clearBookingContext();
+
+    if (target.type === "catalog") {
+      setSelectedPublicCategory(target.categoryId);
+      setRestoreServicesViewKey((current) => current + 1);
+      return;
+    }
+
+    if (target.type === "serviceDetail") {
+      // ServiceDetail todavía no existe: fallback seguro al catálogo de la misma categoría.
+      setSelectedPublicCategory(target.categoryId);
+      setRestoreServicesViewKey((current) => current + 1);
+      return;
+    }
+
+    setSelectedPublicCategory(null);
+    setRestoreServicesViewKey(0);
   };
 
   if (mode === "wizard") {
     return (
       <BookingWizard
+        entryPoint={entryPoint ?? "hero-reserve"}
         initialCategory={initialCategory}
         initialServiceId={initialServiceId}
         onExit={handleExitBooking}
+        onExitToTarget={handleExitBookingToTarget}
+        returnTarget={returnTarget ?? { type: "landing" }}
       />
     );
   }
 
-  return <Landing onStart={handleStartBooking} />;
+  return (
+    <Landing
+      onSelectPublicCategory={setSelectedPublicCategory}
+      onStart={handleStartBooking}
+      restoreServicesViewKey={restoreServicesViewKey}
+      selectedCategory={selectedPublicCategory}
+    />
+  );
 }

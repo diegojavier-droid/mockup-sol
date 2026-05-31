@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   bookingRequestPayloadSchema,
   customerContactSchema,
@@ -17,6 +17,11 @@ import {
   type Service,
 } from "@/lib/booking-data";
 import { computeBookingOperationalTotals } from "@/lib/booking-totals";
+import type {
+  BookingEntryPoint,
+  BookingInitialSelection,
+  BookingReturnTarget,
+} from "../booking-navigation-types";
 import type { SummaryData } from "../SummaryPanel";
 import { BOOKING_STEP_INDEX, BOOKING_STEPS } from "../wizard/booking-steps";
 import type {
@@ -181,12 +186,13 @@ function getVisibleCustomerErrors(
   ) as CustomerErrors;
 }
 
-interface InitialBookingSelection {
-  categoryId?: CategoryId;
-  serviceId?: string;
+interface BookingNavigationContext {
+  entryPoint: BookingEntryPoint;
+  onExitToTarget: (target: BookingReturnTarget) => void;
+  returnTarget: BookingReturnTarget;
 }
 
-function getInitialService(initialSelection?: InitialBookingSelection): Service | null {
+function getInitialService(initialSelection?: BookingInitialSelection): Service | null {
   if (!initialSelection?.categoryId || !initialSelection.serviceId) return null;
 
   return (
@@ -197,7 +203,7 @@ function getInitialService(initialSelection?: InitialBookingSelection): Service 
 }
 
 function getInitialStep(
-  initialSelection?: InitialBookingSelection,
+  initialSelection?: BookingInitialSelection,
   initialService?: Service | null,
 ) {
   if (!initialSelection?.categoryId) return BOOKING_STEP_INDEX.category;
@@ -208,9 +214,15 @@ function getInitialStep(
     : BOOKING_STEP_INDEX.extras;
 }
 
-export function useBookingWizard(onExit: () => void, initialSelection?: InitialBookingSelection) {
+export function useBookingWizard(
+  onExit: () => void,
+  initialSelection?: BookingInitialSelection,
+  navigationContext?: BookingNavigationContext,
+) {
   const initialService = getInitialService(initialSelection);
-  const [step, setStep] = useState(getInitialStep(initialSelection, initialService));
+  const initialStep = getInitialStep(initialSelection, initialService);
+  const initialStepRef = useRef(initialStep);
+  const [step, setStep] = useState(initialStep);
   const [category, setCategory] = useState<CategoryId | null>(initialSelection?.categoryId ?? null);
   const [service, setService] = useState<Service | null>(initialService);
   const [personal, setPersonal] = useState<Personalization>({});
@@ -379,9 +391,18 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
 
   const next = () => setStep((currentStep) => Math.min(currentStep + 1, BOOKING_STEPS.length - 1));
   const back = () => {
+    const shouldExitToReturnTarget =
+      navigationContext &&
+      navigationContext.entryPoint !== "hero-reserve" &&
+      step === initialStepRef.current;
+
+    if (shouldExitToReturnTarget) {
+      return navigationContext.onExitToTarget(navigationContext.returnTarget);
+    }
+
     if (step === BOOKING_STEP_INDEX.category) return onExit();
 
-    if (step === BOOKING_STEP_INDEX.service) {
+    if (step === BOOKING_STEP_INDEX.service && navigationContext?.entryPoint === "hero-reserve") {
       setCategory(null);
       resetSelectedTurnDetails();
     }
