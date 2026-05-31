@@ -413,7 +413,7 @@ export function useBookingWizard(
       resetSelectedTurnDetails();
     }
 
-    setStep((currentStep) => currentStep - 1);
+    setStep((currentStep) => clampWizardStep(currentStep - 1));
   };
 
   return {
