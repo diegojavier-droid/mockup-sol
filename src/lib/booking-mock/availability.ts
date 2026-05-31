@@ -1,5 +1,6 @@
 import type {
   AppointmentMock,
+  AvailabilityRequest,
   AvailableSlot,
   BusinessHours,
   ClosedDay,
@@ -91,11 +92,51 @@ export const scheduleBlocks: ScheduleBlock[] = [
 ];
 
 export const appointmentsMock: AppointmentMock[] = [
-  { date: "2026-06-02", startsAt: "10:30", active: true },
-  { date: "2026-06-02", startsAt: "11:30", active: true },
-  { date: "2026-06-05", startsAt: "14:30", active: true },
-  { date: "2026-06-10", startsAt: "16:00", active: true },
-  { date: "2026-07-14", startsAt: "09:30", active: true },
+  {
+    date: "2026-06-02",
+    startsAt: "10:30",
+    serviceName: "Corte femenino",
+    serviceDurationMinutes: 45,
+    preparationMinutes: 10,
+    blockedDurationMinutes: 55,
+    active: true,
+  },
+  {
+    date: "2026-06-02",
+    startsAt: "11:30",
+    serviceName: "Brushing",
+    serviceDurationMinutes: 30,
+    preparationMinutes: 10,
+    blockedDurationMinutes: 40,
+    active: true,
+  },
+  {
+    date: "2026-06-05",
+    startsAt: "14:30",
+    serviceName: "Maquillaje social",
+    serviceDurationMinutes: 45,
+    preparationMinutes: 5,
+    blockedDurationMinutes: 50,
+    active: true,
+  },
+  {
+    date: "2026-06-10",
+    startsAt: "16:00",
+    serviceName: "Balayage",
+    serviceDurationMinutes: 180,
+    preparationMinutes: 15,
+    blockedDurationMinutes: 195,
+    active: true,
+  },
+  {
+    date: "2026-07-14",
+    startsAt: "09:30",
+    serviceName: "Corte femenino",
+    serviceDurationMinutes: 45,
+    preparationMinutes: 10,
+    blockedDurationMinutes: 55,
+    active: true,
+  },
 ];
 
 const slotIntervalMinutes = 60;
@@ -127,13 +168,21 @@ function toTimeLabel(totalMinutes: number) {
   return `${hours}:${minutes}`;
 }
 
-function overlapsSlot(slot: string, startsAt?: string, endsAt?: string) {
-  const slotStart = toMinutes(slot);
-  const slotEnd = slotStart + slotIntervalMinutes;
+function rangesOverlap(startA: number, endA: number, startB: number, endB: number) {
+  return startA < endB && endA > startB;
+}
+
+function overlapsRange(slotStart: number, slotEnd: number, startsAt?: string, endsAt?: string) {
   const blockStart = toMinutes(startsAt ?? "00:00");
   const blockEnd = toMinutes(endsAt ?? "23:59");
 
-  return slotStart < blockEnd && slotEnd > blockStart;
+  return rangesOverlap(slotStart, slotEnd, blockStart, blockEnd);
+}
+
+function getAppointmentEndMinutes(appointment: AppointmentMock) {
+  return (
+    toMinutes(appointment.startsAt) + (appointment.blockedDurationMinutes ?? slotIntervalMinutes)
+  );
 }
 
 export function getTodayKey() {
@@ -176,7 +225,11 @@ export function getMonthDays(monthDate: Date) {
   return [...blanks, ...days];
 }
 
-export function getSlotsForDate(dateKey: string, todayKey = getTodayKey()): string[] {
+export function getSlotsForDate(
+  dateKey: string,
+  todayKey = getTodayKey(),
+  request: AvailabilityRequest = { durationMinutes: slotIntervalMinutes },
+): string[] {
   if (dateKey < todayKey) return [];
 
   const date = fromDateKey(dateKey);
@@ -199,17 +252,30 @@ export function getSlotsForDate(dateKey: string, todayKey = getTodayKey()): stri
   );
   const slots: string[] = [];
 
+  const requestedBlockedDuration =
+    request.durationMinutes + (request.operationalBufferMinutes ?? 0);
+
   for (
     let minutes = toMinutes(dayHours.opensAt);
-    minutes + slotIntervalMinutes <= toMinutes(dayHours.closesAt);
+    minutes + requestedBlockedDuration <= toMinutes(dayHours.closesAt);
     minutes += slotIntervalMinutes
   ) {
     const slot = toTimeLabel(minutes);
+    const slotEnd = minutes + requestedBlockedDuration;
     const isClosed = dayClosedRanges.some((range) =>
-      overlapsSlot(slot, range.startsAt, range.endsAt),
+      overlapsRange(minutes, slotEnd, range.startsAt, range.endsAt),
     );
-    const isBlocked = dayBlocks.some((block) => overlapsSlot(slot, block.startsAt, block.endsAt));
-    const isBooked = dayAppointments.some((appointment) => appointment.startsAt === slot);
+    const isBlocked = dayBlocks.some((block) =>
+      overlapsRange(minutes, slotEnd, block.startsAt, block.endsAt),
+    );
+    const isBooked = dayAppointments.some((appointment) =>
+      rangesOverlap(
+        minutes,
+        slotEnd,
+        toMinutes(appointment.startsAt),
+        getAppointmentEndMinutes(appointment),
+      ),
+    );
 
     if (!isClosed && !isBlocked && !isBooked) {
       slots.push(slot);
@@ -222,6 +288,7 @@ export function getSlotsForDate(dateKey: string, todayKey = getTodayKey()): stri
 export function getDayAvailabilityStatus(
   dateKey: string,
   todayKey = getTodayKey(),
+  request: AvailabilityRequest = { durationMinutes: slotIntervalMinutes },
 ): DayAvailabilityStatus {
   if (dateKey < todayKey) return "past";
 
@@ -234,14 +301,18 @@ export function getDayAvailabilityStatus(
 
   const dayHours = businessHours.find((hours) => hours.weekday === date.getDay() && hours.active);
 
-  if (!dayHours || getSlotsForDate(dateKey, todayKey).length === 0) return "unavailable";
+  if (!dayHours || getSlotsForDate(dateKey, todayKey, request).length === 0) return "unavailable";
 
   return "available";
 }
 
-export function hasAvailableSlotsInMonth(monthDate: Date, todayKey = getTodayKey()) {
+export function hasAvailableSlotsInMonth(
+  monthDate: Date,
+  todayKey = getTodayKey(),
+  request: AvailabilityRequest = { durationMinutes: slotIntervalMinutes },
+) {
   return getMonthDays(monthDate).some(
-    (dateKey) => dateKey && getDayAvailabilityStatus(dateKey, todayKey) === "available",
+    (dateKey) => dateKey && getDayAvailabilityStatus(dateKey, todayKey, request) === "available",
   );
 }
 

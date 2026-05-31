@@ -63,6 +63,8 @@ export const bookingTotalsSchema: z.ZodType<BookingTotals> = z.object({
   durationMinutes: z.number().positive("La duración debe ser positiva"),
   priceAmount: z.number().positive("El precio debe ser positivo").nullable(),
   priceIsEstimated: z.boolean(),
+  operationalBufferMinutes: z.number().int().min(0).optional(),
+  blockedDurationMinutes: z.number().positive().optional(),
 });
 
 export const recurringBookingPreferenceSchema: z.ZodType<RecurringBookingPreference> = z.object({

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ClosedDaysBlocksPanel } from "@/components/booking/admin/ClosedDaysBlocksPanel";
+import { OperationalBufferPanel } from "@/components/booking/admin/OperationalBufferPanel";
 
 export const Route = createFileRoute("/operaciones")({
   head: () => ({
@@ -18,7 +19,10 @@ function Operations() {
         >
           ← Volver al sitio público
         </Link>
-        <ClosedDaysBlocksPanel />
+        <div className="space-y-6">
+          <OperationalBufferPanel />
+          <ClosedDaysBlocksPanel />
+        </div>
       </div>
     </main>
   );

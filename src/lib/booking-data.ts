@@ -1,5 +1,6 @@
 export type {
   AppointmentMock,
+  AvailabilityRequest,
   AvailableSlot,
   BusinessHours,
   Category,
@@ -9,6 +10,7 @@ export type {
   Extra,
   MockDate,
   ScheduleBlock,
+  OperationalBufferSettings,
   Personalization,
   PersonalizationField,
   Service,
@@ -37,3 +39,9 @@ export {
   monthNames,
   scheduleBlocks,
 } from "./booking-mock/availability";
+
+export {
+  getBlockedDurationMinutes,
+  getOperationalBufferMinutes,
+  operationalBufferSettings,
+} from "./booking-operational-buffer";
