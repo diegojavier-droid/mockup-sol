@@ -110,29 +110,6 @@ export function PersonalizationStep({
           </section>
         ))}
 
-        <section className="rounded-3xl border border-border bg-card/70 p-4 shadow-[0_18px_36px_-34px_rgba(120,90,60,0.35)] lg:p-5">
-          <h3 className="font-serif text-lg text-foreground lg:text-xl">Algo más</h3>
-          <label className="mt-3 block lg:mt-4">
-            <span className="text-sm font-medium text-foreground">¿Querés contarnos algo más?</span>
-            <span className="mt-1.5 block text-xs leading-relaxed text-muted-foreground">
-              Si hay algún detalle que te gustaría que tengamos en cuenta para tu visita, podés
-              escribirlo acá.
-            </span>
-            <textarea
-              className="mt-3 min-h-24 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30 lg:min-h-28"
-              maxLength={ADDITIONAL_COMMENTS_MAX_LENGTH}
-              onChange={(event) => onChangeAdditionalComments(event.target.value)}
-              placeholder="Contanos lo que consideres importante."
-              value={additionalComments}
-            />
-            <span className="mt-1.5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-              <span>Opcional</span>
-              <span>
-                {additionalComments.length}/{ADDITIONAL_COMMENTS_MAX_LENGTH}
-              </span>
-            </span>
-          </label>
-        </section>
       </div>
     </StepShell>
   );
