@@ -9,6 +9,7 @@ import {
   formatDateLabel,
   getSlotsForDate,
   personalizationFields,
+  services,
   type CategoryId,
   type Extra,
   type Personalization,
@@ -152,12 +153,38 @@ function getVisibleCustomerErrors(
   ) as CustomerErrors;
 }
 
-export function useBookingWizard(onExit: () => void, initialCategory?: CategoryId) {
-  const [step, setStep] = useState(
-    initialCategory ? BOOKING_STEP_INDEX.service : BOOKING_STEP_INDEX.category,
+interface InitialBookingSelection {
+  categoryId?: CategoryId;
+  serviceId?: string;
+}
+
+function getInitialService(initialSelection?: InitialBookingSelection): Service | null {
+  if (!initialSelection?.categoryId || !initialSelection.serviceId) return null;
+
+  return (
+    services[initialSelection.categoryId].find(
+      (availableService) => availableService.id === initialSelection.serviceId,
+    ) ?? null
   );
-  const [category, setCategory] = useState<CategoryId | null>(initialCategory ?? null);
-  const [service, setService] = useState<Service | null>(null);
+}
+
+function getInitialStep(
+  initialSelection?: InitialBookingSelection,
+  initialService?: Service | null,
+) {
+  if (!initialSelection?.categoryId) return BOOKING_STEP_INDEX.category;
+  if (!initialService) return BOOKING_STEP_INDEX.service;
+
+  return personalizationFields[initialSelection.categoryId].length > 0
+    ? BOOKING_STEP_INDEX.details
+    : BOOKING_STEP_INDEX.extras;
+}
+
+export function useBookingWizard(onExit: () => void, initialSelection?: InitialBookingSelection) {
+  const initialService = getInitialService(initialSelection);
+  const [step, setStep] = useState(getInitialStep(initialSelection, initialService));
+  const [category, setCategory] = useState<CategoryId | null>(initialSelection?.categoryId ?? null);
+  const [service, setService] = useState<Service | null>(initialService);
   const [personal, setPersonal] = useState<Personalization>({});
   const [chosenExtras, setChosenExtras] = useState<Extra[]>([]);
   const [date, setDate] = useState<string | null>(null);
