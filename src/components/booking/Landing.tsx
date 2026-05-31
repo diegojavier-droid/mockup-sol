@@ -1,34 +1,9 @@
 import { useState } from "react";
-import { categories, services, type CategoryId, type Service, type Tag } from "@/lib/booking-data";
+import { categories, services, type CategoryId } from "@/lib/booking-data";
+import { BookingCategoryCard } from "./shared/BookingCategoryCard";
+import { BookingServiceCard } from "./shared/BookingServiceCard";
 import heroImage from "@/assets/sol-mai-hero.jpg";
-import peluImg from "@/assets/sol-mai-peluqueria.jpg";
-import makeImg from "@/assets/sol-mai-maquillaje.jpg";
-import nailsImg from "@/assets/sol-mai-unas.jpg";
 import solMaiLogo from "@/assets/sol-mai-logo-header.png";
-
-const categoryImages: Record<CategoryId, string> = {
-  peluqueria: peluImg,
-  maquillaje: makeImg,
-  unas: nailsImg,
-};
-
-const specialtyLabels: Record<CategoryId, string> = {
-  peluqueria: "Peluquería",
-  maquillaje: "Maquillaje",
-  unas: "Uñas",
-};
-
-const specialtyDescriptions: Record<CategoryId, string> = {
-  peluqueria: "Cortes, color, peinados y tratamientos pensados para cuidar tu pelo.",
-  maquillaje: "Looks sociales, de evento y producción para sentirte cómoda y luminosa.",
-  unas: "Manicura, semipermanente, soft gel y detalles de nail art con terminación prolija.",
-};
-
-const tagLabels: Partial<Record<Tag, string>> = {
-  popular: "Popular",
-};
-
-type SpecialtyService = Service & { categoryId: CategoryId };
 
 export function Landing({
   onStart,
@@ -40,9 +15,7 @@ export function Landing({
   const selectedCategoryData = selectedCategory
     ? categories.find((category) => category.id === selectedCategory)
     : null;
-  const selectedServices: SpecialtyService[] = selectedCategory
-    ? services[selectedCategory].map((service) => ({ ...service, categoryId: selectedCategory }))
-    : [];
+  const selectedServices = selectedCategory ? services[selectedCategory] : [];
 
   const scrollToSpecialties = () => {
     window.requestAnimationFrame(() => {
@@ -156,39 +129,13 @@ export function Landing({
 
           <div className="mt-5 grid gap-4 sm:mt-6 sm:gap-5 lg:grid-cols-3">
             {categories.map((category) => (
-              <article
+              <BookingCategoryCard
                 key={category.id}
+                category={category}
+                selected={selectedCategory === category.id}
+                variant="public"
                 onClick={() => showSpecialtyServices(category.id)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    showSpecialtyServices(category.id);
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-                className="group cursor-pointer overflow-hidden rounded-3xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:border-champagne hover:shadow-[0_30px_50px_-35px_rgba(120,90,60,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                aria-label={`Abrir ${specialtyLabels[category.id]}`}
-              >
-                <div className="overflow-hidden">
-                  <img
-                    src={categoryImages[category.id]}
-                    alt={specialtyLabels[category.id]}
-                    loading="lazy"
-                    width={800}
-                    height={800}
-                    className="h-24 w-full object-cover transition-transform duration-700 group-hover:scale-[1.04] sm:h-32 lg:h-28"
-                  />
-                </div>
-                <div className="flex flex-col p-3.5 sm:p-4">
-                  <h3 className="font-serif text-xl leading-tight text-foreground">
-                    {specialtyLabels[category.id]}
-                  </h3>
-                  <p className="mt-1.5 line-clamp-2 text-xs leading-snug text-muted-foreground">
-                    {specialtyDescriptions[category.id]}
-                  </p>
-                </div>
-              </article>
+              />
             ))}
           </div>
         </section>
@@ -216,10 +163,11 @@ export function Landing({
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {selectedServices.map((service) => (
-                <ServiceSpecialtyCard
-                  key={`${service.categoryId}-${service.id}`}
+                <BookingServiceCard
+                  key={`${selectedCategory}-${service.id}`}
                   service={service}
-                  onReserve={() => onStart(service.categoryId, service.id)}
+                  variant="public"
+                  onClick={() => onStart(selectedCategory, service.id)}
                 />
               ))}
             </div>
@@ -231,48 +179,6 @@ export function Landing({
         Sol Mai Peluquería · Santa Fe Capital · Representante Itely Hairfashion
       </footer>
     </div>
-  );
-}
-
-function ServiceSpecialtyCard({
-  service,
-  onReserve,
-}: {
-  service: SpecialtyService;
-  onReserve: () => void;
-}) {
-  return (
-    <article className="flex h-full flex-col rounded-[1.35rem] border border-border bg-card p-4 shadow-[0_18px_38px_-34px_rgba(120,90,60,0.35)] transition-all hover:border-champagne hover:shadow-[0_24px_44px_-36px_rgba(120,90,60,0.45)]">
-      <div className="flex flex-1 flex-col">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-serif text-xl leading-tight text-foreground">{service.name}</h3>
-          {service.tag === "popular" ? (
-            <span className="shrink-0 rounded-full border border-champagne/50 bg-cream px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-champagne-deep">
-              {tagLabels[service.tag]}
-            </span>
-          ) : null}
-        </div>
-
-        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-          {service.desc}
-        </p>
-
-        <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-          <span>{service.duration}</span>
-          <span className="h-1 w-1 rounded-full bg-champagne/70" />
-          <span className="font-serif text-base text-foreground">{service.price}</span>
-        </div>
-
-        <button
-          type="button"
-          onClick={onReserve}
-          className="mt-4 rounded-full bg-primary px-5 py-2.5 font-serif text-base text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-          aria-label={`Reservar ${service.name}`}
-        >
-          Reservar
-        </button>
-      </div>
-    </article>
   );
 }
 
