@@ -134,7 +134,6 @@ export function PersonalizationStep({
           </label>
         </section>
       </div>
-
     </StepShell>
   );
 }
