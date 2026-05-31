@@ -6,7 +6,8 @@ import {
 } from "@/lib/booking-schema";
 import type { BookingRequestPayloadInput, CustomerIdentityInput } from "@/lib/booking-schema";
 import {
-  mockDates,
+  formatDateLabel,
+  getSlotsForDate,
   personalizationFields,
   type CategoryId,
   type Extra,
@@ -175,7 +176,7 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
       service,
       extras: chosenExtras,
       personalization: personal,
-      date: date ? (mockDates.find((mockDate) => mockDate.iso === date)?.label ?? null) : null,
+      date: date ? formatDateLabel(date) : null,
       time,
     }),
     [category, chosenExtras, date, personal, service, time],
@@ -223,6 +224,8 @@ export function useBookingWizard(onExit: () => void, initialCategory?: CategoryI
   };
 
   const chooseDate = (selectedDate: string) => {
+    if (getSlotsForDate(selectedDate).length === 0) return;
+
     setDate(selectedDate);
     setTime(null);
   };
