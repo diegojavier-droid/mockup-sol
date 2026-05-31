@@ -271,14 +271,18 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
     return true;
   }, [category, customer, date, personal, service, step, time]);
 
-  const chooseCategory = (categoryId: CategoryId) => {
-    setCategory(categoryId);
+  const resetSelectedTurnDetails = () => {
     setService(null);
     setPersonal({});
     setAdditionalComments("");
     setChosenExtras([]);
     setDate(null);
     setTime(null);
+  };
+
+  const chooseCategory = (categoryId: CategoryId) => {
+    setCategory(categoryId);
+    resetSelectedTurnDetails();
   };
 
   const chooseCategoryAndContinue = (categoryId: CategoryId) => {
@@ -375,6 +379,12 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
   const next = () => setStep((currentStep) => Math.min(currentStep + 1, BOOKING_STEPS.length - 1));
   const back = () => {
     if (step === BOOKING_STEP_INDEX.category) return onExit();
+
+    if (step === BOOKING_STEP_INDEX.service) {
+      setCategory(null);
+      resetSelectedTurnDetails();
+    }
+
     setStep((currentStep) => currentStep - 1);
   };
 
