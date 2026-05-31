@@ -181,6 +181,10 @@ export function Landing({
               >
                 ← Volver
               </button>
+              <p className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                <span>{selectedCategoryData.emoji}</span>
+                <span>{selectedCategoryData.name}</span>
+              </p>
               <h2 className="font-serif text-4xl text-foreground lg:text-5xl">Elegí tu servicio</h2>
             </div>
 
