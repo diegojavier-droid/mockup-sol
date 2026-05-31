@@ -1,5 +1,6 @@
 export type {
   AppointmentMock,
+  AreaId,
   AvailabilityRequest,
   AvailableSlot,
   BusinessHours,
@@ -19,6 +20,7 @@ export type {
 export { categories } from "./booking-mock/categories";
 export { services } from "./booking-mock/services";
 export { extras } from "./booking-mock/extras";
+export { areaCapacities } from "./booking-mock/area-capacity";
 export { personalizationFields } from "./booking-mock/personalization";
 export {
   appointmentsMock,
