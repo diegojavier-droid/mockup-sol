@@ -187,9 +187,6 @@ export function Landing({
                   <p className="mt-1.5 line-clamp-2 text-xs leading-snug text-muted-foreground">
                     {specialtyDescriptions[category.id]}
                   </p>
-                  <p className="mt-3 inline-flex items-center font-serif text-sm text-champagne-deep transition-transform group-hover:translate-x-1">
-                    Ver servicios →
-                  </p>
                 </div>
               </article>
             ))}
@@ -212,7 +209,7 @@ export function Landing({
                 }}
                 className="mb-4 inline-flex items-center rounded-full border border-border bg-card px-4 py-2 font-serif text-sm text-foreground transition-colors hover:border-champagne hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                ← Volver a especialidades
+                ← Volver
               </button>
               <h2 className="font-serif text-4xl text-foreground lg:text-5xl">Elegí tu servicio</h2>
             </div>
