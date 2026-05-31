@@ -63,14 +63,8 @@ export function PersonalizationStep({
   const groupedFields = groupPersonalizationFields(personalizationFields[category]);
 
   return (
-    <StepShell
-      title="Conozcamos tu cabello"
-      subtitle="Estas respuestas nos ayudan a reservar el tiempo adecuado y preparar mejor tu visita."
-    >
+    <StepShell title="Conozcamos tu cabello">
       <div className="space-y-4 lg:space-y-5">
-        <p className="rounded-2xl border border-champagne/40 bg-cream/60 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
-          El tiempo y valor estimado se ajustan automáticamente solo cuando corresponde.
-        </p>
         {groupedFields.map(({ group, fields }) => (
           <section
             key={group}

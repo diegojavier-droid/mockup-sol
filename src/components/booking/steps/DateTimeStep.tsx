@@ -65,15 +65,11 @@ export function DateTimeStep({
   };
 
   return (
-    <StepShell
-      title="Elegí fecha y hora"
-      subtitle="Buscá el día que te quede cómodo y después elegí un horario disponible."
-    >
+    <StepShell title="¿Cuándo te gustaría venir?">
       <div>
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-foreground">Elegí una fecha</p>
-            <p className="mt-1 text-xs text-muted-foreground">Podés navegar entre meses.</p>
           </div>
           <div className="flex items-center gap-2">
             <button

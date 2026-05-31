@@ -12,7 +12,7 @@ export function CategoryStep({
   onChooseCategory: (categoryId: CategoryId) => void;
 }) {
   return (
-    <StepShell title="¿Qué te gustaría reservar?" subtitle="Elegí una categoría para comenzar.">
+    <StepShell title="¿Qué te gustaría reservar?">
       <div className="grid gap-5 sm:grid-cols-3">
         {categories.map((currentCategory) => (
           <CategoryCard

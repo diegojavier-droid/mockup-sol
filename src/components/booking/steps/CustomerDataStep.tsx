@@ -24,10 +24,7 @@ export function CustomerDataStep({
   onChangeCustomerField: (field: CustomerField, value: string) => void;
 }) {
   return (
-    <StepShell
-      title="Tus datos"
-      subtitle="Te pedimos lo mínimo para identificarte y coordinar tu turno por WhatsApp."
-    >
+    <StepShell title="¿Cómo podemos contactarte?">
       <div className="rounded-3xl border border-border bg-card p-5 shadow-sm lg:p-6">
         {isRecognized && (
           <div className="mb-5 rounded-2xl border border-primary/20 bg-cream px-4 py-3 text-sm font-medium text-foreground">
@@ -73,10 +70,6 @@ export function CustomerDataStep({
             value={customer.notes}
           />
         </div>
-
-        <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
-          Te vamos a contactar por WhatsApp para confirmar el turno y coordinar cualquier detalle.
-        </p>
       </div>
     </StepShell>
   );

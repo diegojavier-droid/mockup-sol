@@ -81,7 +81,7 @@ export function Landing({
           onClick={scrollToSpecialties}
           className="hidden text-xs uppercase tracking-[0.22em] text-foreground/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:block"
         >
-          Especialidades
+          Reservar
         </button>
       </header>
 
@@ -112,7 +112,7 @@ export function Landing({
                 onClick={scrollToSpecialties}
                 className="rounded-full border border-border bg-card/80 px-7 py-3 font-serif text-base text-foreground transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                Ver especialidades
+                Ver opciones
               </button>
             </div>
             <div className="mt-6 hidden max-w-md grid-cols-3 gap-6 border-t border-border/60 pt-5 text-left sm:grid">
@@ -149,18 +149,12 @@ export function Landing({
           className="scroll-mt-8 border-t border-border/60 pb-14 pt-10 sm:pb-20 sm:pt-14"
         >
           <div className="max-w-2xl">
-            <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-              Especialidades
-            </p>
-            <h2 className="mt-3 font-serif text-4xl text-foreground lg:text-5xl">Lo que hacemos</h2>
-            <div className="mt-4 h-px w-12 bg-champagne-deep/40" />
-            <p className="mt-5 text-base leading-relaxed text-muted-foreground">
-              Elegí primero el área que querés explorar. Después te mostramos solo los servicios de
-              esa especialidad para que la reserva sea más simple.
-            </p>
+            <h2 className="font-serif text-4xl text-foreground lg:text-5xl">
+              ¿Qué te gustaría reservar?
+            </h2>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:gap-5 lg:grid-cols-3">
+          <div className="mt-5 grid gap-4 sm:mt-6 sm:gap-5 lg:grid-cols-3">
             {categories.map((category) => (
               <article
                 key={category.id}
@@ -215,7 +209,7 @@ export function Landing({
         {selectedCategory && selectedCategoryData ? (
           <section
             id="servicios-especialidad"
-            className="scroll-mt-8 border-t border-border/60 pb-16 pt-14 sm:pb-24 sm:pt-20"
+            className="scroll-mt-8 border-t border-border/60 pb-16 pt-8 sm:pb-24 sm:pt-10"
           >
             <div className="max-w-2xl">
               <button
@@ -226,20 +220,14 @@ export function Landing({
                     document.getElementById("areas")?.scrollIntoView({ behavior: "smooth" });
                   });
                 }}
-                className="mb-5 inline-flex items-center rounded-full border border-border bg-card px-4 py-2 font-serif text-sm text-foreground transition-colors hover:border-champagne hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="mb-4 inline-flex items-center rounded-full border border-border bg-card px-4 py-2 font-serif text-sm text-foreground transition-colors hover:border-champagne hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 ← Volver a especialidades
               </button>
-              <h2 className="font-serif text-4xl text-foreground lg:text-5xl">
-                Servicios de {specialtyLabels[selectedCategory].toLowerCase()}
-              </h2>
-              <div className="mt-4 h-px w-12 bg-champagne-deep/40" />
-              <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-                Seleccioná el servicio que buscás.
-              </p>
+              <h2 className="font-serif text-4xl text-foreground lg:text-5xl">Elegí tu servicio</h2>
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {selectedServices.map((service) => (
                 <ServiceSpecialtyCard
                   key={`${service.categoryId}-${service.id}`}
