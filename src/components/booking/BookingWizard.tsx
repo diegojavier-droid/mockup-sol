@@ -14,15 +14,6 @@ import { BOOKING_STEP_INDEX, BOOKING_STEPS } from "./wizard/booking-steps";
 import { BookingHeader } from "./wizard/BookingHeader";
 import { WizardNavigation } from "./wizard/WizardNavigation";
 import type { CategoryId } from "@/lib/booking-data";
-import peluImg from "@/assets/sol-mai-peluqueria.jpg";
-import makeImg from "@/assets/sol-mai-maquillaje.jpg";
-import nailsImg from "@/assets/sol-mai-unas.jpg";
-
-const categoryImages: Record<CategoryId, string> = {
-  peluqueria: peluImg,
-  maquillaje: makeImg,
-  unas: nailsImg,
-};
 
 export function BookingWizard({
   initialCategory,
@@ -84,7 +75,6 @@ export function BookingWizard({
             {wizard.step === BOOKING_STEP_INDEX.category && (
               <CategoryStep
                 category={wizard.category}
-                categoryImages={categoryImages}
                 onChooseCategory={wizard.chooseCategoryAndContinue}
               />
             )}
