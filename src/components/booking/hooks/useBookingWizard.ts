@@ -27,8 +27,8 @@ import type {
 } from "../steps/CustomerDataStep";
 
 const mockReturningCustomers: CustomerFormState[] = [
-  { firstName: "Mai", whatsapp: "342 555 1234", email: "mai@solmai.com" },
-  { firstName: "Sofía", whatsapp: "342 600 7788", email: "sofia@example.com" },
+  { firstName: "Mai", whatsapp: "342 555 1234", email: "mai@solmai.com", notes: "" },
+  { firstName: "Sofía", whatsapp: "342 600 7788", email: "sofia@example.com", notes: "" },
 ];
 
 const normalizeLookup = (value: string) =>
@@ -91,6 +91,7 @@ export function buildBookingRequestPayload({
       personalization: personal,
       dateId: date,
       time,
+      notes: customer.notes.trim() ? customer.notes.trim() : undefined,
     },
     totals: {
       durationMinutes: totals.durationMinutes,
@@ -142,6 +143,10 @@ function validateCustomer(customer: CustomerFormState): CustomerErrors {
         errors[field] = issue.message;
       }
     }
+  }
+
+  if (customer.notes.length > 500) {
+    errors.notes = "Máximo 500 caracteres";
   }
 
   return errors;
@@ -196,6 +201,7 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
     firstName: "",
     whatsapp: "",
     email: "",
+    notes: "",
   });
   const [customerTouched, setCustomerTouched] = useState<CustomerTouched>({});
   const [isCustomerRecognized, setIsCustomerRecognized] = useState(false);
@@ -296,6 +302,7 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
             firstName: current.firstName.trim() ? current.firstName : mockCustomer.firstName,
             whatsapp: nextCustomer.whatsapp.trim() ? nextCustomer.whatsapp : mockCustomer.whatsapp,
             email: nextCustomer.email.trim() ? nextCustomer.email : mockCustomer.email,
+            notes: current.notes,
           };
         }
 

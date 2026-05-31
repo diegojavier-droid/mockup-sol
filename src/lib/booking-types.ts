@@ -132,6 +132,7 @@ export interface BookingSelection {
   personalization?: Personalization;
   dateId: string;
   time: string;
+  notes?: string;
 }
 
 export interface BookingTotals {

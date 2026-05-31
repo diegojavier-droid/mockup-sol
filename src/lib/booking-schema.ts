@@ -57,6 +57,7 @@ export const bookingSelectionSchema: z.ZodType<BookingSelection> = z.object({
   personalization: z.record(z.string()).optional(),
   dateId: z.string().trim().min(1, "Fecha es requerida"),
   time: z.string().trim().min(1, "Horario es requerido"),
+  notes: z.string().trim().max(500, "Máximo 500 caracteres").optional(),
 });
 
 export const bookingTotalsSchema: z.ZodType<BookingTotals> = z.object({
