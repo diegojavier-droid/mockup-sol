@@ -18,4 +18,6 @@ export const BOOKING_STEP_INDEX = {
   review: 6,
 } as const;
 
-export const FINAL_BOOKING_STEP = BOOKING_STEPS.length - 1;
+export type WizardStep = (typeof BOOKING_STEP_INDEX)[keyof typeof BOOKING_STEP_INDEX];
+
+export const FINAL_BOOKING_STEP: WizardStep = BOOKING_STEP_INDEX.review;
