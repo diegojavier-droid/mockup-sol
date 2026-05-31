@@ -6,7 +6,7 @@ export function StepShell({
   children,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   children: ReactNode;
 }) {
   return (
@@ -17,8 +17,10 @@ export function StepShell({
       >
         {title}
       </h2>
-      <p className="mt-1.5 text-sm text-muted-foreground lg:mt-2 lg:text-base">{subtitle}</p>
-      <div className="mt-5 lg:mt-8">{children}</div>
+      {subtitle ? (
+        <p className="mt-1.5 text-sm text-muted-foreground lg:mt-2 lg:text-base">{subtitle}</p>
+      ) : null}
+      <div className={subtitle ? "mt-5 lg:mt-8" : "mt-4 lg:mt-6"}>{children}</div>
     </section>
   );
 }

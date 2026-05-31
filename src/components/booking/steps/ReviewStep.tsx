@@ -18,7 +18,7 @@ export function ReviewStep({
   onConfirm: () => void;
 }) {
   return (
-    <StepShell title="Revisemos tu reserva" subtitle="Si todo está bien, confirmá tu interés.">
+    <StepShell title="Revisá tu reserva">
       <BookingSummaryDetails customer={customer} data={data} personal={personal} />
       {error && (
         <p className="mt-5 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
