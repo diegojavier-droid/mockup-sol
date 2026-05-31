@@ -3,12 +3,10 @@ import { selectableCardClass } from "../booking-styles";
 
 export function OptionPill({
   option,
-  impact,
   selected,
   onSelect,
 }: {
   option: string;
-  impact?: string | null;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -26,7 +24,6 @@ export function OptionPill({
       )}
     >
       <span>{option}</span>
-      {impact ? <span className="ml-1.5 text-xs opacity-70">{impact}</span> : null}
     </button>
   );
 }
