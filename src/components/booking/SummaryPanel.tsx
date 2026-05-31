@@ -7,6 +7,7 @@ export interface SummaryData {
   service: Service | null;
   extras: Extra[];
   personalization: Personalization;
+  additionalComments: string;
   date: string | null;
   time: string | null;
 }

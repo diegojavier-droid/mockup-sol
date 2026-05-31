@@ -26,6 +26,8 @@ import type {
   CustomerTouched,
 } from "../steps/CustomerDataStep";
 
+const ADDITIONAL_COMMENTS_MAX_LENGTH = 500;
+
 const mockReturningCustomers: CustomerFormState[] = [
   { firstName: "Mai", whatsapp: "342 555 1234", email: "mai@solmai.com", notes: "" },
   { firstName: "Sofía", whatsapp: "342 600 7788", email: "sofia@example.com", notes: "" },
@@ -58,6 +60,7 @@ interface BookingRequestPayloadDraftData {
   category: CategoryId | null;
   service: Service | null;
   personal: Personalization;
+  additionalComments: string;
   chosenExtras: Extra[];
   date: string | null;
   time: string | null;
@@ -69,6 +72,7 @@ export function buildBookingRequestPayload({
   category,
   service,
   personal,
+  additionalComments,
   chosenExtras,
   date,
   time,
@@ -91,7 +95,7 @@ export function buildBookingRequestPayload({
       personalization: personal,
       dateId: date,
       time,
-      notes: customer.notes.trim() ? customer.notes.trim() : undefined,
+      notes: buildBookingNotes(additionalComments, customer.notes),
     },
     totals: {
       durationMinutes: totals.durationMinutes,
@@ -102,6 +106,22 @@ export function buildBookingRequestPayload({
     },
     status: "requested",
   };
+}
+
+function buildBookingNotes(additionalComments: string, customerNotes: string) {
+  const comments = additionalComments.trim();
+  const notes = customerNotes.trim();
+
+  if (comments && notes) {
+    return `Comentarios adicionales: ${comments}\nMensaje: ${notes}`.slice(
+      0,
+      ADDITIONAL_COMMENTS_MAX_LENGTH,
+    );
+  }
+  if (comments) return comments;
+  if (notes) return notes;
+
+  return undefined;
 }
 
 function findMockCustomer(customer: CustomerFormState) {
@@ -194,6 +214,7 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
   const [category, setCategory] = useState<CategoryId | null>(initialSelection?.categoryId ?? null);
   const [service, setService] = useState<Service | null>(initialService);
   const [personal, setPersonal] = useState<Personalization>({});
+  const [additionalComments, setAdditionalComments] = useState("");
   const [chosenExtras, setChosenExtras] = useState<Extra[]>([]);
   const [date, setDate] = useState<string | null>(null);
   const [time, setTime] = useState<string | null>(null);
@@ -228,10 +249,11 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
       service,
       extras: chosenExtras,
       personalization: personal,
+      additionalComments,
       date: date ? formatDateLabel(date) : null,
       time,
     }),
-    [category, chosenExtras, date, personal, service, time],
+    [additionalComments, category, chosenExtras, date, personal, service, time],
   );
 
   const canNext = useMemo(() => {
@@ -253,6 +275,7 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
     setCategory(categoryId);
     setService(null);
     setPersonal({});
+    setAdditionalComments("");
     setChosenExtras([]);
     setDate(null);
     setTime(null);
@@ -270,6 +293,10 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
 
   const choosePersonalization = (fieldId: string, option: string) => {
     setPersonal((current) => ({ ...current, [fieldId]: option }));
+  };
+
+  const chooseAdditionalComments = (value: string) => {
+    setAdditionalComments(value.slice(0, ADDITIONAL_COMMENTS_MAX_LENGTH));
   };
 
   const toggleExtra = (extra: Extra) => {
@@ -323,6 +350,7 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
       category,
       service,
       personal,
+      additionalComments,
       chosenExtras,
       date,
       time,
@@ -351,10 +379,12 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
   };
 
   return {
+    additionalComments,
     bookingRequestError,
     canNext,
     category,
     chooseCategory,
+    chooseAdditionalComments,
     chooseCategoryAndContinue,
     chooseDate,
     chooseCustomerField,
