@@ -41,6 +41,43 @@ export interface MockDate {
   day: string;
 }
 
+export interface BusinessHours {
+  weekday: number;
+  opensAt: string;
+  closesAt: string;
+  active: boolean;
+}
+
+export interface ClosedDay {
+  date: string;
+  reason: string;
+  fullDay: boolean;
+  startsAt?: string;
+  endsAt?: string;
+  active: boolean;
+}
+
+export interface ScheduleBlock {
+  date: string;
+  startsAt: string;
+  endsAt: string;
+  reason: string;
+  active: boolean;
+}
+
+export interface AppointmentMock {
+  date: string;
+  startsAt: string;
+  active: boolean;
+}
+
+export interface AvailableSlot {
+  date: string;
+  times: string[];
+}
+
+export type DayAvailabilityStatus = "available" | "past" | "closed" | "unavailable";
+
 export type Personalization = Record<string, string>;
 
 export type ContactChannel = "whatsapp" | "email" | "phone";
