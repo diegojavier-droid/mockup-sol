@@ -61,17 +61,17 @@ export function Landing({
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-6 lg:px-8">
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3 sm:py-6 lg:px-8">
         <div className="flex items-center gap-3">
           <div className="inline-flex flex-col items-center">
-            <div className="relative h-11 w-[172px] overflow-hidden sm:h-14 sm:w-[216px]">
+            <div className="relative h-9 w-[140px] overflow-hidden sm:h-14 sm:w-[216px]">
               <img
                 src={solMaiLogo}
                 alt="Sol Mai Peluquería"
-                className="absolute -left-[63px] -top-[63px] h-[190px] w-auto max-w-none object-contain sm:-left-[79px] sm:-top-[79px] sm:h-[238px]"
+                className="absolute -left-[51px] -top-[51px] h-[154px] w-auto max-w-none object-contain sm:-left-[79px] sm:-top-[79px] sm:h-[238px]"
               />
             </div>
-            <p className="mt-0.5 w-full text-center text-[9px] uppercase tracking-[0.28em] text-muted-foreground sm:text-[10px]">
+            <p className="mt-0.5 w-full text-center text-[8px] uppercase tracking-[0.28em] text-muted-foreground sm:text-[10px]">
               Peluquería
             </p>
           </div>
@@ -86,46 +86,43 @@ export function Landing({
       </header>
 
       <main className="mx-auto max-w-6xl px-5 lg:px-8">
-        <section className="grid items-center gap-10 pb-12 pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-20 lg:pt-12">
+        <section className="grid items-center gap-7 pb-8 pt-2 sm:gap-10 sm:pb-12 sm:pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-20 lg:pt-12">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] text-foreground/70 backdrop-blur">
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-[9px] uppercase tracking-[0.2em] text-foreground/70 backdrop-blur sm:text-[10px] sm:tracking-[0.22em]">
               <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
               Santa Fe Capital
             </span>
-            <h1 className="mt-6 font-serif text-[2.8rem] leading-[1.02] text-foreground sm:text-6xl lg:text-[4.5rem]">
-              Belleza,
-              <br />
-              <em className="not-italic text-champagne-deep">a tu medida.</em>
+            <h1 className="mt-3 font-serif text-[2.55rem] leading-[1.02] text-foreground sm:mt-6 sm:text-6xl lg:text-[4.5rem]">
+              Belleza <em className="not-italic text-champagne-deep">a tu medida.</em>
             </h1>
-            <div className="mt-6 h-px w-16 bg-champagne-deep/40" />
-            <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
-              Peluquería, maquillaje y uñas en un espacio cálido y luminoso. Color y cuidado capilar
-              con productos Itely Hairfashion, en el corazón de Santa Fe.
+            <div className="mt-3 h-px w-14 bg-champagne-deep/40 sm:mt-6 sm:w-16" />
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:mt-6 sm:text-base">
+              Color, corte y cuidado capilar en Santa Fe Capital.
             </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-5 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
               <button
                 type="button"
                 onClick={() => onStart()}
-                className="rounded-full bg-primary px-8 py-4 font-serif text-lg text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] hover:shadow-[0_22px_44px_-18px_rgba(80,55,30,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-full bg-primary px-7 py-3 font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] hover:shadow-[0_22px_44px_-18px_rgba(80,55,30,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Reservar turno
               </button>
               <button
                 type="button"
                 onClick={scrollToSpecialties}
-                className="rounded-full border border-border bg-card/80 px-8 py-4 font-serif text-lg text-foreground transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-full border border-border bg-card/80 px-7 py-3 font-serif text-base text-foreground transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Ver especialidades
               </button>
             </div>
-            <div className="mt-8 grid max-w-md grid-cols-3 gap-6 border-t border-border/60 pt-5 text-left">
+            <div className="mt-6 hidden max-w-md grid-cols-3 gap-6 border-t border-border/60 pt-5 text-left sm:grid">
               <Stat n="Cuidado" l="artesanal" />
               <Stat n="Itely" l="Hairfashion" />
               <Stat n="Belleza" l="integral" />
             </div>
           </div>
 
-          <div className="relative">
+          <div className="relative hidden sm:block">
             <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-cream shadow-[0_50px_90px_-50px_rgba(120,90,60,0.5)]">
               <img
                 src={heroImage}
