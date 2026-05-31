@@ -8,6 +8,7 @@ import {
   getTodayKey,
   hasAvailableSlotsInMonth,
 } from "@/lib/booking-data";
+import type { AvailabilityRequest } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { TimeSlotButton } from "../cards/TimeSlotButton";
 import { StepShell } from "../wizard/StepShell";
@@ -19,11 +20,13 @@ export function DateTimeStep({
   time,
   onChooseDate,
   onChooseTime,
+  availabilityRequest,
 }: {
   date: string | null;
   time: string | null;
   onChooseDate: (date: string) => void;
   onChooseTime: (time: string) => void;
+  availabilityRequest: AvailabilityRequest;
 }) {
   const todayKey = useMemo(() => getTodayKey(), []);
   const [visibleMonth, setVisibleMonth] = useState(() => {
@@ -34,12 +37,12 @@ export function DateTimeStep({
   const [dayFeedback, setDayFeedback] = useState<string | null>(null);
   const monthDays = useMemo(() => getMonthDays(visibleMonth), [visibleMonth]);
   const monthHasAvailability = useMemo(
-    () => hasAvailableSlotsInMonth(visibleMonth, todayKey),
-    [todayKey, visibleMonth],
+    () => hasAvailableSlotsInMonth(visibleMonth, todayKey, availabilityRequest),
+    [availabilityRequest, todayKey, visibleMonth],
   );
   const selectedSlots = useMemo(
-    () => (date ? getSlotsForDate(date, todayKey) : []),
-    [date, todayKey],
+    () => (date ? getSlotsForDate(date, todayKey, availabilityRequest) : []),
+    [availabilityRequest, date, todayKey],
   );
 
   const moveMonth = (offset: number) => {
@@ -50,7 +53,7 @@ export function DateTimeStep({
   };
 
   const handleDayClick = (dateKey: string) => {
-    const status = getDayAvailabilityStatus(dateKey, todayKey);
+    const status = getDayAvailabilityStatus(dateKey, todayKey, availabilityRequest);
 
     if (status !== "available") {
       setDayFeedback("No hay horarios para este día. Probá con otra fecha.");
@@ -108,7 +111,7 @@ export function DateTimeStep({
               if (!dateKey) return <span key={`blank-${index}`} aria-hidden="true" />;
 
               const dayNumber = Number(dateKey.slice(-2));
-              const status = getDayAvailabilityStatus(dateKey, todayKey);
+              const status = getDayAvailabilityStatus(dateKey, todayKey, availabilityRequest);
               const selected = date === dateKey;
               const unavailable = status !== "available";
 

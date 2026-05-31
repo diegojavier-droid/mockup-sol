@@ -1,4 +1,8 @@
 import type { CategoryId, Extra, Personalization, Service } from "@/lib/booking-data";
+import {
+  getOperationalBufferMinutes,
+  getBlockedDurationMinutes,
+} from "@/lib/booking-operational-buffer";
 import { getPersonalizationModifierTotals } from "@/lib/booking-rules";
 
 export interface BookingTotalsData {
@@ -50,6 +54,25 @@ export function computeBookingTotals({
     price: priceAmount ? fmtPrice(priceAmount) : "—",
     priceAmount,
     priceIsEstimated: true,
+  };
+}
+
+export function computeBookingOperationalTotals(data: BookingTotalsData) {
+  const totals = computeBookingTotals(data);
+  const operationalBufferMinutes = getOperationalBufferMinutes({
+    category: data.category,
+    service: data.service,
+  });
+  const blockedDurationMinutes = getBlockedDurationMinutes({
+    visibleDurationMinutes: totals.durationMinutes,
+    operationalBufferMinutes,
+  });
+
+  return {
+    ...totals,
+    operationalBufferMinutes,
+    blockedDurationMinutes,
+    blockedDur: fmtDuration(blockedDurationMinutes),
   };
 }
 

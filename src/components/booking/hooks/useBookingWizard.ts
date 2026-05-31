@@ -8,6 +8,7 @@ import type { BookingRequestPayloadInput, CustomerIdentityInput } from "@/lib/bo
 import {
   formatDateLabel,
   getSlotsForDate,
+  getTodayKey,
   personalizationFields,
   services,
   type CategoryId,
@@ -15,7 +16,7 @@ import {
   type Personalization,
   type Service,
 } from "@/lib/booking-data";
-import { computeTotals } from "@/lib/booking-totals";
+import { computeBookingOperationalTotals } from "@/lib/booking-totals";
 import type { SummaryData } from "../SummaryPanel";
 import { BOOKING_STEP_INDEX, BOOKING_STEPS } from "../wizard/booking-steps";
 import type {
@@ -74,7 +75,7 @@ export function buildBookingRequestPayload({
   customer,
   isCustomerRecognized,
 }: BookingRequestPayloadDraftData): unknown {
-  const totals = computeTotals({
+  const totals = computeBookingOperationalTotals({
     category,
     service,
     extras: chosenExtras,
@@ -95,6 +96,8 @@ export function buildBookingRequestPayload({
       durationMinutes: totals.durationMinutes,
       priceAmount: totals.priceAmount,
       priceIsEstimated: totals.priceIsEstimated,
+      operationalBufferMinutes: totals.operationalBufferMinutes,
+      blockedDurationMinutes: totals.blockedDurationMinutes,
     },
     status: "requested",
   };
@@ -199,6 +202,20 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
   const [confirmed, setConfirmed] = useState(false);
   const [bookingRequestError, setBookingRequestError] = useState<string | null>(null);
 
+  const availabilityRequest = useMemo(() => {
+    const totals = computeBookingOperationalTotals({
+      category,
+      service,
+      extras: chosenExtras,
+      personalization: personal,
+    });
+
+    return {
+      durationMinutes: totals.durationMinutes,
+      operationalBufferMinutes: totals.operationalBufferMinutes,
+    };
+  }, [category, chosenExtras, personal, service]);
+
   const data: SummaryData = useMemo(
     () => ({
       category,
@@ -258,7 +275,7 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
   };
 
   const chooseDate = (selectedDate: string) => {
-    if (getSlotsForDate(selectedDate).length === 0) return;
+    if (getSlotsForDate(selectedDate, getTodayKey(), availabilityRequest).length === 0) return;
 
     setDate(selectedDate);
     setTime(null);
@@ -343,6 +360,7 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
     customerErrors,
     data,
     date,
+    availabilityRequest,
     goBack: back,
     goNext: next,
     personal,

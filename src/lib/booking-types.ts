@@ -71,11 +71,27 @@ export interface AppointmentMock {
   date: string;
   startsAt: string;
   active: boolean;
+  serviceName?: string;
+  serviceDurationMinutes?: number;
+  preparationMinutes?: number;
+  blockedDurationMinutes?: number;
+}
+
+export interface AvailabilityRequest {
+  durationMinutes: number;
+  operationalBufferMinutes?: number;
 }
 
 export interface AvailableSlot {
   date: string;
   times: string[];
+}
+
+export interface OperationalBufferSettings {
+  defaultBufferMinutes: number;
+  byCategory: Partial<Record<CategoryId, number>>;
+  byServiceId: Record<string, number>;
+  active: boolean;
 }
 
 export type DayAvailabilityStatus = "available" | "past" | "closed" | "unavailable";
@@ -122,6 +138,8 @@ export interface BookingTotals {
   durationMinutes: number;
   priceAmount: number | null;
   priceIsEstimated: boolean;
+  operationalBufferMinutes?: number;
+  blockedDurationMinutes?: number;
 }
 
 export type RecurringBookingFrequency = "daily" | "weekly" | "biweekly" | "monthly";

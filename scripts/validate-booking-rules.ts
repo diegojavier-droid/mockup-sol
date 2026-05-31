@@ -1,10 +1,13 @@
+import { extras as extrasByCategory } from "@/lib/booking-mock/extras";
 import { services } from "@/lib/booking-mock/services";
 import {
   bookingServiceRuleMatrix,
   getPersonalizationImpactLabel,
   validateBookingRuleCoverage,
 } from "@/lib/booking-rules";
-import { computeBookingTotals } from "@/lib/booking-totals";
+import { computeBookingOperationalTotals, computeBookingTotals } from "@/lib/booking-totals";
+import { getSlotsForDate } from "@/lib/booking-mock/availability";
+import { getOperationalBufferMinutes } from "@/lib/booking-operational-buffer";
 import type { CategoryId, Personalization } from "@/lib/booking-types";
 
 const failures: string[] = [];
@@ -24,11 +27,37 @@ const assert = (condition: boolean, message: string) => {
   if (!condition) failures.push(message);
 };
 
-const totals = (category: CategoryId, serviceId: string, personalization: Personalization) =>
+const findExtra = (category: CategoryId, extraId: string) => {
+  const extra = extrasByCategory[category].find((candidate) => candidate.id === extraId);
+
+  if (!extra) throw new Error(`Unknown extra ${category}/${extraId}`);
+
+  return extra;
+};
+
+const totals = (
+  category: CategoryId,
+  serviceId: string,
+  personalization: Personalization,
+  extraIds: string[] = [],
+) =>
   computeBookingTotals({
     category,
     service: findService(category, serviceId),
-    extras: [],
+    extras: extraIds.map((extraId) => findExtra(category, extraId)),
+    personalization,
+  });
+
+const operationalTotals = (
+  category: CategoryId,
+  serviceId: string,
+  personalization: Personalization,
+  extraIds: string[] = [],
+) =>
+  computeBookingOperationalTotals({
+    category,
+    service: findService(category, serviceId),
+    extras: extraIds.map((extraId) => findExtra(category, extraId)),
     personalization,
   });
 
@@ -99,6 +128,72 @@ assert(
 assert(
   impact("unas", "semi", "retiro", "Sí") === "+25 min · +$3.500",
   "Nails removal impact chip must match totals",
+);
+
+const corteVisibleTotals = totals("peluqueria", "corte-fem", {});
+const corteOperationalTotals = operationalTotals("peluqueria", "corte-fem", {});
+assert(
+  corteVisibleTotals.durationMinutes === 45,
+  "Corte femenino visible duration must remain 45 min",
+);
+assert(
+  corteOperationalTotals.operationalBufferMinutes === 10,
+  "Corte femenino must apply peluqueria internal preparation time",
+);
+assert(
+  corteOperationalTotals.blockedDurationMinutes ===
+    corteVisibleTotals.durationMinutes + corteOperationalTotals.operationalBufferMinutes,
+  "Corte femenino blocked duration must be visible duration plus buffer",
+);
+
+const balayageOperationalTotals = operationalTotals(
+  "peluqueria",
+  "balayage",
+  { largo: "Largo", densidad: "Abundante", tipo: "Rizado" },
+  ["toni-extra"],
+);
+assert(
+  balayageOperationalTotals.durationMinutes > findService("peluqueria", "balayage").durationMinutes,
+  "Balayage visible duration must include personalization and extras",
+);
+assert(
+  balayageOperationalTotals.operationalBufferMinutes === 15,
+  "Balayage must apply service-specific internal preparation time",
+);
+assert(
+  balayageOperationalTotals.blockedDurationMinutes ===
+    balayageOperationalTotals.durationMinutes + balayageOperationalTotals.operationalBufferMinutes,
+  "Balayage blocked duration must include service-specific buffer",
+);
+
+const inactiveBufferMinutes = getOperationalBufferMinutes({
+  category: "peluqueria",
+  service: findService("peluqueria", "balayage"),
+  settings: {
+    defaultBufferMinutes: 10,
+    byCategory: { peluqueria: 10 },
+    byServiceId: { balayage: 15 },
+    active: false,
+  },
+});
+assert(inactiveBufferMinutes === 0, "Inactive buffer settings must return 0 internal minutes");
+assert(
+  balayageOperationalTotals.durationMinutes + inactiveBufferMinutes ===
+    balayageOperationalTotals.durationMinutes,
+  "Inactive buffer must keep blocked duration equal to visible duration",
+);
+
+const saturdayBalayageSlots = getSlotsForDate("2026-06-06", "2026-05-31", {
+  durationMinutes: 180,
+  operationalBufferMinutes: 15,
+});
+assert(
+  !saturdayBalayageSlots.includes("11:00"),
+  "Availability must not offer a slot where service plus buffer exceeds closing time",
+);
+assert(
+  saturdayBalayageSlots.includes("10:00"),
+  "Availability should still offer a slot that fits service plus buffer before closing time",
 );
 
 if (failures.length) {
