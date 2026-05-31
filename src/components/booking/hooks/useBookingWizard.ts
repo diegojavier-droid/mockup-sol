@@ -23,7 +23,13 @@ import type {
   BookingReturnTarget,
 } from "../booking-navigation-types";
 import type { SummaryData } from "../SummaryPanel";
-import { BOOKING_STEP_INDEX, BOOKING_STEPS } from "../wizard/booking-steps";
+import { BOOKING_STEP_INDEX, BOOKING_STEPS, type WizardStep } from "../wizard/booking-steps";
+
+const clampWizardStep = (value: number): WizardStep => {
+  const max = BOOKING_STEPS.length - 1;
+  const clamped = Math.min(Math.max(value, 0), max);
+  return clamped as WizardStep;
+};
 import type {
   CustomerErrors,
   CustomerField,
