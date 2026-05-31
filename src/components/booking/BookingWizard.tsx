@@ -85,7 +85,7 @@ export function BookingWizard({
               <CategoryStep
                 category={wizard.category}
                 categoryImages={categoryImages}
-                onChooseCategory={wizard.chooseCategory}
+                onChooseCategory={wizard.chooseCategoryAndContinue}
               />
             )}
 
@@ -142,9 +142,11 @@ export function BookingWizard({
             )}
           </div>
 
-          <div className="hidden lg:block">
-            <SummaryPanel data={wizard.data} />
-          </div>
+          {wizard.service && (
+            <div className="hidden lg:block">
+              <SummaryPanel data={wizard.data} />
+            </div>
+          )}
         </div>
       </main>
 

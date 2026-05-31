@@ -14,17 +14,22 @@ export function WizardNavigation({
   onNext: () => void;
   step: number;
 }) {
+  const isCategoryStep = step === 0;
   const isFinalStep = step === BOOKING_STEPS.length - 1;
+  const showNextButton = !isCategoryStep && !isFinalStep;
+  const showSummary = Boolean(data.service);
 
   return (
     <>
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2 backdrop-blur-md lg:hidden">
-        <div className="mb-2">
-          <SummaryPanel data={data} variant="bottom" />
-        </div>
+        {showSummary && (
+          <div className="mb-2">
+            <SummaryPanel data={data} variant="bottom" />
+          </div>
+        )}
         <div className="flex gap-2">
           <NavBackButton onBack={onBack} step={step} />
-          {!isFinalStep && <NavNextButton canNext={canNext} onNext={onNext} />}
+          {showNextButton && <NavNextButton canNext={canNext} onNext={onNext} />}
         </div>
       </div>
 
@@ -32,7 +37,7 @@ export function WizardNavigation({
         <div className="fixed inset-x-0 bottom-6 mx-auto max-w-6xl px-8">
           <div className="ml-auto flex max-w-[calc(100%-372px)] justify-end gap-2">
             <NavBackButton onBack={onBack} step={step} />
-            {!isFinalStep && <NavNextButton canNext={canNext} onNext={onNext} />}
+            {showNextButton && <NavNextButton canNext={canNext} onNext={onNext} />}
           </div>
         </div>
       </div>
@@ -47,7 +52,7 @@ function NavBackButton({ onBack, step }: { onBack: () => void; step: number }) {
       onClick={onBack}
       className="min-h-11 flex-1 rounded-full border border-border bg-card px-4 py-2.5 font-serif text-sm text-foreground/80 shadow-sm transition-all hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:px-8 lg:py-3.5 lg:text-base"
     >
-      ← {step === 0 ? "Cerrar" : "Atrás"}
+      {step === 0 ? "← Volver al inicio" : "← Atrás"}
     </button>
   );
 }

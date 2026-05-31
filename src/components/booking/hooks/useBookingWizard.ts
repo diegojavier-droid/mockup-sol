@@ -235,6 +235,11 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
     setTime(null);
   };
 
+  const chooseCategoryAndContinue = (categoryId: CategoryId) => {
+    chooseCategory(categoryId);
+    setStep(BOOKING_STEP_INDEX.service);
+  };
+
   const chooseService = (selectedService: Service) => {
     setService(selectedService);
     setChosenExtras([]);
@@ -326,6 +331,7 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
     canNext,
     category,
     chooseCategory,
+    chooseCategoryAndContinue,
     chooseDate,
     chooseCustomerField,
     choosePersonalization,
