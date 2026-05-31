@@ -395,7 +395,7 @@ export function useBookingWizard(
     setConfirmed(true);
   };
 
-  const next = () => setStep((currentStep) => Math.min(currentStep + 1, BOOKING_STEPS.length - 1));
+  const next = () => setStep((currentStep) => clampWizardStep(currentStep + 1));
   const back = () => {
     const shouldExitToReturnTarget =
       navigationContext &&
