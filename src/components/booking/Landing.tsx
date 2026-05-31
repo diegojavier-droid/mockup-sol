@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { categories, services, type CategoryId, type Service, type Tag } from "@/lib/booking-data";
 import heroImage from "@/assets/sol-mai-hero.jpg";
 import peluImg from "@/assets/sol-mai-peluqueria.jpg";
@@ -6,10 +6,28 @@ import makeImg from "@/assets/sol-mai-maquillaje.jpg";
 import nailsImg from "@/assets/sol-mai-unas.jpg";
 import solMaiLogo from "@/assets/sol-mai-logo-header.png";
 
-const categoryImages: Record<string, string> = {
+const categoryImages: Record<CategoryId, string> = {
   peluqueria: peluImg,
   maquillaje: makeImg,
   unas: nailsImg,
+};
+
+const specialtyLabels: Record<CategoryId, string> = {
+  peluqueria: "Peluquería",
+  maquillaje: "Maquillaje",
+  unas: "Uñas",
+};
+
+const specialtyDescriptions: Record<CategoryId, string> = {
+  peluqueria: "Cortes, color, peinados y tratamientos pensados para cuidar tu pelo.",
+  maquillaje: "Looks sociales, de evento y producción para sentirte cómoda y luminosa.",
+  unas: "Manicura, semipermanente, soft gel y detalles de nail art con terminación prolija.",
+};
+
+const specialtyVisuals: Record<CategoryId, string> = {
+  peluqueria: "✂",
+  maquillaje: "✿",
+  unas: "✦",
 };
 
 const tagLabels: Record<Tag, string> = {
@@ -20,33 +38,34 @@ const tagLabels: Record<Tag, string> = {
   combinado: "Combinado",
 };
 
-const allServices = categories.flatMap((category) =>
-  services[category.id].map((service) => ({
-    ...service,
-    categoryId: category.id,
-    categoryName: category.name,
-  })),
-);
-
-type PublicService = Service & { categoryId: CategoryId; categoryName: string };
+type SpecialtyService = Service & { categoryId: CategoryId };
 
 export function Landing({
   onStart,
 }: {
   onStart: (categoryId?: CategoryId, serviceId?: string) => void;
 }) {
-  const [activeCategory, setActiveCategory] = useState<CategoryId | "todos">("todos");
+  const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
 
-  const filteredServices = useMemo(() => {
-    if (activeCategory === "todos") return allServices;
+  const selectedCategoryData = selectedCategory
+    ? categories.find((category) => category.id === selectedCategory)
+    : null;
+  const selectedServices: SpecialtyService[] = selectedCategory
+    ? services[selectedCategory].map((service) => ({ ...service, categoryId: selectedCategory }))
+    : [];
 
-    return allServices.filter((service) => service.categoryId === activeCategory);
-  }, [activeCategory]);
-
-  const scrollToServices = (categoryId: CategoryId | "todos" = "todos") => {
-    setActiveCategory(categoryId);
+  const scrollToSpecialties = () => {
     window.requestAnimationFrame(() => {
-      document.getElementById("servicios")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById("areas")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const showSpecialtyServices = (categoryId: CategoryId) => {
+    setSelectedCategory(categoryId);
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("servicios-especialidad")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
 
@@ -69,10 +88,10 @@ export function Landing({
         </div>
         <button
           type="button"
-          onClick={() => scrollToServices()}
+          onClick={scrollToSpecialties}
           className="hidden text-xs uppercase tracking-[0.22em] text-foreground/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:block"
         >
-          Servicios
+          Especialidades
         </button>
       </header>
 
@@ -103,10 +122,10 @@ export function Landing({
               </button>
               <button
                 type="button"
-                onClick={() => scrollToServices()}
+                onClick={scrollToSpecialties}
                 className="rounded-full border border-border bg-card/80 px-8 py-4 font-serif text-lg text-foreground transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                Ver servicios
+                Ver especialidades
               </button>
             </div>
             <div className="mt-12 grid max-w-md grid-cols-3 gap-6 border-t border-border/60 pt-6 text-left">
@@ -138,67 +157,79 @@ export function Landing({
           </div>
         </section>
 
-        <section id="areas" className="border-t border-border/60 pb-20 pt-20">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                Especialidades
-              </p>
-              <h2 className="mt-3 font-serif text-4xl text-foreground lg:text-5xl">
-                Lo que hacemos
-              </h2>
-              <div className="mt-4 h-px w-12 bg-champagne-deep/40" />
-            </div>
-            <button
-              type="button"
-              onClick={() => scrollToServices()}
-              className="hidden text-sm text-champagne-deep underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:block"
-            >
-              Ver servicios →
-            </button>
+        <section id="areas" className="scroll-mt-8 border-t border-border/60 pb-20 pt-20">
+          <div className="max-w-2xl">
+            <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+              Especialidades
+            </p>
+            <h2 className="mt-3 font-serif text-4xl text-foreground lg:text-5xl">Lo que hacemos</h2>
+            <div className="mt-4 h-px w-12 bg-champagne-deep/40" />
+            <p className="mt-5 text-base leading-relaxed text-muted-foreground">
+              Elegí primero el área que querés explorar. Después te mostramos solo los servicios de
+              esa especialidad para que la reserva sea más simple.
+            </p>
           </div>
 
-          <div className="mt-10 grid gap-5 sm:grid-cols-3">
-            {categories.map((c) => (
+          <div className="mt-10 grid gap-6 lg:grid-cols-3">
+            {categories.map((category) => (
               <article
-                key={c.id}
-                className="group overflow-hidden rounded-3xl border border-border bg-card transition-all hover:border-champagne hover:shadow-[0_30px_50px_-35px_rgba(120,90,60,0.35)]"
+                key={category.id}
+                onClick={() => showSpecialtyServices(category.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    showSpecialtyServices(category.id);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                className="group cursor-pointer overflow-hidden rounded-3xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:border-champagne hover:shadow-[0_30px_50px_-35px_rgba(120,90,60,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                aria-label={`Ver servicios de ${specialtyLabels[category.id]}`}
               >
                 <div className="overflow-hidden">
                   <img
-                    src={categoryImages[c.id]}
-                    alt={c.name}
+                    src={categoryImages[category.id]}
+                    alt={specialtyLabels[category.id]}
                     loading="lazy"
                     width={800}
                     height={800}
-                    className="h-52 w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                    className="h-56 w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                   />
                 </div>
-                <div className="p-6">
-                  <h3 className="font-serif text-2xl text-foreground">{c.name}</h3>
-                  <p className="mt-1.5 text-sm text-muted-foreground">{c.tagline}</p>
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4">
+                <div className="flex h-[calc(100%-14rem)] flex-col p-6">
+                  <h3 className="font-serif text-3xl text-foreground">
+                    {specialtyLabels[category.id]}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                    {specialtyDescriptions[category.id]}
+                  </p>
+                  <div className="mt-5 border-t border-border/60 pt-4">
                     <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                      {services[c.id].length} servicios
+                      {services[category.id].length} servicios
                     </span>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => scrollToServices(c.id)}
-                        className="cursor-pointer rounded-full px-2 py-1 font-serif text-sm text-champagne-deep underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-                        aria-label={`Ver servicios de ${c.name}`}
-                      >
-                        Ver servicios
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onStart(c.id)}
-                        className="cursor-pointer rounded-full px-2 py-1 font-serif text-sm text-champagne-deep underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-                        aria-label={`Reservar ${c.name}`}
-                      >
-                        Reservar →
-                      </button>
-                    </div>
+                  </div>
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row lg:mt-auto lg:flex-col xl:flex-row">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        showSpecialtyServices(category.id);
+                      }}
+                      className="rounded-full border border-border bg-card px-5 py-3 font-serif text-base text-foreground transition-all hover:border-champagne hover:text-champagne-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                    >
+                      Ver servicios
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onStart(category.id);
+                      }}
+                      className="rounded-full bg-primary px-5 py-3 font-serif text-base text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                      aria-label={`Reservar ${specialtyLabels[category.id]}`}
+                    >
+                      Reservar
+                    </button>
                   </div>
                 </div>
               </article>
@@ -206,45 +237,36 @@ export function Landing({
           </div>
         </section>
 
-        <section id="servicios" className="scroll-mt-8 border-t border-border/60 pb-24 pt-20">
-          <div className="max-w-2xl">
-            <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-              Catálogo público
-            </p>
-            <h2 className="mt-3 font-serif text-4xl text-foreground lg:text-5xl">Servicios</h2>
-            <div className="mt-4 h-px w-12 bg-champagne-deep/40" />
-            <p className="mt-5 text-base leading-relaxed text-muted-foreground">
-              Explorá tratamientos, duración estimada y valores orientativos antes de elegir tu
-              turno. Cuando encuentres el servicio ideal, podés reservarlo directamente.
-            </p>
-          </div>
+        {selectedCategory && selectedCategoryData ? (
+          <section
+            id="servicios-especialidad"
+            className="scroll-mt-8 border-t border-border/60 pb-24 pt-20"
+          >
+            <div className="max-w-2xl">
+              <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                Servicios de especialidad
+              </p>
+              <h2 className="mt-3 font-serif text-4xl text-foreground lg:text-5xl">
+                Servicios de {specialtyLabels[selectedCategory].toLowerCase()}
+              </h2>
+              <div className="mt-4 h-px w-12 bg-champagne-deep/40" />
+              <p className="mt-5 text-base leading-relaxed text-muted-foreground">
+                {selectedCategoryData.tagline}. Estos son los servicios disponibles para reservar en{" "}
+                {specialtyLabels[selectedCategory].toLowerCase()}.
+              </p>
+            </div>
 
-          <div className="mt-8 flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible">
-            <FilterChip
-              active={activeCategory === "todos"}
-              label="Todos"
-              onClick={() => scrollToServices("todos")}
-            />
-            {categories.map((category) => (
-              <FilterChip
-                key={category.id}
-                active={activeCategory === category.id}
-                label={category.name}
-                onClick={() => scrollToServices(category.id)}
-              />
-            ))}
-          </div>
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredServices.map((service) => (
-              <ServiceCatalogCard
-                key={`${service.categoryId}-${service.id}`}
-                service={service}
-                onReserve={() => onStart(service.categoryId, service.id)}
-              />
-            ))}
-          </div>
-        </section>
+            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {selectedServices.map((service) => (
+                <ServiceSpecialtyCard
+                  key={`${service.categoryId}-${service.id}`}
+                  service={service}
+                  onReserve={() => onStart(service.categoryId, service.id)}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </main>
 
       <footer className="border-t border-border/60 py-8 text-center text-xs text-muted-foreground">
@@ -254,75 +276,77 @@ export function Landing({
   );
 }
 
-function ServiceCatalogCard({
+function ServiceSpecialtyCard({
   service,
   onReserve,
 }: {
-  service: PublicService;
+  service: SpecialtyService;
   onReserve: () => void;
 }) {
   return (
-    <article className="flex h-full flex-col rounded-3xl border border-border bg-card p-5 shadow-[0_24px_50px_-42px_rgba(120,90,60,0.35)] transition-all hover:border-champagne hover:shadow-[0_30px_55px_-40px_rgba(120,90,60,0.45)]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            {service.categoryName}
-          </p>
-          <h3 className="mt-2 font-serif text-2xl leading-tight text-foreground">{service.name}</h3>
+    <article className="flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-[0_24px_50px_-42px_rgba(120,90,60,0.35)] transition-all hover:border-champagne hover:shadow-[0_30px_55px_-40px_rgba(120,90,60,0.45)]">
+      <ServiceVisual service={service} />
+
+      <div className="flex flex-1 flex-col p-5">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="font-serif text-2xl leading-tight text-foreground">{service.name}</h3>
+          {service.tag ? (
+            <span className="shrink-0 rounded-full border border-champagne/50 bg-cream px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-champagne-deep">
+              {tagLabels[service.tag]}
+            </span>
+          ) : null}
         </div>
-        {service.tag ? (
-          <span className="shrink-0 rounded-full border border-champagne/50 bg-cream px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-champagne-deep">
-            {tagLabels[service.tag]}
-          </span>
-        ) : null}
+
+        <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{service.desc}</p>
+
+        <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-cream/50 p-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Duración
+            </p>
+            <p className="mt-1 font-serif text-base text-foreground">{service.duration}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Precio</p>
+            <p className="mt-1 font-serif text-base text-foreground">Desde {service.price}</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onReserve}
+          className="mt-5 rounded-full bg-primary px-5 py-3 font-serif text-base text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+          aria-label={`Reservar ${service.name}`}
+        >
+          Reservar
+        </button>
       </div>
-
-      <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{service.desc}</p>
-
-      <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-cream/50 p-3">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Duración</p>
-          <p className="mt-1 font-serif text-base text-foreground">{service.duration}</p>
-        </div>
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Precio</p>
-          <p className="mt-1 font-serif text-base text-foreground">Desde {service.price}</p>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={onReserve}
-        className="mt-5 rounded-full bg-primary px-5 py-3 font-serif text-base text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-        aria-label={`Reservar ${service.name}`}
-      >
-        Reservar
-      </button>
     </article>
   );
 }
 
-function FilterChip({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
+function ServiceVisual({ service }: { service: SpecialtyService }) {
+  if (service.imageUrl) {
+    return (
+      <img
+        src={service.imageUrl}
+        alt={service.name}
+        loading="lazy"
+        width={800}
+        height={520}
+        className="h-44 w-full object-cover"
+      />
+    );
+  }
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-        active
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-card text-foreground hover:border-champagne hover:text-champagne-deep"
-      }`}
-    >
-      {label}
-    </button>
+    <div className="relative flex h-44 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(215,185,126,0.32),transparent_38%),linear-gradient(135deg,rgba(250,244,234,0.96),rgba(236,222,202,0.8))]">
+      <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full border border-champagne/30" />
+      <div className="absolute -bottom-14 -left-10 h-40 w-40 rounded-full border border-champagne/20" />
+      <div className="flex h-20 w-20 items-center justify-center rounded-full border border-champagne/40 bg-card/75 font-serif text-4xl text-champagne-deep shadow-sm backdrop-blur">
+        {service.visual ?? specialtyVisuals[service.categoryId]}
+      </div>
+    </div>
   );
 }
 
