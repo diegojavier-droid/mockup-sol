@@ -153,7 +153,9 @@ function getVisibleCustomerErrors(
 }
 
 export function useBookingWizard(onExit: () => void, initialCategory?: CategoryId) {
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(
+    initialCategory ? BOOKING_STEP_INDEX.service : BOOKING_STEP_INDEX.category,
+  );
   const [category, setCategory] = useState<CategoryId | null>(initialCategory ?? null);
   const [service, setService] = useState<Service | null>(null);
   const [personal, setPersonal] = useState<Personalization>({});
