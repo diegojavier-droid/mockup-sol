@@ -86,7 +86,7 @@ export function Landing({
       </header>
 
       <main className="mx-auto max-w-6xl px-5 lg:px-8">
-        <section className="grid items-center gap-7 pb-8 pt-2 sm:gap-10 sm:pb-12 sm:pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-20 lg:pt-12">
+        <section className="grid min-h-[calc(100svh-4.5rem)] items-center gap-7 pb-14 pt-2 sm:min-h-0 sm:gap-10 sm:pb-12 sm:pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-20 lg:pt-12">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-[9px] uppercase tracking-[0.2em] text-foreground/70 backdrop-blur sm:text-[10px] sm:tracking-[0.22em]">
               <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
@@ -97,7 +97,7 @@ export function Landing({
             </h1>
             <div className="mt-3 h-px w-14 bg-champagne-deep/40 sm:mt-6 sm:w-16" />
             <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:mt-6 sm:text-base">
-              Color, corte y cuidado capilar en Santa Fe Capital.
+              Tu momento de belleza empieza acá.
             </p>
             <div className="mt-5 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
               <button
@@ -150,7 +150,7 @@ export function Landing({
         >
           <div className="max-w-2xl">
             <h2 className="font-serif text-4xl text-foreground lg:text-5xl">
-              ¿Qué te gustaría reservar?
+              ¿Qué servicios te interesa conocer?
             </h2>
           </div>
 
@@ -187,19 +187,9 @@ export function Landing({
                   <p className="mt-1.5 line-clamp-2 text-xs leading-snug text-muted-foreground">
                     {specialtyDescriptions[category.id]}
                   </p>
-                  <div className="mt-3 flex">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onStart(category.id);
-                      }}
-                      className="rounded-full bg-primary px-4 py-2 font-serif text-sm text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-                      aria-label={`Reservar ${specialtyLabels[category.id]}`}
-                    >
-                      Reservar
-                    </button>
-                  </div>
+                  <p className="mt-3 inline-flex items-center font-serif text-sm text-champagne-deep transition-transform group-hover:translate-x-1">
+                    Ver servicios →
+                  </p>
                 </div>
               </article>
             ))}
