@@ -11,17 +11,31 @@ const fieldGroupIds = {
   goal: ["objetivo", "estilo", "nailart"],
 };
 
-const groupTitles = {
-  hair: "Tu cabello",
+type FieldGroup = keyof typeof fieldGroupIds;
+
+const personalizationStepCopyByCategory = {
+  peluqueria: {
+    title: "Conozcamos tu cabello",
+    primaryGroupTitle: "Tu cabello",
+  },
+  maquillaje: {
+    title: "Preparemos tu maquillaje",
+    primaryGroupTitle: "Tu evento",
+  },
+  unas: {
+    title: "Preparemos tus uñas",
+    primaryGroupTitle: "Tus uñas",
+  },
+} satisfies Record<CategoryId, { title: string; primaryGroupTitle: string }>;
+
+const secondaryGroupTitles = {
   history: "Historial y cuidados",
   goal: "Lo que buscás",
-};
+} satisfies Record<Exclude<FieldGroup, "hair">, string>;
 
 const visibleFieldLabels: Record<string, string> = {
   quimicos: "Tratamientos o procesos recientes",
 };
-
-type FieldGroup = keyof typeof fieldGroupIds;
 
 function groupPersonalizationFields(fields: PersonalizationField[]) {
   const remainingFields = [...fields];
@@ -61,16 +75,19 @@ export function PersonalizationStep({
   onChooseOption: (fieldId: string, option: string) => void;
 }) {
   const groupedFields = groupPersonalizationFields(personalizationFields[category]);
+  const stepCopy = personalizationStepCopyByCategory[category];
 
   return (
-    <StepShell title="Conozcamos tu cabello">
+    <StepShell title={stepCopy.title}>
       <div className="space-y-4 lg:space-y-5">
         {groupedFields.map(({ group, fields }) => (
           <section
             key={group}
             className="rounded-3xl border border-border bg-card/70 p-4 shadow-[0_18px_36px_-34px_rgba(120,90,60,0.35)] lg:p-5"
           >
-            <h3 className="font-serif text-lg text-foreground lg:text-xl">{groupTitles[group]}</h3>
+            <h3 className="font-serif text-lg text-foreground lg:text-xl">
+              {group === "hair" ? stepCopy.primaryGroupTitle : secondaryGroupTitles[group]}
+            </h3>
             <div className="mt-3 space-y-3 lg:mt-4 lg:space-y-4">
               {fields.map((field) => (
                 <fieldset key={field.id}>
