@@ -34,6 +34,7 @@ export function BookingSummaryDetails({
             <Field label="Nombre" value={customer.firstName || "—"} />
             <Field label="WhatsApp" value={customer.whatsapp || "—"} />
             <Field label="Email" value={customer.email || "—"} />
+            <Field label="Mensaje" value={customer.notes || "—"} />
           </div>
         </div>
       )}

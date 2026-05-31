@@ -145,20 +145,6 @@ export function DateTimeStep({
               );
             })}
           </div>
-          <div className="mt-4 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-background ring-1 ring-border" />{" "}
-              Disponible
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-champagne ring-1 ring-champagne-deep" />{" "}
-              Seleccionado
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-muted ring-1 ring-border" /> No
-              disponible
-            </span>
-          </div>
         </div>
 
         {!monthHasAvailability && (

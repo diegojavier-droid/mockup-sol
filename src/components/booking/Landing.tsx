@@ -24,18 +24,8 @@ const specialtyDescriptions: Record<CategoryId, string> = {
   unas: "Manicura, semipermanente, soft gel y detalles de nail art con terminación prolija.",
 };
 
-const specialtyVisuals: Record<CategoryId, string> = {
-  peluqueria: "✂",
-  maquillaje: "✿",
-  unas: "✦",
-};
-
-const tagLabels: Record<Tag, string> = {
+const tagLabels: Partial<Record<Tag, string>> = {
   popular: "Popular",
-  color: "Color",
-  tratamiento: "Tratamiento",
-  evento: "Evento",
-  combinado: "Combinado",
 };
 
 type SpecialtyService = Service & { categoryId: CategoryId };
@@ -96,7 +86,7 @@ export function Landing({
       </header>
 
       <main className="mx-auto max-w-6xl px-5 lg:px-8">
-        <section className="grid items-center gap-12 pb-20 pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-28 lg:pt-12">
+        <section className="grid items-center gap-10 pb-12 pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-20 lg:pt-12">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] text-foreground/70 backdrop-blur">
               <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
@@ -128,10 +118,10 @@ export function Landing({
                 Ver especialidades
               </button>
             </div>
-            <div className="mt-12 grid max-w-md grid-cols-3 gap-6 border-t border-border/60 pt-6 text-left">
-              <Stat n="12+" l="años de oficio" />
+            <div className="mt-8 grid max-w-md grid-cols-3 gap-6 border-t border-border/60 pt-5 text-left">
+              <Stat n="Cuidado" l="artesanal" />
               <Stat n="Itely" l="Hairfashion" />
-              <Stat n="3" l="especialidades" />
+              <Stat n="Belleza" l="integral" />
             </div>
           </div>
 
@@ -159,7 +149,7 @@ export function Landing({
 
         <section
           id="areas"
-          className="scroll-mt-8 border-t border-border/60 pb-14 pt-14 sm:pb-20 sm:pt-20"
+          className="scroll-mt-8 border-t border-border/60 pb-14 pt-10 sm:pb-20 sm:pt-14"
         >
           <div className="max-w-2xl">
             <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
@@ -196,24 +186,24 @@ export function Landing({
                     loading="lazy"
                     width={800}
                     height={800}
-                    className="h-32 w-full object-cover transition-transform duration-700 group-hover:scale-[1.04] sm:h-40 lg:h-36"
+                    className="h-24 w-full object-cover transition-transform duration-700 group-hover:scale-[1.04] sm:h-32 lg:h-28"
                   />
                 </div>
-                <div className="flex flex-col p-4 sm:p-5">
-                  <h3 className="font-serif text-2xl leading-tight text-foreground">
+                <div className="flex flex-col p-3.5 sm:p-4">
+                  <h3 className="font-serif text-xl leading-tight text-foreground">
                     {specialtyLabels[category.id]}
                   </h3>
-                  <p className="mt-2 line-clamp-2 text-sm leading-snug text-muted-foreground">
+                  <p className="mt-1.5 line-clamp-2 text-xs leading-snug text-muted-foreground">
                     {specialtyDescriptions[category.id]}
                   </p>
-                  <div className="mt-4 flex">
+                  <div className="mt-3 flex">
                     <button
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
                         onStart(category.id);
                       }}
-                      className="rounded-full bg-primary px-5 py-2.5 font-serif text-base text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                      className="rounded-full bg-primary px-4 py-2 font-serif text-sm text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
                       aria-label={`Reservar ${specialtyLabels[category.id]}`}
                     >
                       Reservar
@@ -231,6 +221,18 @@ export function Landing({
             className="scroll-mt-8 border-t border-border/60 pb-16 pt-14 sm:pb-24 sm:pt-20"
           >
             <div className="max-w-2xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategory(null);
+                  window.requestAnimationFrame(() => {
+                    document.getElementById("areas")?.scrollIntoView({ behavior: "smooth" });
+                  });
+                }}
+                className="mb-5 inline-flex items-center rounded-full border border-border bg-card px-4 py-2 font-serif text-sm text-foreground transition-colors hover:border-champagne hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                ← Volver a especialidades
+              </button>
               <h2 className="font-serif text-4xl text-foreground lg:text-5xl">
                 Servicios de {specialtyLabels[selectedCategory].toLowerCase()}
               </h2>
@@ -268,13 +270,11 @@ function ServiceSpecialtyCard({
   onReserve: () => void;
 }) {
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-[1.6rem] border border-border bg-card shadow-[0_20px_42px_-38px_rgba(120,90,60,0.35)] transition-all hover:border-champagne hover:shadow-[0_26px_48px_-38px_rgba(120,90,60,0.45)]">
-      <ServiceVisual service={service} />
-
-      <div className="flex flex-1 flex-col p-4">
+    <article className="flex h-full flex-col rounded-[1.35rem] border border-border bg-card p-4 shadow-[0_18px_38px_-34px_rgba(120,90,60,0.35)] transition-all hover:border-champagne hover:shadow-[0_24px_44px_-36px_rgba(120,90,60,0.45)]">
+      <div className="flex flex-1 flex-col">
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-serif text-xl leading-tight text-foreground">{service.name}</h3>
-          {service.tag ? (
+          {service.tag === "popular" ? (
             <span className="shrink-0 rounded-full border border-champagne/50 bg-cream px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-champagne-deep">
               {tagLabels[service.tag]}
             </span>
@@ -285,12 +285,10 @@ function ServiceSpecialtyCard({
           {service.desc}
         </p>
 
-        <div className="mt-3 flex items-center gap-2 rounded-2xl bg-cream/50 px-3 py-2 text-sm">
-          <span className="font-serif text-foreground">{service.duration}</span>
+        <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+          <span>{service.duration}</span>
           <span className="h-1 w-1 rounded-full bg-champagne/70" />
-          <span className="ml-auto font-serif text-base text-foreground">
-            Desde {service.price}
-          </span>
+          <span className="font-serif text-base text-foreground">{service.price}</span>
         </div>
 
         <button
@@ -303,31 +301,6 @@ function ServiceSpecialtyCard({
         </button>
       </div>
     </article>
-  );
-}
-
-function ServiceVisual({ service }: { service: SpecialtyService }) {
-  if (service.imageUrl) {
-    return (
-      <img
-        src={service.imageUrl}
-        alt={service.name}
-        loading="lazy"
-        width={800}
-        height={520}
-        className="h-24 w-full object-cover sm:h-32"
-      />
-    );
-  }
-
-  return (
-    <div className="relative flex h-24 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(215,185,126,0.32),transparent_38%),linear-gradient(135deg,rgba(250,244,234,0.96),rgba(236,222,202,0.8))] sm:h-32">
-      <div className="absolute -right-8 -top-12 h-28 w-28 rounded-full border border-champagne/30" />
-      <div className="absolute -bottom-16 -left-10 h-36 w-36 rounded-full border border-champagne/20" />
-      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-champagne/40 bg-card/75 font-serif text-3xl text-champagne-deep shadow-sm backdrop-blur sm:h-16 sm:w-16">
-        {service.visual ?? specialtyVisuals[service.categoryId]}
-      </div>
-    </div>
   );
 }
 
