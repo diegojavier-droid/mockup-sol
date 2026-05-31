@@ -64,7 +64,7 @@ export function Landing({
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
-                onClick={onStart}
+                onClick={() => onStart()}
                 className="rounded-full bg-primary px-8 py-4 font-serif text-lg text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] hover:shadow-[0_22px_44px_-18px_rgba(80,55,30,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Reservar turno
@@ -119,7 +119,7 @@ export function Landing({
             </div>
             <button
               type="button"
-              onClick={onStart}
+              onClick={() => onStart()}
               className="hidden text-sm text-champagne-deep underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:block"
             >
               Reservar →
@@ -166,7 +166,7 @@ export function Landing({
           <div className="mt-14 flex justify-center">
             <button
               type="button"
-              onClick={onStart}
+              onClick={() => onStart()}
               className="rounded-full bg-primary px-10 py-4 font-serif text-lg text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               Reservar mi turno
