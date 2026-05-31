@@ -99,8 +99,10 @@ export function BookingWizard({
 
             {wizard.step === BOOKING_STEP_INDEX.details && wizard.category && (
               <PersonalizationStep
+                additionalComments={wizard.additionalComments}
                 category={wizard.category}
                 personal={wizard.personal}
+                onChangeAdditionalComments={wizard.chooseAdditionalComments}
                 onChooseOption={wizard.choosePersonalization}
               />
             )}

@@ -3,6 +3,8 @@ import type { PersonalizationField } from "@/lib/booking-types";
 import { OptionPill } from "../cards/OptionPill";
 import { StepShell } from "../wizard/StepShell";
 
+const ADDITIONAL_COMMENTS_MAX_LENGTH = 500;
+
 const fieldGroupIds = {
   hair: ["largo", "densidad", "tipo", "estado", "terminacion", "evento", "horario"],
   history: ["quimicos", "alergias", "retiro", "prueba"],
@@ -11,8 +13,12 @@ const fieldGroupIds = {
 
 const groupTitles = {
   hair: "Tu cabello",
-  history: "Historial reciente",
-  goal: "Qué querés lograr",
+  history: "Historial y cuidados",
+  goal: "Lo que buscás",
+};
+
+const visibleFieldLabels: Record<string, string> = {
+  quimicos: "Tratamientos o procesos recientes",
 };
 
 type FieldGroup = keyof typeof fieldGroupIds;
@@ -42,36 +48,40 @@ function groupPersonalizationFields(fields: PersonalizationField[]) {
 }
 
 export function PersonalizationStep({
+  additionalComments,
   category,
   personal,
+  onChangeAdditionalComments,
   onChooseOption,
 }: {
+  additionalComments: string;
   category: CategoryId;
   personal: Personalization;
+  onChangeAdditionalComments: (value: string) => void;
   onChooseOption: (fieldId: string, option: string) => void;
 }) {
   const groupedFields = groupPersonalizationFields(personalizationFields[category]);
 
   return (
     <StepShell
-      title="Contanos un poco más"
-      subtitle="Para preparar tu experiencia con todo el detalle."
+      title="Conozcamos tu cabello"
+      subtitle="Estas respuestas nos ayudan a reservar el tiempo adecuado y preparar mejor tu visita."
     >
-      <div className="space-y-5">
+      <div className="space-y-4 lg:space-y-5">
         <p className="rounded-2xl border border-champagne/40 bg-cream/60 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
-          El tiempo y valor estimado se ajustan automáticamente según tu selección.
+          El tiempo y valor estimado se ajustan automáticamente solo cuando corresponde.
         </p>
         {groupedFields.map(({ group, fields }) => (
           <section
             key={group}
-            className="rounded-3xl border border-border bg-card/70 p-4 shadow-[0_18px_36px_-34px_rgba(120,90,60,0.35)]"
+            className="rounded-3xl border border-border bg-card/70 p-4 shadow-[0_18px_36px_-34px_rgba(120,90,60,0.35)] lg:p-5"
           >
-            <h3 className="font-serif text-xl text-foreground">{groupTitles[group]}</h3>
-            <div className="mt-4 space-y-4">
+            <h3 className="font-serif text-lg text-foreground lg:text-xl">{groupTitles[group]}</h3>
+            <div className="mt-3 space-y-3 lg:mt-4 lg:space-y-4">
               {fields.map((field) => (
                 <fieldset key={field.id}>
                   <legend className="mb-2 text-sm font-medium text-foreground">
-                    {field.label}
+                    {visibleFieldLabels[field.id] ?? field.label}
                   </legend>
                   <div className="flex flex-wrap gap-2">
                     {field.options.map((option) => (
@@ -88,6 +98,30 @@ export function PersonalizationStep({
             </div>
           </section>
         ))}
+
+        <section className="rounded-3xl border border-border bg-card/70 p-4 shadow-[0_18px_36px_-34px_rgba(120,90,60,0.35)] lg:p-5">
+          <h3 className="font-serif text-lg text-foreground lg:text-xl">Algo más</h3>
+          <label className="mt-3 block lg:mt-4">
+            <span className="text-sm font-medium text-foreground">¿Querés contarnos algo más?</span>
+            <span className="mt-1.5 block text-xs leading-relaxed text-muted-foreground">
+              Podés sumar detalles sobre tu cabello, alergias, embarazo, extensiones, sensibilidad,
+              psoriasis, tratamientos o cualquier información importante para tu atención.
+            </span>
+            <textarea
+              className="mt-3 min-h-24 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30 lg:min-h-28"
+              maxLength={ADDITIONAL_COMMENTS_MAX_LENGTH}
+              onChange={(event) => onChangeAdditionalComments(event.target.value)}
+              placeholder="Escribí acá cualquier detalle que quieras que tengamos en cuenta."
+              value={additionalComments}
+            />
+            <span className="mt-1.5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>Opcional</span>
+              <span>
+                {additionalComments.length}/{ADDITIONAL_COMMENTS_MAX_LENGTH}
+              </span>
+            </span>
+          </label>
+        </section>
       </div>
     </StepShell>
   );

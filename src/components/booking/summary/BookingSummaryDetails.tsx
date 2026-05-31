@@ -3,6 +3,10 @@ import { computeTotals } from "@/lib/booking-totals";
 import type { CustomerFormState } from "../steps/CustomerDataStep";
 import type { SummaryData } from "../SummaryPanel";
 
+const visibleFieldLabels: Record<string, string> = {
+  quimicos: "Tratamientos o procesos recientes",
+};
+
 export function BookingSummaryDetails({
   customer,
   data,
@@ -60,11 +64,24 @@ export function BookingSummaryDetails({
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {fields.map((field) => (
               <div key={field.id}>
-                <p className="text-[11px] text-muted-foreground">{field.label}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {visibleFieldLabels[field.id] ?? field.label}
+                </p>
                 <p className="text-sm text-foreground/90">{personal[field.id] ?? "—"}</p>
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {data.additionalComments.trim() && (
+        <div className="mt-5 border-t border-border pt-5">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Comentarios adicionales
+          </p>
+          <p className="mt-2 whitespace-pre-wrap rounded-2xl bg-cream/50 px-4 py-3 text-sm leading-relaxed text-foreground/90">
+            {data.additionalComments.trim()}
+          </p>
         </div>
       )}
     </div>
