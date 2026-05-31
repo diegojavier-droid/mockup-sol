@@ -5,7 +5,7 @@ export function BookingHeader({ onBack }: { onBack: () => void }) {
         <button
           type="button"
           onClick={onBack}
-          className="relative z-10 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:gap-2 lg:text-sm"
+          className="relative z-10 flex min-h-11 items-center gap-1.5 pr-3 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:gap-2 lg:text-sm"
         >
           <span aria-hidden="true" className="text-sm lg:text-base">
             ←

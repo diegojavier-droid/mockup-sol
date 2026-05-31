@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Stepper } from "./Stepper";
 import { SummaryPanel } from "./SummaryPanel";
 import { useBookingWizard } from "./hooks/useBookingWizard";
@@ -31,20 +32,50 @@ export function BookingWizard({
   onExit: () => void;
 }) {
   const wizard = useBookingWizard(onExit, initialCategory);
+  const stepContentRef = useRef<HTMLDivElement>(null);
+  const previousStepRef = useRef(wizard.step);
+  const selectedServiceIdRef = useRef<string | null>(null);
+  selectedServiceIdRef.current = wizard.service?.id ?? null;
+
+  useEffect(() => {
+    const previousStep = previousStepRef.current;
+    previousStepRef.current = wizard.step;
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      const selectedServiceId = selectedServiceIdRef.current;
+
+      if (
+        wizard.step === BOOKING_STEP_INDEX.service &&
+        previousStep > BOOKING_STEP_INDEX.service &&
+        selectedServiceId
+      ) {
+        const selectedServiceCard = stepContentRef.current?.querySelector(
+          `[data-service-id="${selectedServiceId}"]`,
+        );
+
+        selectedServiceCard?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+
+      stepContentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [wizard.step]);
 
   if (wizard.confirmed) return <BookingConfirmation data={wizard.data} onClose={onExit} />;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-svh overflow-x-hidden bg-background">
       <BookingHeader onBack={wizard.goBack} />
 
-      <main className="mx-auto max-w-6xl px-4 pb-40 pt-4 lg:px-8 lg:pb-28">
-        <div className="mb-6 lg:mb-10">
+      <main className="mx-auto max-w-6xl px-4 pb-[calc(env(safe-area-inset-bottom)+15rem)] pt-3 lg:px-8 lg:pb-28 lg:pt-4">
+        <div className="mb-4 lg:mb-10">
           <Stepper current={wizard.step} labels={[...BOOKING_STEPS]} total={BOOKING_STEPS.length} />
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-          <div className="min-w-0">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8">
+          <div ref={stepContentRef} className="min-w-0 scroll-mt-24 lg:scroll-mt-28">
             {wizard.step === BOOKING_STEP_INDEX.category && (
               <CategoryStep
                 category={wizard.category}

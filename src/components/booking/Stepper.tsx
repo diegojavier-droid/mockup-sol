@@ -20,9 +20,9 @@ export function Stepper({ current, total, labels }: Props) {
         {Array.from({ length: total }).map((_, i) => {
           const state = i < current ? "done" : i === current ? "current" : "todo";
           return (
-            <div key={i} className="flex flex-1 items-center gap-2">
+            <div key={i} className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
               <span
-                className={`flex h-6 w-6 flex-none items-center justify-center rounded-full font-serif text-[11px] transition-all duration-300 ${
+                className={`flex h-5 w-5 flex-none items-center justify-center rounded-full font-serif text-[10px] transition-all duration-300 sm:h-6 sm:w-6 sm:text-[11px] ${
                   state === "done"
                     ? "bg-champagne-deep text-primary-foreground"
                     : state === "current"
@@ -43,11 +43,11 @@ export function Stepper({ current, total, labels }: Props) {
           );
         })}
       </div>
-      <div className="mt-3 flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+      <div className="mt-2 flex items-center justify-between gap-3 text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:mt-3 sm:text-[11px] sm:tracking-[0.2em]">
         <span>
           Paso {current + 1} de {total}
         </span>
-        <span className="font-serif text-sm normal-case tracking-normal text-foreground/80">
+        <span className="min-w-0 truncate text-right font-serif text-xs normal-case tracking-normal text-foreground/80 sm:text-sm">
           {currentLabel}
         </span>
       </div>
