@@ -96,7 +96,6 @@ export function BookingWizard({
               <PersonalizationStep
                 category={wizard.category}
                 personal={wizard.personal}
-                service={wizard.service}
                 onChooseOption={wizard.choosePersonalization}
               />
             )}
