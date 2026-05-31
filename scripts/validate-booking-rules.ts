@@ -6,9 +6,9 @@ import {
   validateBookingRuleCoverage,
 } from "@/lib/booking-rules";
 import { computeBookingOperationalTotals, computeBookingTotals } from "@/lib/booking-totals";
-import { getSlotsForDate } from "@/lib/booking-mock/availability";
+import { appointmentsMock, getSlotsForDate } from "@/lib/booking-mock/availability";
 import { getOperationalBufferMinutes } from "@/lib/booking-operational-buffer";
-import type { CategoryId, Personalization } from "@/lib/booking-types";
+import type { AppointmentMock, AreaId, CategoryId, Personalization } from "@/lib/booking-types";
 
 const failures: string[] = [];
 const coverage = validateBookingRuleCoverage();
@@ -25,6 +25,36 @@ const findService = (category: CategoryId, serviceId: string) => {
 
 const assert = (condition: boolean, message: string) => {
   if (!condition) failures.push(message);
+};
+
+const makeAppointment = (overrides: Partial<AppointmentMock>): AppointmentMock => ({
+  date: "2026-06-06",
+  startsAt: "10:00",
+  areaId: "peluqueria",
+  serviceName: "Corte femenino",
+  blockedDurationMinutes: 60,
+  active: true,
+  ...overrides,
+});
+
+const availableAtTen = (areaId: AreaId, capacityUnits = 1) =>
+  getSlotsForDate("2026-06-06", "2026-05-31", {
+    durationMinutes: 45,
+    operationalBufferMinutes: 15,
+    areaId,
+    capacityUnits,
+  }).includes("10:00");
+
+const withTemporaryAppointments = (temporaryAppointments: AppointmentMock[], test: () => void) => {
+  const originalLength = appointmentsMock.length;
+
+  appointmentsMock.push(...temporaryAppointments);
+
+  try {
+    test();
+  } finally {
+    appointmentsMock.splice(originalLength);
+  }
 };
 
 const findExtra = (category: CategoryId, extraId: string) => {
@@ -182,6 +212,75 @@ assert(
     balayageOperationalTotals.durationMinutes,
   "Inactive buffer must keep blocked duration equal to visible duration",
 );
+
+withTemporaryAppointments([makeAppointment({ areaId: "peluqueria" })], () => {
+  assert(availableAtTen("maquillaje"), "A hair appointment must not block makeup at the same time");
+  assert(availableAtTen("unas"), "A hair appointment must not block nails at the same time");
+});
+
+withTemporaryAppointments(
+  [makeAppointment({ areaId: "maquillaje", serviceName: "Maquillaje social" })],
+  () => {
+    assert(
+      availableAtTen("peluqueria"),
+      "A makeup appointment must not block hair at the same time",
+    );
+  },
+);
+
+withTemporaryAppointments(
+  [makeAppointment({ areaId: "unas", serviceName: "Semipermanente" })],
+  () => {
+    assert(
+      availableAtTen("peluqueria"),
+      "A nails appointment must not block hair at the same time",
+    );
+  },
+);
+
+withTemporaryAppointments(
+  Array.from({ length: 4 }, () => makeAppointment({ areaId: "peluqueria" })),
+  () => {
+    assert(availableAtTen("peluqueria"), "Hair must allow up to 5 simultaneous appointments");
+  },
+);
+
+withTemporaryAppointments(
+  Array.from({ length: 5 }, () => makeAppointment({ areaId: "peluqueria" })),
+  () => {
+    assert(
+      !availableAtTen("peluqueria"),
+      "The 6th simultaneous hair appointment must not be available",
+    );
+  },
+);
+
+withTemporaryAppointments(
+  [makeAppointment({ areaId: "maquillaje", serviceName: "Maquillaje social" })],
+  () => {
+    assert(
+      !availableAtTen("maquillaje"),
+      "The 2nd simultaneous makeup appointment must not be available",
+    );
+  },
+);
+assert(availableAtTen("maquillaje"), "Makeup must allow 1 appointment when capacity is free");
+
+withTemporaryAppointments(
+  [makeAppointment({ areaId: "unas", serviceName: "Semipermanente" })],
+  () => {
+    assert(!availableAtTen("unas"), "The 2nd simultaneous nails appointment must not be available");
+  },
+);
+assert(availableAtTen("unas"), "Nails must allow 1 appointment when capacity is free");
+
+withTemporaryAppointments([makeAppointment({ areaId: "maquillaje", active: false })], () => {
+  assert(availableAtTen("maquillaje"), "An inactive appointment must not consume capacity");
+});
+
+withTemporaryAppointments([makeAppointment({ areaId: "maquillaje", date: "2026-06-13" })], () => {
+  assert(availableAtTen("maquillaje"), "An appointment on another date must not consume capacity");
+});
 
 const saturdayBalayageSlots = getSlotsForDate("2026-06-06", "2026-05-31", {
   durationMinutes: 180,

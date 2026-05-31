@@ -1,5 +1,7 @@
 export type CategoryId = "peluqueria" | "maquillaje" | "unas";
 
+export type AreaId = CategoryId;
+
 export type Tag = "popular" | "combinado" | "tratamiento" | "color" | "evento";
 
 export interface Category {
@@ -71,6 +73,8 @@ export interface AppointmentMock {
   date: string;
   startsAt: string;
   active: boolean;
+  areaId?: AreaId;
+  capacityUnits?: number;
   serviceName?: string;
   serviceDurationMinutes?: number;
   preparationMinutes?: number;
@@ -80,6 +84,8 @@ export interface AppointmentMock {
 export interface AvailabilityRequest {
   durationMinutes: number;
   operationalBufferMinutes?: number;
+  areaId?: AreaId;
+  capacityUnits?: number;
 }
 
 export interface AvailableSlot {

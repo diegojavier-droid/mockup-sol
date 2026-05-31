@@ -1,5 +1,6 @@
 import type {
   AppointmentMock,
+  AreaId,
   AvailabilityRequest,
   AvailableSlot,
   BusinessHours,
@@ -8,6 +9,7 @@ import type {
   MockDate,
   ScheduleBlock,
 } from "@/lib/booking-types";
+import { areaCapacities } from "./area-capacity";
 
 const weekdays = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const longWeekdays = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -95,6 +97,7 @@ export const appointmentsMock: AppointmentMock[] = [
   {
     date: "2026-06-02",
     startsAt: "10:30",
+    areaId: "peluqueria",
     serviceName: "Corte femenino",
     serviceDurationMinutes: 45,
     preparationMinutes: 10,
@@ -104,6 +107,7 @@ export const appointmentsMock: AppointmentMock[] = [
   {
     date: "2026-06-02",
     startsAt: "11:30",
+    areaId: "peluqueria",
     serviceName: "Brushing",
     serviceDurationMinutes: 30,
     preparationMinutes: 10,
@@ -113,6 +117,7 @@ export const appointmentsMock: AppointmentMock[] = [
   {
     date: "2026-06-05",
     startsAt: "14:30",
+    areaId: "maquillaje",
     serviceName: "Maquillaje social",
     serviceDurationMinutes: 45,
     preparationMinutes: 5,
@@ -122,6 +127,7 @@ export const appointmentsMock: AppointmentMock[] = [
   {
     date: "2026-06-10",
     startsAt: "16:00",
+    areaId: "peluqueria",
     serviceName: "Balayage",
     serviceDurationMinutes: 180,
     preparationMinutes: 15,
@@ -131,6 +137,7 @@ export const appointmentsMock: AppointmentMock[] = [
   {
     date: "2026-07-14",
     startsAt: "09:30",
+    areaId: "peluqueria",
     serviceName: "Corte femenino",
     serviceDurationMinutes: 45,
     preparationMinutes: 10,
@@ -183,6 +190,34 @@ function getAppointmentEndMinutes(appointment: AppointmentMock) {
   return (
     toMinutes(appointment.startsAt) + (appointment.blockedDurationMinutes ?? slotIntervalMinutes)
   );
+}
+
+export function inferLegacyAreaId(serviceName?: string): AreaId {
+  const normalizedServiceName = serviceName?.toLowerCase() ?? "";
+
+  if (normalizedServiceName.includes("maquillaje")) return "maquillaje";
+
+  if (
+    ["uñas", "manicura", "semi", "kapping", "soft gel", "nail"].some((keyword) =>
+      normalizedServiceName.includes(keyword),
+    )
+  ) {
+    return "unas";
+  }
+
+  return "peluqueria";
+}
+
+export function resolveAppointmentAreaId(appointment: AppointmentMock): AreaId {
+  return appointment.areaId ?? inferLegacyAreaId(appointment.serviceName);
+}
+
+export function getAppointmentCapacityUnits(appointment: AppointmentMock) {
+  return appointment.capacityUnits ?? 1;
+}
+
+export function getAreaCapacity(areaId: AreaId) {
+  return areaCapacities[areaId];
 }
 
 export function getTodayKey() {
@@ -250,6 +285,14 @@ export function getSlotsForDate(
   const dayAppointments = appointmentsMock.filter(
     (appointment) => appointment.active && appointment.date === dateKey,
   );
+  const requestedAreaId = request.areaId;
+  const requestedCapacityUnits = request.capacityUnits ?? 1;
+  const areaCapacity = requestedAreaId ? getAreaCapacity(requestedAreaId) : 1;
+  const areaAppointments = requestedAreaId
+    ? dayAppointments.filter(
+        (appointment) => resolveAppointmentAreaId(appointment) === requestedAreaId,
+      )
+    : dayAppointments;
   const slots: string[] = [];
 
   const requestedBlockedDuration =
@@ -268,16 +311,19 @@ export function getSlotsForDate(
     const isBlocked = dayBlocks.some((block) =>
       overlapsRange(minutes, slotEnd, block.startsAt, block.endsAt),
     );
-    const isBooked = dayAppointments.some((appointment) =>
-      rangesOverlap(
+    const usedCapacity = areaAppointments.reduce((total, appointment) => {
+      const appointmentOverlaps = rangesOverlap(
         minutes,
         slotEnd,
         toMinutes(appointment.startsAt),
         getAppointmentEndMinutes(appointment),
-      ),
-    );
+      );
 
-    if (!isClosed && !isBlocked && !isBooked) {
+      return appointmentOverlaps ? total + getAppointmentCapacityUnits(appointment) : total;
+    }, 0);
+    const hasCapacity = usedCapacity + requestedCapacityUnits <= areaCapacity;
+
+    if (!isClosed && !isBlocked && hasCapacity) {
       slots.push(slot);
     }
   }

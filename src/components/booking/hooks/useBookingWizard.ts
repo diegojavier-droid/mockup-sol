@@ -240,6 +240,7 @@ export function useBookingWizard(onExit: () => void, initialSelection?: InitialB
     return {
       durationMinutes: totals.durationMinutes,
       operationalBufferMinutes: totals.operationalBufferMinutes,
+      ...(category && service ? { areaId: category, capacityUnits: 1 } : {}),
     };
   }, [category, chosenExtras, personal, service]);
 
