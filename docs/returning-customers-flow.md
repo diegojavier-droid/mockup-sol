@@ -12,7 +12,7 @@ Objetivos principales:
 
 - **Reducir fricción:** evitar que una clienta frecuente tenga que reconstruir manualmente toda su reserva si el sistema puede reconocer datos seguros.
 - **Permitir repetir servicios simples:** facilitar la repetición de servicios de bajo riesgo operativo, siempre con una confirmación mínima por parte de la clienta.
-- **Recuperar datos:** reutilizar datos básicos de contacto y preferencias visibles cuando exista una coincidencia razonable.
+- **Recuperar datos:** reutilizar datos básicos de contacto y preferencias visibles solo cuando exista confirmación suficiente de identidad.
 - **Preparar un futuro CRM:** ordenar estados, contratos conceptuales y criterios de privacidad para una implementación posterior.
 - **Mantener privacidad:** no exponer información interna, sensible, técnica o de otras clientas durante el proceso de reserva.
 
@@ -21,9 +21,9 @@ Objetivos principales:
 La decisión MVP para este flujo es:
 
 - La detección de clienta recurrente ocurre en el paso **“Tus datos”**.
-- El **WhatsApp normalizado** se usa como identificador operativo principal para contactar y ordenar reservas.
+- El **WhatsApp normalizado** se usa como identificador operativo principal para contactar y ordenar reservas, pero por sí solo nunca habilita recuperar datos ni repetir el último servicio en el MVP.
 - El **email** es opcional para crear una reserva normal, pero es el segundo dato requerido para confirmar recuperación de datos o repetición de último servicio en el MVP sin OTP/login.
-- El **nombre** se usa solo como apoyo visual para personalizar la experiencia; nunca debe usarse como identificador único.
+- El **nombre** no es criterio de confirmación de identidad. Solo puede usarse como apoyo visual después de confirmar a la clienta por WhatsApp normalizado + email o por una verificación futura de canal.
 - No se incorpora login.
 - No se incorpora OTP.
 - No se agrega todavía una entrada separada **“Ya soy clienta”** desde la landing.
@@ -32,10 +32,10 @@ Implicancias:
 
 - La clienta entra al flujo de reserva normal.
 - Al completar o editar sus datos, el sistema puede evaluar si existe una coincidencia segura o probable.
-- La identificación no debe depender únicamente de nombre y apellido.
+- La identificación no debe depender de nombre ni apellido; esos datos no elevan una coincidencia probable a confirmada.
 - Un match por WhatsApp normalizado **no confirma identidad por sí solo**; debe tratarse como `possible_returning_customer` si no existe email coincidente.
-- Para pasar a `confirmed_returning_customer` sin OTP/login, debe existir doble coincidencia fuerte: WhatsApp normalizado + email.
-- Si la coincidencia no es suficientemente confiable, se debe pedir email, confirmar por un canal futuro o continuar como reserva nueva, no asumir identidad.
+- Para pasar a `confirmed_returning_customer` sin OTP/login, debe existir doble coincidencia fuerte y no ambigua: WhatsApp normalizado + email coincidente.
+- Si la coincidencia no es suficientemente confiable, se debe pedir email, confirmar por un canal futuro o continuar como reserva nueva; no se debe asumir identidad ni prellenar datos sensibles.
 
 Decisión sobre email en MVP:
 
@@ -61,11 +61,11 @@ Decisión sobre email en MVP:
 
 **Definición:** existe una coincidencia probable, pero no suficientemente fuerte para confirmar automáticamente que la clienta es recurrente.
 
-**Condición de entrada:** el WhatsApp, email o combinación de datos ingresados se parece a un perfil existente, pero hay señales incompletas, inconsistentes o de baja confianza. Incluye explícitamente el caso en que el WhatsApp normalizado coincide con un perfil existente, pero el email no fue provisto o no coincide.
+**Condición de entrada:** el WhatsApp normalizado, el email o una combinación de señales ingresadas se parece a un perfil existente, pero hay señales incompletas, inconsistentes o de baja confianza. Incluye explícitamente el caso en que el WhatsApp normalizado coincide con un perfil existente, pero el email no fue provisto o no coincide. En el MVP, una coincidencia por WhatsApp solo siempre queda en este estado.
 
-**Qué ve la clienta:** una señal suave de recuperación, sin revelar datos históricos. Ejemplo: **“Puede que ya tengamos tus datos. Para proteger tu información, completá también tu email.”** También debe poder continuar completando información o reservar como nueva.
+**Qué ve la clienta:** una señal suave de recuperación, sin revelar datos históricos ni confirmar que el teléfono pertenece a un perfil específico. Ejemplo: **“Encontramos una posible coincidencia. Para recuperar tus datos, agregá tu email.”** También debe poder continuar completando información o reservar como nueva.
 
-**Qué NO se debe mostrar:** último servicio, última visita, historial completo, fórmulas, productos asociados, notas internas, datos sensibles, servicios técnicos detallados, datos de otra persona ni información que permita inferir identidad de terceros.
+**Qué NO se debe mostrar:** último servicio, última visita, historial completo, fórmulas, productos asociados, notas internas, datos sensibles, servicios técnicos detallados, datos prellenados sensibles, datos de otra persona ni información que permita inferir identidad de terceros.
 
 **Acción recomendada:** pedir email coincidente para confirmar recuperación/repetición, ofrecer continuar como reserva nueva si no quiere proveerlo y mantener oculta cualquier información histórica hasta que exista doble coincidencia o verificación futura de canal.
 
@@ -73,9 +73,9 @@ Decisión sobre email en MVP:
 
 **Definición:** clienta reconocida con una coincidencia suficientemente confiable.
 
-**Condición de entrada:** existe coincidencia fuerte de WhatsApp normalizado + email con un perfil único no ambiguo; o, en una etapa futura, existe verificación de canal mediante OTP, link mágico u otro mecanismo equivalente. WhatsApp solo nunca alcanza para este estado en el MVP.
+**Condición de entrada:** existe coincidencia fuerte de WhatsApp normalizado + email con un perfil único no ambiguo; o, en una etapa futura, existe verificación de canal mediante OTP, link mágico u otro mecanismo equivalente. WhatsApp solo, WhatsApp + nombre o nombre + email nunca alcanzan para este estado en el MVP.
 
-**Qué ve la clienta:** recién después de la doble coincidencia o verificación futura, un bloque funcional con el mensaje **“Encontramos tus datos”**, nombre de pila, último servicio seguro y opciones para repetir un servicio simple, elegir otro servicio o actualizar sus datos.
+**Qué ve la clienta:** recién después de la doble coincidencia o verificación futura, un bloque funcional con el mensaje **“Encontramos tus datos”**, nombre de pila como apoyo visual, último servicio seguro y opciones para repetir un servicio simple, elegir otro servicio o actualizar sus datos.
 
 **Qué NO se debe mostrar:** notas internas, fórmulas técnicas completas, observaciones sensibles, historial completo sin verificación adicional, conflictos, deuda, puntualidad o comentarios administrativos internos.
 
@@ -135,7 +135,7 @@ Decisión sobre email en MVP:
 
 Cuando exista match por WhatsApp normalizado pero el email no fue provisto o no coincide, el estado debe ser `possible_returning_customer`, no `confirmed_returning_customer`. La interfaz puede mostrar un mensaje prudente como:
 
-> Puede que ya tengamos tus datos. Para proteger tu información, completá también tu email.
+> Encontramos una posible coincidencia. Para recuperar tus datos, agregá tu email.
 
 En este estado no se debe mostrar:
 
@@ -145,9 +145,9 @@ En este estado no se debe mostrar:
 - Fórmulas.
 - Notas internas.
 - Productos asociados.
-- Nombre completo u otros datos que permitan confirmar que el teléfono pertenece a otra clienta.
+- Datos prellenados sensibles, nombre completo u otros datos que permitan confirmar que el teléfono pertenece a otra clienta.
 
-La clienta debe poder completar email para intentar confirmar recuperación, corregir WhatsApp o continuar como reserva nueva.
+La clienta debe poder completar email para intentar confirmar recuperación, corregir WhatsApp o continuar como reserva nueva. Mientras no exista email coincidente, no se debe mostrar último servicio, historial ni datos prellenados sensibles.
 
 ### B. Clienta recurrente confirmada
 
@@ -157,7 +157,7 @@ Cuando el estado sea `confirmed_returning_customer`, por coincidencia fuerte de 
 
 El bloque puede incluir únicamente información segura y útil para continuar la reserva:
 
-- Nombre de pila.
+- Nombre de pila, únicamente como apoyo visual posterior a la confirmación.
 - Último servicio seguro.
 - Última visita, si está disponible y es segura para mostrar.
 - Opción **“Repetir último servicio”**.
@@ -236,9 +236,9 @@ Nunca se debe mostrar a la clienta durante este flujo:
 Reglas adicionales:
 
 - Sin login, OTP, link mágico o doble coincidencia WhatsApp normalizado + email, ningún dato histórico debe mostrarse en la experiencia pública.
-- El nombre no identifica por sí solo.
-- WhatsApp solo es un identificador operativo principal, pero no confirma identidad para recuperar datos.
-- El email no es obligatorio para reservar, pero sí para recuperar datos/repetir último servicio en el MVP sin OTP/login.
+- El nombre no identifica por sí solo y no debe usarse como criterio de confirmación; solo puede aparecer como apoyo visual después de confirmar identidad.
+- WhatsApp solo es un identificador operativo principal, pero no confirma identidad para recuperar datos, mostrar historial ni repetir último servicio.
+- El email no es obligatorio para reservar, pero sí debe coincidir con el WhatsApp normalizado para recuperar datos/repetir último servicio en el MVP sin OTP/login.
 - Si la clienta no quiere dar email, debe poder continuar como reserva nueva sin ver historial ni últimos servicios.
 - Un teléfono o email compartido debe tratarse como riesgo de ambigüedad.
 - Las coincidencias parciales deben priorizar privacidad sobre conveniencia.
