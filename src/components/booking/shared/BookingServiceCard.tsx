@@ -51,7 +51,14 @@ export function BookingServiceCard({
           </span>
         </div>
         <div className="flex flex-1 flex-col p-4">
-          <h3 className="font-serif text-xl leading-tight text-foreground">{service.name}</h3>
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-serif text-xl leading-tight text-foreground">{service.name}</h3>
+            {service.tag && service.tag !== "popular" ? (
+              <span className="mt-1 shrink-0 rounded-full border border-border/70 bg-cream/70 px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+                {intentLabel(service.tag)}
+              </span>
+            ) : null}
+          </div>
           <p className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
             <span className="h-1 w-1 rounded-full bg-champagne/70" />
             {service.duration}
@@ -141,6 +148,21 @@ export function BookingServiceCard({
       </div>
     </button>
   );
+}
+
+function intentLabel(tag: NonNullable<Service["tag"]>): string {
+  switch (tag) {
+    case "color":
+      return "Color";
+    case "tratamiento":
+      return "Cuidado";
+    case "combinado":
+      return "Combo";
+    case "evento":
+      return "Evento";
+    default:
+      return "";
+  }
 }
 
 function ServiceTag({ service }: { service: Service }) {
