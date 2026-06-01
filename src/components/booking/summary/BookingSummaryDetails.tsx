@@ -31,13 +31,18 @@ export function BookingSummaryDetails({
         <Field label="Total estimado del turno" value={price} />
       </div>
 
-      <div className="mt-5 rounded-2xl border border-champagne-deep/20 bg-cream/50 p-4">
+      <div className="mt-5 rounded-2xl border border-champagne-deep/30 bg-cream/60 p-5">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
           Seña para confirmar: 20%
         </p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <Field label="Monto de seña calculado" value={depositPrice} />
-          <Field label="Saldo a abonar en el salón" value={remainingPrice} />
+        <p className="mt-1 font-serif text-3xl leading-tight text-foreground sm:text-4xl">
+          {depositPrice}
+        </p>
+        <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-champagne-deep/20 pt-3">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Saldo a abonar en el salón
+          </span>
+          <span className="font-serif text-base text-foreground">{remainingPrice}</span>
         </div>
         <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
           Tu turno queda reservado cuando se acredita la seña. El saldo se abona en el salón.
