@@ -217,7 +217,10 @@ export function PersonalizationStep({
 
         {/* 4. Cuidados y antecedentes — colapsado */}
         {buckets.history.length > 0 && (
-          <details className="group border-t border-border/60">
+          <details
+            className="group border-t border-border/60"
+            open={buckets.history.some((field) => Boolean(personal[field.id]))}
+          >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm text-foreground lg:px-6">
               <span className="flex flex-col">
                 <span className="font-medium">Cuidados y antecedentes</span>
