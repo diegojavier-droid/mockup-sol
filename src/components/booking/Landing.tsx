@@ -338,14 +338,6 @@ export function Landing({
   );
 }
 
-function Stat({ n, l }: { n: string; l: string }) {
-  return (
-    <div>
-      <p className="font-serif text-2xl text-foreground">{n}</p>
-      <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{l}</p>
-    </div>
-  );
-}
 
 const categoryAccent: Record<CategoryId, string> = {
   peluqueria: "bg-cream/80",
@@ -354,16 +346,14 @@ const categoryAccent: Record<CategoryId, string> = {
 };
 
 const categoryIntro: Record<CategoryId, string> = {
-  peluqueria:
-    "Desde un corte simple hasta una transformación completa. Tocá una tarjeta para ver qué incluye.",
-  maquillaje: "Para tu casamiento, una fiesta o un evento especial. Cada look se diseña con vos.",
-  unas: "Manicura, esmaltado y diseños. Para verte prolija o lucir un detalle.",
+  peluqueria: "Cortes, color, peinados y tratamientos.",
+  maquillaje: "Looks de novia, evento y producción.",
+  unas: "Manicura, semipermanente y diseño.",
 };
 
 type ServiceGroup = {
   key: string;
   title: string;
-  subtitle: string;
   items: Service[];
 };
 
