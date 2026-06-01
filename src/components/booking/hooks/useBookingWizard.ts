@@ -278,6 +278,15 @@ export function useBookingWizard(
     [additionalComments, category, chosenExtras, date, personal, service, time],
   );
 
+  const customerValidationErrors = useMemo(() => validateCustomer(customer), [customer]);
+  const customerMissingRequiredFields = {
+    firstName: !customer.firstName.trim(),
+    whatsapp: !customer.whatsapp.trim(),
+  };
+  const canRequestCustomerRequiredFeedback =
+    step === BOOKING_STEP_INDEX.customerData &&
+    (customerMissingRequiredFields.firstName || customerMissingRequiredFields.whatsapp);
+
   const canNext = useMemo(() => {
     if (step === BOOKING_STEP_INDEX.category) return !!category;
     if (step === BOOKING_STEP_INDEX.service) return !!service;
@@ -289,9 +298,9 @@ export function useBookingWizard(
     if (step === BOOKING_STEP_INDEX.extras) return true;
     if (step === BOOKING_STEP_INDEX.dateTime) return !!date && !!time;
     if (step === BOOKING_STEP_INDEX.customerData)
-      return Object.keys(validateCustomer(customer)).length === 0;
+      return Object.keys(customerValidationErrors).length === 0;
     return true;
-  }, [category, customer, date, personal, service, step, time]);
+  }, [category, customerValidationErrors, date, personal, service, step, time]);
 
   const resetSelectedTurnDetails = () => {
     setService(null);
@@ -371,8 +380,15 @@ export function useBookingWizard(
     });
   };
 
-  const customerValidationErrors = validateCustomer(customer);
   const customerErrors = getVisibleCustomerErrors(customerValidationErrors, customerTouched);
+
+  const requestCustomerRequiredFeedback = () => {
+    setCustomerTouched((current) => ({
+      ...current,
+      ...(customerMissingRequiredFields.firstName ? { firstName: true } : {}),
+      ...(customerMissingRequiredFields.whatsapp ? { whatsapp: true } : {}),
+    }));
+  };
 
   const confirmBookingRequest = () => {
     setBookingRequestError(null);
@@ -403,7 +419,19 @@ export function useBookingWizard(
     setPaymentPending(true);
   };
 
-  const next = () => setStep((currentStep) => clampWizardStep(currentStep + 1));
+  const next = () => {
+    if (step === BOOKING_STEP_INDEX.customerData) {
+      if (Object.keys(customerValidationErrors).length === 0) {
+        setStep((currentStep) => clampWizardStep(currentStep + 1));
+        return;
+      }
+
+      requestCustomerRequiredFeedback();
+      return;
+    }
+
+    setStep((currentStep) => clampWizardStep(currentStep + 1));
+  };
   const back = () => {
     const shouldExitToReturnTarget =
       navigationContext &&
@@ -428,6 +456,7 @@ export function useBookingWizard(
     additionalComments,
     bookingRequestError,
     canNext,
+    canRequestCustomerRequiredFeedback,
     category,
     chooseCategory,
     chooseAdditionalComments,

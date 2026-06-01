@@ -3,6 +3,7 @@ import { BOOKING_STEPS } from "./booking-steps";
 
 export function WizardNavigation({
   canNext,
+  canRequestCustomerRequiredFeedback = false,
   data,
   onBack,
   onNext,
@@ -10,6 +11,7 @@ export function WizardNavigation({
   isMobileInputFocused = false,
 }: {
   canNext: boolean;
+  canRequestCustomerRequiredFeedback?: boolean;
   data: SummaryData;
   onBack: () => void;
   onNext: () => void;
@@ -32,7 +34,13 @@ export function WizardNavigation({
         )}
         <div className="flex gap-2">
           <NavBackButton onBack={onBack} step={step} />
-          {showNextButton && <NavNextButton canNext={canNext} onNext={onNext} />}
+          {showNextButton && (
+            <NavNextButton
+              canNext={canNext}
+              canRequestCustomerRequiredFeedback={canRequestCustomerRequiredFeedback}
+              onNext={onNext}
+            />
+          )}
         </div>
       </div>
 
@@ -40,7 +48,13 @@ export function WizardNavigation({
         <div className="fixed inset-x-0 bottom-6 mx-auto max-w-6xl px-8">
           <div className="ml-auto flex max-w-[calc(100%-372px)] justify-end gap-2">
             <NavBackButton onBack={onBack} step={step} />
-            {showNextButton && <NavNextButton canNext={canNext} onNext={onNext} />}
+            {showNextButton && (
+              <NavNextButton
+                canNext={canNext}
+                canRequestCustomerRequiredFeedback={canRequestCustomerRequiredFeedback}
+                onNext={onNext}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -60,12 +74,22 @@ function NavBackButton({ onBack, step }: { onBack: () => void; step: number }) {
   );
 }
 
-function NavNextButton({ canNext, onNext }: { canNext: boolean; onNext: () => void }) {
+function NavNextButton({
+  canNext,
+  canRequestCustomerRequiredFeedback,
+  onNext,
+}: {
+  canNext: boolean;
+  canRequestCustomerRequiredFeedback: boolean;
+  onNext: () => void;
+}) {
+  const isActionable = canNext || canRequestCustomerRequiredFeedback;
+
   return (
     <button
       type="button"
       onClick={onNext}
-      disabled={!canNext}
+      disabled={!isActionable}
       className="min-h-11 flex-[1.2] rounded-full bg-primary px-5 py-2.5 font-serif text-sm text-primary-foreground shadow-[0_14px_30px_-14px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:px-10 lg:py-3.5 lg:text-base"
     >
       Continuar →
