@@ -18,7 +18,7 @@ export function ReviewStep({
   onConfirm: () => void;
 }) {
   return (
-    <StepShell title="Revisá tu reserva">
+    <StepShell title="Confirmá tu reserva" subtitle="Verificá los datos antes de finalizar.">
       <BookingSummaryDetails customer={customer} data={data} personal={personal} />
       {error && (
         <p className="mt-5 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -30,7 +30,7 @@ export function ReviewStep({
         onClick={onConfirm}
         className="mt-6 w-full rounded-full bg-primary py-4 font-serif text-lg text-primary-foreground shadow-[0_20px_40px_-18px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        Confirmar interés ✦
+        Reservar turno
       </button>
       <p className="mt-3 text-center text-xs text-muted-foreground">
         El salón confirmará el turno por WhatsApp.
