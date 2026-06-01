@@ -21,6 +21,7 @@ export function ServiceStep({
             categoryId={category}
             selected={service?.id === currentService.id}
             variant="wizard"
+            showAction={false}
             onClick={() => onChooseService(currentService)}
           />
         ))}

@@ -12,7 +12,7 @@ export function BookingServiceCard({
   variant,
   onClick,
   actionLabel = "Reservar",
-  showAction = true,
+  showAction,
   className,
 }: {
   service: Service;
@@ -25,6 +25,7 @@ export function BookingServiceCard({
   className?: string;
 }) {
   const imageSrc = getServiceImage(service.id, categoryId, service.imageUrl);
+  const shouldShowAction = showAction ?? variant === "public";
 
   if (variant === "public") {
     const content = (
@@ -58,7 +59,7 @@ export function BookingServiceCard({
           <p className="mt-2.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
             {service.desc}
           </p>
-          {showAction ? (
+          {shouldShowAction ? (
             <span className="mt-4 inline-flex items-center justify-between gap-2 rounded-full border border-border bg-cream/60 px-4 py-2.5 font-serif text-sm text-foreground transition-colors group-hover:border-champagne-deep group-hover:bg-cream">
               {actionLabel}
               <span
@@ -131,7 +132,7 @@ export function BookingServiceCard({
           {selected ? <SelectedMark compact /> : null}
         </div>
         <ServiceMeta service={service} className="mt-2 text-xs">
-          {showAction ? (
+          {shouldShowAction ? (
             <span className="ml-auto rounded-full bg-primary px-3 py-1.5 font-serif text-sm text-primary-foreground">
               {actionLabel}
             </span>
