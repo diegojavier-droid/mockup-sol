@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Stepper } from "./Stepper";
 import { SummaryPanel } from "./SummaryPanel";
 import { useBookingWizard } from "./hooks/useBookingWizard";
@@ -46,7 +46,12 @@ export function BookingWizard({
   const stepContentRef = useRef<HTMLDivElement>(null);
   const previousStepRef = useRef(wizard.step);
   const selectedServiceIdRef = useRef<string | null>(null);
+  const [isMobileInputFocused, setIsMobileInputFocused] = useState(false);
   selectedServiceIdRef.current = wizard.service?.id ?? null;
+
+  useEffect(() => {
+    setIsMobileInputFocused(false);
+  }, [wizard.step]);
 
   useEffect(() => {
     const previousStep = previousStepRef.current;
@@ -136,6 +141,7 @@ export function BookingWizard({
                 errors={wizard.customerErrors}
                 isRecognized={wizard.isCustomerRecognized}
                 onChangeCustomerField={wizard.chooseCustomerField}
+                onMobileInputFocusChange={setIsMobileInputFocused}
               />
             )}
 
@@ -164,6 +170,7 @@ export function BookingWizard({
         onBack={wizard.goBack}
         onNext={wizard.goNext}
         step={wizard.step}
+        isMobileInputFocused={isMobileInputFocused}
       />
     </div>
   );

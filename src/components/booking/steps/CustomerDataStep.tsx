@@ -1,3 +1,4 @@
+import type { FocusEvent } from "react";
 import { StepShell } from "../wizard/StepShell";
 
 export type CustomerField = "firstName" | "whatsapp" | "email" | "notes";
@@ -17,15 +18,41 @@ export function CustomerDataStep({
   errors,
   isRecognized,
   onChangeCustomerField,
+  onMobileInputFocusChange,
 }: {
   customer: CustomerFormState;
   errors: CustomerErrors;
   isRecognized: boolean;
   onChangeCustomerField: (field: CustomerField, value: string) => void;
+  onMobileInputFocusChange?: (isFocused: boolean) => void;
 }) {
+  const handleFocusCapture = (event: FocusEvent<HTMLDivElement>) => {
+    if (!isMobileFormControl(event.target)) return;
+
+    onMobileInputFocusChange?.(isMobileViewport());
+
+    if (!isMobileViewport()) return;
+
+    window.setTimeout(() => {
+      event.target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 120);
+  };
+
+  const handleBlurCapture = (event: FocusEvent<HTMLDivElement>) => {
+    window.requestAnimationFrame(() => {
+      if (event.currentTarget.contains(document.activeElement)) return;
+
+      onMobileInputFocusChange?.(false);
+    });
+  };
+
   return (
     <StepShell title="¿Cómo podemos contactarte?">
-      <div className="rounded-3xl border border-border bg-card p-5 shadow-sm lg:p-6">
+      <div
+        className="rounded-3xl border border-border bg-card p-5 pb-28 shadow-sm lg:p-6"
+        onBlurCapture={handleBlurCapture}
+        onFocusCapture={handleFocusCapture}
+      >
         {isRecognized && (
           <div className="mb-5 rounded-2xl border border-primary/20 bg-cream px-4 py-3 text-sm font-medium text-foreground">
             ✓ Datos recuperados
@@ -50,6 +77,7 @@ export function CustomerDataStep({
             onChange={(value) => onChangeCustomerField("whatsapp", value)}
             placeholder="Ej: 342 555 1234"
             required
+            type="tel"
             value={customer.whatsapp}
           />
           <CustomerInput
@@ -59,6 +87,7 @@ export function CustomerDataStep({
             label="Email"
             onChange={(value) => onChangeCustomerField("email", value)}
             placeholder="tu@email.com (opcional)"
+            type="email"
             value={customer.email}
           />
           <CustomerTextarea
@@ -83,19 +112,21 @@ function CustomerInput({
   onChange,
   placeholder,
   required = false,
+  type = "text",
   value,
 }: {
   autoComplete: string;
   error?: string;
-  inputMode?: "email" | "tel";
+  inputMode?: "email" | "numeric" | "tel";
   label: string;
   onChange: (value: string) => void;
   placeholder: string;
   required?: boolean;
+  type?: "email" | "tel" | "text";
   value: string;
 }) {
   return (
-    <label className="block">
+    <label className="block scroll-mb-36">
       <span className="text-sm font-medium text-foreground">
         {label} {required && <span className="text-primary">*</span>}
       </span>
@@ -105,6 +136,7 @@ function CustomerInput({
         inputMode={inputMode}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
+        type={type}
         value={value}
       />
       {error && <span className="mt-1.5 block text-xs text-destructive">{error}</span>}
@@ -128,7 +160,7 @@ function CustomerTextarea({
   value: string;
 }) {
   return (
-    <label className="block">
+    <label className="block scroll-mb-36">
       <span className="text-sm font-medium text-foreground">{label}</span>
       <textarea
         className="mt-2 min-h-28 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30"
@@ -145,4 +177,12 @@ function CustomerTextarea({
       </span>
     </label>
   );
+}
+
+function isMobileViewport() {
+  return window.matchMedia("(max-width: 1023px)").matches;
+}
+
+function isMobileFormControl(target: EventTarget): target is HTMLElement {
+  return target instanceof HTMLElement && target.matches("input, textarea, select");
 }

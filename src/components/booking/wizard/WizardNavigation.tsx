@@ -7,22 +7,25 @@ export function WizardNavigation({
   onBack,
   onNext,
   step,
+  isMobileInputFocused = false,
 }: {
   canNext: boolean;
   data: SummaryData;
   onBack: () => void;
   onNext: () => void;
   step: number;
+  isMobileInputFocused?: boolean;
 }) {
   const isCategoryStep = step === 0;
   const isFinalStep = step === BOOKING_STEPS.length - 1;
   const showNextButton = !isCategoryStep && !isFinalStep;
   const showSummary = Boolean(data.service);
+  const showMobileSummary = showSummary && !isMobileInputFocused;
 
   return (
     <>
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2 backdrop-blur-md lg:hidden">
-        {showSummary && (
+        {showMobileSummary && (
           <div className="mb-2">
             <SummaryPanel data={data} variant="bottom" />
           </div>
