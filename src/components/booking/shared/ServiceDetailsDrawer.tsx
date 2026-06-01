@@ -134,9 +134,7 @@ export function ServiceDetailsDrawer({
                 <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                   Recomendado para
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-foreground/80">
-                  {recommendedFor}
-                </p>
+                <p className="mt-2 text-sm leading-relaxed text-foreground/80">{recommendedFor}</p>
               </div>
 
               {categoryExtras.length > 0 ? (
