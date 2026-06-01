@@ -44,6 +44,7 @@ El catálogo v2 debe respetar estos principios:
 - Preservar la seña actual del 20%.
 - Preservar compatibilidad con el MVP actual durante la transición.
 - No mostrar lógica interna compleja a la clienta.
+- Catálogo público por intención, catálogo interno por técnica/producto.
 - Documentar supuestos, decisiones pendientes y reglas en estado de validación.
 - Evitar cargar datos reales definitivos hasta recibir validación de Sol Mai.
 - Permitir auditoría del cálculo sin obligar a mostrar todo el detalle en UI pública.
@@ -280,7 +281,87 @@ Color y tratamientos pueden seguir perteneciendo visualmente a la categoría **P
 - calcular duraciones y buffers con mayor precisión;
 - aplicar descuentos sobre una línea específica y no sobre todo el servicio.
 
-## 7. Tratamientos por producto + finalidad
+## 7. Catálogo público por intención, catálogo interno por técnica/producto
+
+El catálogo v2 debe separar explícitamente dos niveles de información para evitar que la landing o el wizard público expongan todas las combinaciones técnicas del Excel real. El Excel puede contener muchas combinaciones de color, tratamientos, productos, marcas, líneas y finalidades; mostrar todo eso como opciones públicas genera sobrecarga cognitiva, confusión y menor adopción del sistema de reservas.
+
+### Catálogo público simplificado
+
+El catálogo público es lo que ve la clienta. Debe estar orientado a intención o servicio base, no a producto técnico. Debe mostrar solo la información necesaria para reservar con confianza:
+
+- servicio base;
+- intención de servicio;
+- duración estimada;
+- precio desde/base;
+- aviso de variabilidad;
+- qué incluye de forma simple.
+
+Servicios públicos sugeridos:
+
+- Corte;
+- Color;
+- Mechas / balayage;
+- Tratamiento capilar;
+- Peinado / brushing;
+- Uñas;
+- Maquillaje;
+- Depilación.
+
+Ejemplo público para tratamiento:
+
+| Campo | Valor público sugerido |
+| --- | --- |
+| Servicio | Tratamiento capilar |
+| Descripción | Hidratación, nutrición o reparación según necesidad del cabello. |
+| Precio/duración | Desde $X · 60 min aprox. |
+| Aviso | El producto se define en salón según evaluación. |
+
+La clienta no debe elegir entre todas las marcas, productos o líneas técnicas en la landing. Debe elegir una intención o servicio base. La selección específica del producto se define internamente por Sol o la peluquera.
+
+### Catálogo técnico interno
+
+El catálogo técnico interno es lo que gestiona Sol o la peluquera. Puede registrar información profesional completa, aunque no sea visible ni obligatoria para la clienta durante la reserva:
+
+- producto/línea usada;
+- fórmula;
+- cantidad/calidad de producto;
+- finalidad técnica;
+- costo futuro;
+- ajuste de precio;
+- observaciones profesionales;
+- tratamiento real aplicado.
+
+Los productos y líneas técnicas pueden aparecer como respaldo profesional, recomendación o registro interno, pero no como variantes obligatorias que la clienta debe decidir en la reserva.
+
+### Reglas de precio visible
+
+La UI pública debe comunicar precio de forma honesta y simple:
+
+- usar “desde” cuando el precio dependa de largo, técnica o producto;
+- usar “estimado” cuando el precio pueda variar;
+- usar “a consultar” cuando no haya precio confiable;
+- no prometer precio exacto en color, balayage, mechas o tratamientos variables.
+
+### Impacto en cálculo y precio final
+
+El cálculo público puede usar un precio base estimado para orientar a la clienta y calcular la reserva inicial. El precio final puede ajustarse internamente según:
+
+- largo;
+- densidad;
+- técnica;
+- cantidad de producto;
+- calidad/línea de producto;
+- evaluación profesional.
+
+Este ajuste debe estar documentado como una diferencia entre el total estimado público y el total final definido por evaluación profesional, no como un error del sistema.
+
+### Impacto en seña
+
+La seña del 20% se calcula sobre el total estimado mostrado en la reserva. Si el servicio es altamente variable, debe quedar claro que el saldo puede ajustarse en salón según evaluación.
+
+Esta decisión no modifica la lógica actual de seña ni requiere cambios en `computeBookingTotals`.
+
+## 8. Tratamientos por producto + finalidad
 
 Los tratamientos no deben modelarse como un “tratamiento genérico”. Cada tratamiento debe poder expresar:
 
@@ -306,9 +387,9 @@ Finalidades sugeridas:
 - mantenimiento;
 - otro.
 
-La finalidad debe ayudar a orientar recomendaciones y reportes sin forzar a la clienta a entender detalles técnicos. Por ejemplo, una recomendación post-color puede mostrarse como sugerencia opcional y no como obligación.
+La finalidad debe ayudar a orientar recomendaciones y reportes sin forzar a la clienta a entender detalles técnicos. Por ejemplo, una recomendación post-color puede mostrarse como sugerencia opcional y no como obligación. La clienta elige la intención pública, como “Tratamiento capilar”, y la peluquera define producto, línea y fórmula según evaluación.
 
-## 8. Productos de venta vs productos de uso interno
+## 9. Productos de venta vs productos de uso interno
 
 ### Productos de venta
 
@@ -336,7 +417,7 @@ Características esperadas:
 
 Un producto con doble rol se usa en salón y también se vende. El catálogo v2 debe evitar confundir esos usos: una cosa es registrar que se usó técnicamente en un tratamiento y otra es recomendarlo o venderlo a la clienta.
 
-## 9. Reglas comerciales v2
+## 10. Reglas comerciales v2
 
 Las reglas comerciales deben ser configurables, auditables y estar fuera de componentes UI.
 
@@ -365,7 +446,7 @@ Las reglas comerciales deben ser configurables, auditables y estar fuera de comp
 - **Acción:** sugerir el tratamiento de forma no invasiva.
 - **Cobro y duración:** solo suma precio y duración si la clienta lo selecciona explícitamente o si staff lo agrega con confirmación.
 
-## 10. Pipeline de cálculo v2
+## 11. Pipeline de cálculo v2
 
 Flujo recomendado del futuro motor de cálculo v2:
 
@@ -385,7 +466,7 @@ Flujo recomendado del futuro motor de cálculo v2:
 
 El pipeline debe poder producir un resultado técnico completo aunque la UI pública muestre solo una versión simplificada.
 
-## 11. Compatibilidad con MVP actual
+## 12. Compatibilidad con MVP actual
 
 La transición debe preservar el MVP actual y evitar reemplazos abruptos.
 
@@ -417,7 +498,7 @@ Agregar campos como `catalogVersion`, `pricingLines` y `appliedRules` para audit
 
 Mostrar desglose simple a la clienta solo si Sol Mai lo aprueba y si aporta claridad/confianza.
 
-## 12. Reglas de visibilidad para clienta
+## 13. Reglas de visibilidad para clienta
 
 La UI pública debe priorizar claridad y confianza, no exposición de complejidad técnica.
 
@@ -439,9 +520,10 @@ La clienta no debe ver:
 - costos;
 - buffers;
 - notas internas;
-- lógica de estaciones.
+- lógica de estaciones;
+- variantes obligatorias de marca, producto o línea técnica.
 
-## 13. Campos pendientes de validación con Sol Mai
+## 14. Campos pendientes de validación con Sol Mai
 
 Pendientes antes de cargar un catálogo real definitivo:
 
@@ -454,9 +536,10 @@ Pendientes antes de cargar un catálogo real definitivo:
 - productos visibles públicamente;
 - productos solo internos;
 - qué servicios se muestran como “desde”;
-- qué servicios requieren consulta.
+- qué servicios requieren consulta;
+- qué productos o líneas pueden mostrarse solo como respaldo profesional o recomendación, sin convertirse en opciones obligatorias de reserva.
 
-## 14. Riesgos
+## 15. Riesgos
 
 Riesgos principales a controlar durante la transición:
 
@@ -467,9 +550,10 @@ Riesgos principales a controlar durante la transición:
 - contaminar UI pública con lógica interna;
 - cargar Excel crudo sin normalizar;
 - mezclar producto de venta con producto de uso técnico;
-- romper seña 20%.
+- romper seña 20%;
+- mostrar demasiadas combinaciones técnicas en público, generando sobrecarga cognitiva, confusión y baja adopción del sistema de reservas.
 
-## 15. Decisiones explícitas
+## 16. Decisiones explícitas
 
 Decisiones para esta etapa:
 
