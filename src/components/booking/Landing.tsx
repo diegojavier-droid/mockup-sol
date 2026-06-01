@@ -196,22 +196,35 @@ export function Landing({
                   key={`${selectedCategory}-${service.id}`}
                   service={service}
                   variant="public"
-                  onClick={() =>
-                    onStart({
-                      entryPoint: "public-catalog",
-                      initialSelection: {
-                        categoryId: selectedCategory,
-                        serviceId: service.id,
-                      },
-                      returnTarget: { type: "catalog", categoryId: selectedCategory },
-                    })
-                  }
+                  actionLabel="Ver servicio"
+                  onClick={() => setPreviewService(service)}
                 />
               ))}
             </div>
           </section>
         ) : null}
       </main>
+
+      <ServiceDetailsDrawer
+        service={previewService}
+        categoryId={selectedCategory}
+        open={previewService !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewService(null);
+        }}
+        onReserve={() => {
+          if (!previewService || !selectedCategory) return;
+          onStart({
+            entryPoint: "public-catalog",
+            initialSelection: {
+              categoryId: selectedCategory,
+              serviceId: previewService.id,
+            },
+            returnTarget: { type: "catalog", categoryId: selectedCategory },
+          });
+          setPreviewService(null);
+        }}
+      />
 
       <footer className="border-t border-border/60 py-8 text-center text-xs text-muted-foreground">
         Sol Mai Peluquería · Santa Fe Capital · Representante Itely Hairfashion
