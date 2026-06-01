@@ -258,7 +258,6 @@ export function Landing({
             ))}
           </section>
         ) : null}
-
       </main>
 
       <ServiceDetailsDrawer
@@ -307,8 +306,7 @@ const categoryAccent: Record<CategoryId, string> = {
 const categoryIntro: Record<CategoryId, string> = {
   peluqueria:
     "Desde un corte simple hasta una transformación completa. Tocá una tarjeta para ver qué incluye.",
-  maquillaje:
-    "Para tu casamiento, una fiesta o un evento especial. Cada look se diseña con vos.",
+  maquillaje: "Para tu casamiento, una fiesta o un evento especial. Cada look se diseña con vos.",
   unas: "Manicura, esmaltado y diseños. Para verte prolija o lucir un detalle.",
 };
 
@@ -391,4 +389,3 @@ function groupServices(categoryId: CategoryId, items: Service[]): ServiceGroup[]
 
   return groups.filter((group) => group.items.length > 0);
 }
-
