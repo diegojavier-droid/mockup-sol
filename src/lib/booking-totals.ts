@@ -23,8 +23,21 @@ function fmtDuration(min: number) {
   return `${m} min`;
 }
 
-function fmtPrice(price: number) {
+export const BOOKING_DEPOSIT_RATE = 0.2;
+
+export function fmtPrice(price: number) {
   return "$" + price.toLocaleString("es-AR");
+}
+
+function computeDepositAmounts(priceAmount: number | null) {
+  if (!priceAmount) return { depositAmount: null, remainingAmount: null };
+
+  const depositAmount = priceAmount * BOOKING_DEPOSIT_RATE;
+
+  return {
+    depositAmount,
+    remainingAmount: priceAmount - depositAmount,
+  };
 }
 
 export function computeBookingTotals({
@@ -47,12 +60,18 @@ export function computeBookingTotals({
   const rawPriceAmount =
     (service?.priceAmount ?? 0) + personalizationModifier.priceAmount + extrasPriceAmount;
   const priceAmount = rawPriceAmount > 0 ? rawPriceAmount : null;
+  const { depositAmount, remainingAmount } = computeDepositAmounts(priceAmount);
 
   return {
     dur: fmtDuration(durationMinutes),
     durationMinutes,
     price: priceAmount ? fmtPrice(priceAmount) : "—",
     priceAmount,
+    depositAmount,
+    depositPrice: depositAmount ? fmtPrice(depositAmount) : "—",
+    remainingAmount,
+    remainingPrice: remainingAmount ? fmtPrice(remainingAmount) : "—",
+    depositRate: BOOKING_DEPOSIT_RATE,
     priceIsEstimated: true,
   };
 }

@@ -129,7 +129,7 @@ export interface ReturningCustomerLookup {
   email?: string | null;
 }
 
-export type BookingStatus = "requested";
+export type BookingStatus = "pending_payment";
 
 export interface BookingSelection {
   categoryId: CategoryId;
@@ -145,6 +145,9 @@ export interface BookingTotals {
   durationMinutes: number;
   priceAmount: number | null;
   priceIsEstimated: boolean;
+  depositAmount: number | null;
+  remainingAmount: number | null;
+  depositRate: number;
   operationalBufferMinutes?: number;
   blockedDurationMinutes?: number;
 }

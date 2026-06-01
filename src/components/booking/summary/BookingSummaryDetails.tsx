@@ -17,7 +17,7 @@ export function BookingSummaryDetails({
   personal: Personalization;
 }) {
   const category = categories.find((currentCategory) => currentCategory.id === data.category);
-  const { dur, price } = computeTotals(data);
+  const { dur, price, depositPrice, remainingPrice } = computeTotals(data);
   const fields = data.category ? personalizationFields[data.category] : [];
 
   return (
@@ -28,7 +28,20 @@ export function BookingSummaryDetails({
         <Field label="Fecha" value={data.date ?? "—"} />
         <Field label="Hora" value={data.time ?? "—"} />
         <Field label="Duración estimada" value={dur} />
-        <Field label="Precio estimado" value={price} />
+        <Field label="Total estimado del turno" value={price} />
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-champagne-deep/20 bg-cream/50 p-4">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          Seña para confirmar: 20%
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Field label="Monto de seña calculado" value={depositPrice} />
+          <Field label="Saldo a abonar en el salón" value={remainingPrice} />
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+          Tu turno queda reservado cuando se acredita la seña. El saldo se abona en el salón.
+        </p>
       </div>
 
       {customer && (

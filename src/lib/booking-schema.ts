@@ -15,7 +15,7 @@ export const contactChannelSchema = z.enum(["whatsapp", "email", "phone"]);
 
 export const customerTypeSchema = z.enum(["new", "returning", "unknown"]);
 
-export const bookingStatusSchema = z.literal("requested");
+export const bookingStatusSchema = z.literal("pending_payment");
 
 export const recurringBookingFrequencySchema = z.enum(["daily", "weekly", "biweekly", "monthly"]);
 
@@ -64,6 +64,9 @@ export const bookingTotalsSchema: z.ZodType<BookingTotals> = z.object({
   durationMinutes: z.number().positive("La duración debe ser positiva"),
   priceAmount: z.number().positive("El precio debe ser positivo").nullable(),
   priceIsEstimated: z.boolean(),
+  depositAmount: z.number().positive("La seña debe ser positiva").nullable(),
+  remainingAmount: z.number().min(0, "El saldo no puede ser negativo").nullable(),
+  depositRate: z.number().positive().max(1),
   operationalBufferMinutes: z.number().int().min(0).optional(),
   blockedDurationMinutes: z.number().positive().optional(),
 });
