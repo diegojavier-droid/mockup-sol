@@ -215,27 +215,50 @@ export function Landing({
               >
                 ← Volver
               </button>
-              <p className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              <p
+                className={`mb-2 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground ${categoryAccent[selectedCategory]}`}
+              >
                 <span>{selectedCategoryData.emoji}</span>
                 <span>{selectedCategoryData.name}</span>
               </p>
               <h2 className="font-serif text-4xl text-foreground lg:text-5xl">Elegí tu servicio</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
+                {categoryIntro[selectedCategory]}
+              </p>
             </div>
 
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {selectedServices.map((service) => (
-                <BookingServiceCard
-                  key={`${selectedCategory}-${service.id}`}
-                  service={service}
-                  categoryId={selectedCategory}
-                  variant="public"
-                  actionLabel="Ver servicio"
-                  onClick={() => setPreviewService(service)}
-                />
-              ))}
-            </div>
+            {groupServices(selectedCategory, selectedServices).map((group, index) => (
+              <div key={group.key} className={index === 0 ? "mt-6 sm:mt-8" : "mt-10 sm:mt-14"}>
+                <div className="mb-4 flex items-baseline justify-between gap-3 sm:mb-5">
+                  <div>
+                    <h3 className="font-serif text-2xl text-foreground sm:text-3xl">
+                      {group.title}
+                    </h3>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                      {group.subtitle}
+                    </p>
+                  </div>
+                  <span className="hidden shrink-0 rounded-full border border-border bg-card px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:inline-flex">
+                    {group.items.length} opciones
+                  </span>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {group.items.map((service) => (
+                    <BookingServiceCard
+                      key={`${selectedCategory}-${service.id}`}
+                      service={service}
+                      categoryId={selectedCategory}
+                      variant="public"
+                      actionLabel="Ver servicio"
+                      onClick={() => setPreviewService(service)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
           </section>
         ) : null}
+
       </main>
 
       <ServiceDetailsDrawer
