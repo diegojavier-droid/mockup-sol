@@ -25,7 +25,7 @@ const fieldIntent: Record<string, Intent> = {
   estado: "current",
   // allergies (always visible)
   alergias: "allergies",
-  // history & care (collapsed)
+  // history & care
   quimicos: "history",
   prueba: "history",
 };
@@ -152,8 +152,9 @@ export function PersonalizationStep({
 }) {
   const buckets = bucketFields(personalizationFields[category]);
   const [noteOpen, setNoteOpen] = useState(additionalComments.trim().length > 0);
-  const [historyDefaultOpen] = useState(() =>
-    buckets.history.some((field) => Boolean(personal[field.id])),
+  const historyHasRequiredFields = buckets.history.length > 0;
+  const [historyDefaultOpen] = useState(
+    () => historyHasRequiredFields || buckets.history.some((field) => Boolean(personal[field.id])),
   );
 
   return (
@@ -218,7 +219,7 @@ export function PersonalizationStep({
           </section>
         )}
 
-        {/* 4. Cuidados y antecedentes — colapsado */}
+        {/* 4. Cuidados y antecedentes */}
         {buckets.history.length > 0 && (
           <details
             className="group border-t border-border/60"
@@ -228,7 +229,7 @@ export function PersonalizationStep({
               <span className="flex flex-col">
                 <span className="font-medium">Cuidados y antecedentes</span>
                 <span className="text-xs text-muted-foreground">
-                  Necesario para Sol Mai. Nos ayuda a cuidar tu cabello y preparar el servicio.
+                  Necesario para preparar tu servicio.
                 </span>
               </span>
               <span
