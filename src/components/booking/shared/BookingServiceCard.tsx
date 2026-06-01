@@ -137,23 +137,9 @@ export function BookingServiceCard({
   );
 }
 
-function ServiceTag({
-  service,
-  publicVariant = false,
-}: {
-  service: Service;
-  publicVariant?: boolean;
-}) {
+function ServiceTag({ service }: { service: Service }) {
   if (service.tag !== "popular") {
     return null;
-  }
-
-  if (publicVariant) {
-    return (
-      <span className="shrink-0 rounded-full border border-champagne/50 bg-cream px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-champagne-deep">
-        Popular
-      </span>
-    );
   }
 
   return (
