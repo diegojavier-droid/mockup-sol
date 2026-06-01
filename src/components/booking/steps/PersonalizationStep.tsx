@@ -152,6 +152,9 @@ export function PersonalizationStep({
 }) {
   const buckets = bucketFields(personalizationFields[category]);
   const [noteOpen, setNoteOpen] = useState(additionalComments.trim().length > 0);
+  const [historyDefaultOpen] = useState(() =>
+    buckets.history.some((field) => Boolean(personal[field.id])),
+  );
 
   return (
     <StepShell title={personalizationStepTitleByCategory[category]}>
