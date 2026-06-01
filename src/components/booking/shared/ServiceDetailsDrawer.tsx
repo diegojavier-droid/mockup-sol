@@ -19,43 +19,39 @@ type ServiceDetailsDrawerProps = {
 
 const recommendedForByServiceId: Record<string, string> = {
   // Peluquería
-  "corte-femenino":
-    "Ideal si querés renovar tu estilo o mantener un corte cuidado y bien terminado.",
-  brushing: "Perfecto para una ocasión especial o si querés salir con el pelo impecable.",
-  "peinado-diario": "Pensado para reuniones, salidas o un look prolijo del día a día.",
-  "peinado-social": "Recomendado para eventos, fiestas y producciones especiales.",
-  recogido: "Para novias, madrinas, quince y eventos donde querés un peinado elegante.",
-  "color-global":
-    "Indicado si buscás cambiar tu color o cubrir canas con un resultado parejo y luminoso.",
-  "retoque-raiz": "Para mantener tu color cuidado entre visitas, cuando ya creció la raíz.",
-  tonalizacion: "Ideal para refrescar el color, neutralizar tonos o sumar brillo.",
-  "bano-luz": "Recomendado si querés brillo, suavidad y un acabado sano sin cambiar tu color.",
-  mechas: "Para sumar luz, dimensión y un cambio visible sin perder tu base.",
-  babylights: "Perfecto si buscás un degradé natural y sutil, con resultado luminoso.",
-  balayage: "Ideal para un degradé prolijo, pintado a mano, con mantenimiento espaciado.",
-  claritos: "Para sumar reflejos suaves en zonas estratégicas del rostro.",
-  alisado: "Recomendado si querés reducir el frizz y ganar manejabilidad por varios meses.",
-  "botox-capilar": "Para devolver suavidad, brillo y control del frizz al cabello castigado.",
-  "nutricion-capilar": "Ideal para cabello seco o castigado que necesita nutrientes profundos.",
-  "hidratacion-profunda": "Para recuperar elasticidad y brillo cuando sentís el pelo apagado.",
-  "reparacion-capilar": "Recomendado si tu pelo tiene fibras dañadas que querés restaurar.",
-  reconstruccion: "Plan intensivo para cabellos muy castigados que necesitan reparación profunda.",
-  "tratamiento-post-color":
-    "Pensado para sellar y proteger el color después de un servicio químico.",
+  "corte-femenino": "Si querés renovar tu estilo o mantener un corte cuidado y bien terminado.",
+  brushing: "Para una ocasión especial o si querés salir con el pelo impecable.",
+  "peinado-diario": "Reuniones, salidas o un look prolijo del día a día.",
+  "peinado-social": "Eventos, fiestas y producciones especiales.",
+  recogido: "Novias, madrinas, quince y eventos donde querés un peinado elegante.",
+  "color-global": "Si buscás cambiar tu color o cubrir canas con un resultado parejo y luminoso.",
+  "retoque-raiz": "Mantener tu color cuidado entre visitas, cuando ya creció la raíz.",
+  tonalizacion: "Refrescar el color, neutralizar tonos o sumar brillo.",
+  "bano-luz": "Si querés brillo, suavidad y un acabado sano sin cambiar tu color.",
+  mechas: "Sumar luz, dimensión y un cambio visible sin perder tu base.",
+  babylights: "Si buscás un degradé natural y sutil, con resultado luminoso.",
+  balayage: "Un degradé prolijo, pintado a mano, con mantenimiento espaciado.",
+  claritos: "Sumar reflejos suaves en zonas estratégicas del rostro.",
+  alisado: "Si querés reducir el frizz y ganar manejabilidad por varios meses.",
+  "botox-capilar": "Devolver suavidad, brillo y control del frizz al cabello castigado.",
+  "nutricion-capilar": "Cabello seco o castigado que necesita nutrientes profundos.",
+  "hidratacion-profunda": "Recuperar elasticidad y brillo cuando sentís el pelo apagado.",
+  "reparacion-capilar": "Si tu pelo tiene fibras dañadas que querés restaurar.",
+  reconstruccion: "Plan intensivo para cabellos muy castigados.",
+  "tratamiento-post-color": "Sellar y proteger el color después de un servicio químico.",
   // Maquillaje
-  "maquillaje-social": "Para eventos, fiestas y salidas donde querés un look prolijo y duradero.",
-  "maquillaje-novia": "Diseñado para tu día con prueba previa y maquillaje de larga duración.",
-  "maquillaje-evento":
-    "Recomendado para quinces, casamientos y producciones que necesitan terminación impecable.",
+  "maquillaje-social": "Eventos, fiestas y salidas donde querés un look prolijo y duradero.",
+  "maquillaje-novia": "Tu día, con prueba previa y maquillaje de larga duración.",
+  "maquillaje-evento": "Quinces, casamientos y producciones con terminación impecable.",
   // Uñas
-  semipermanente: "Para una manicura prolija y duradera, ideal para el día a día.",
-  "soft-gel": "Recomendado si buscás más resistencia y largo sin descuidar lo natural.",
-  "nail-art": "Para sumar diseño y personalidad a tu manicura.",
-  manicura: "Una manicura clásica de cuidado, prolijidad y terminación.",
+  semipermanente: "Una manicura prolija y duradera para el día a día.",
+  "soft-gel": "Si buscás más resistencia y largo sin descuidar lo natural.",
+  "nail-art": "Sumar diseño y personalidad a tu manicura.",
+  manicura: "Una manicura clásica: cuidado, prolijidad y terminación.",
 };
 
 const recommendedForByCategory: Record<CategoryId, string> = {
-  peluqueria: "Pensado para cuidar tu cabello con productos profesionales Itely Hairfashion.",
+  peluqueria: "Cabello cuidado con productos profesionales Itely Hairfashion.",
   maquillaje: "Maquillaje profesional para que te sientas cómoda y luminosa.",
   unas: "Manicura cuidada con terminación prolija y productos de calidad.",
 };
