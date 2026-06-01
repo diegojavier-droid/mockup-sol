@@ -271,11 +271,6 @@ const makeupFields = {
 const nailFields = {
   estado: contextual,
   terminacion: contextual,
-  retiro: operational({
-    Sí: option("retiro_previo", 25, { type: "fixed", amount: 3500 }),
-    No: option("sin_retiro_previo"),
-  }),
-  nailart: contextual,
 } satisfies PersonalizationModifierRules;
 
 export const bookingServiceRuleMatrix: Record<string, ServicePersonalizationRuleMatrixEntry> = {
