@@ -18,6 +18,7 @@ export function ServiceStep({
           <BookingServiceCard
             key={currentService.id}
             service={currentService}
+            categoryId={category}
             selected={service?.id === currentService.id}
             variant="wizard"
             onClick={() => onChooseService(currentService)}
