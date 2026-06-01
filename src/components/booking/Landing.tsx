@@ -380,13 +380,11 @@ function groupServices(categoryId: CategoryId, items: Service[]): ServiceGroup[]
     {
       key: "populares",
       title: "Más elegidos",
-      subtitle: "Los favoritos de nuestras clientas — un buen punto de partida.",
       items: take((service) => service.tag === "popular"),
     },
     {
       key: "color",
       title: "Color & iluminación",
-      subtitle: "Para refrescar, cubrir raíz o transformar tu color.",
       items: take(
         (service) =>
           service.tag === "color" ||
@@ -396,7 +394,6 @@ function groupServices(categoryId: CategoryId, items: Service[]): ServiceGroup[]
     {
       key: "cortes",
       title: "Cortes & peinados",
-      subtitle: "Diseño, forma y terminación para el día a día o un evento.",
       items: take((service) =>
         ["corte-fem", "brushing", "peinado-diario", "peinado-social", "recogido"].includes(
           service.id,
@@ -406,13 +403,11 @@ function groupServices(categoryId: CategoryId, items: Service[]): ServiceGroup[]
     {
       key: "tratamientos",
       title: "Tratamientos",
-      subtitle: "Para nutrir, reparar y devolverle vida al cabello.",
       items: take((service) => service.tag === "tratamiento" || service.id === "alisado"),
     },
     {
       key: "combos",
       title: "Combos boutique",
-      subtitle: "Más servicios en una sola visita, con precio cuidado.",
       items: take((service) => service.tag === "combinado"),
     },
   ];
@@ -422,7 +417,6 @@ function groupServices(categoryId: CategoryId, items: Service[]): ServiceGroup[]
     groups.push({
       key: "otros",
       title: "Otros servicios",
-      subtitle: "Más opciones disponibles en el salón.",
       items: leftover,
     });
   }
