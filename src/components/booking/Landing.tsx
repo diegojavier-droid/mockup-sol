@@ -21,7 +21,13 @@ export function Landing({
   const selectedCategoryData = selectedCategory
     ? categories.find((category) => category.id === selectedCategory)
     : null;
-  const selectedServices = selectedCategory ? services[selectedCategory] : [];
+  const rawServices = selectedCategory ? services[selectedCategory] : [];
+  // Populares primero, sin mutar el mock.
+  const selectedServices = [...rawServices].sort((a, b) => {
+    const aPop = a.tag === "popular" ? 0 : 1;
+    const bPop = b.tag === "popular" ? 0 : 1;
+    return aPop - bPop;
+  });
   const [previewService, setPreviewService] = useState<Service | null>(null);
 
   const scrollToSpecialties = () => {
