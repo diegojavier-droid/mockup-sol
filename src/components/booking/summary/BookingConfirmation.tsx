@@ -16,9 +16,6 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
         </div>
 
         <div className="space-y-5 px-8 pb-8 pt-6">
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Recibimos tu interés de reserva.
-          </p>
           <div className="rounded-2xl border border-border bg-cream/40 px-5 py-4 text-left">
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Servicio</p>
             <p className="mt-1 font-serif text-lg text-foreground">
@@ -40,8 +37,7 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
             </div>
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            El salón confirmará tu turno por WhatsApp a la brevedad. Si necesitás reprogramar,
-            también podés escribirnos por ahí.
+            Te confirmamos el turno por WhatsApp.
           </p>
           <button
             type="button"

@@ -28,7 +28,7 @@ export function CustomerDataStep({
       <div className="rounded-3xl border border-border bg-card p-5 shadow-sm lg:p-6">
         {isRecognized && (
           <div className="mb-5 rounded-2xl border border-primary/20 bg-cream px-4 py-3 text-sm font-medium text-foreground">
-            ✓ Datos recuperados automáticamente
+            ✓ Datos recuperados
           </div>
         )}
 
@@ -66,7 +66,7 @@ export function CustomerDataStep({
             label="¿Querés contarnos algo más?"
             maxLength={500}
             onChange={(value) => onChangeCustomerField("notes", value)}
-            placeholder="Podés sumar preferencias, referencias de estilo, alergias, horarios a evitar o cualquier detalle que nos ayude a prepararte mejor."
+            placeholder="Preferencias, alergias u horarios a evitar."
             value={customer.notes}
           />
         </div>

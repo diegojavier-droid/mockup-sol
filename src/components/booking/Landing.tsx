@@ -119,8 +119,7 @@ export function Landing({
             </h1>
             <div className="mt-3 h-px w-14 bg-champagne-deep/40 sm:mt-6 sm:w-16" />
             <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:mt-6 sm:text-base">
-              Tu momento de belleza empieza acá. Explorá los servicios, mirá detalles y reservá
-              cuando estés lista.
+              Explorá los servicios y reservá cuando estés lista.
             </p>
             <div className="mt-5 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
               {/* Mobile: Ver servicios primero (explorar). Desktop: Reservar primero. */}
@@ -144,11 +143,6 @@ export function Landing({
               >
                 Reservar turno
               </button>
-            </div>
-            <div className="mt-6 hidden max-w-md grid-cols-3 gap-6 border-t border-border/60 pt-5 text-left sm:grid">
-              <Stat n="Cuidado" l="artesanal" />
-              <Stat n="Itely" l="Hairfashion" />
-              <Stat n="Belleza" l="integral" />
             </div>
           </div>
 
@@ -180,7 +174,7 @@ export function Landing({
         >
           <div className="max-w-2xl">
             <h2 className="font-serif text-4xl text-foreground lg:text-5xl">
-              ¿Qué servicios te interesa conocer?
+              Nuestras especialidades
             </h2>
           </div>
 
@@ -221,7 +215,9 @@ export function Landing({
                 <span>{selectedCategoryData.emoji}</span>
                 <span>{selectedCategoryData.name}</span>
               </p>
-              <h2 className="font-serif text-4xl text-foreground lg:text-5xl">Elegí tu servicio</h2>
+              <h2 className="font-serif text-4xl text-foreground lg:text-5xl">
+                {selectedCategoryData.name}
+              </h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
                 {categoryIntro[selectedCategory]}
               </p>
@@ -229,18 +225,10 @@ export function Landing({
 
             {groupServices(selectedCategory, selectedServices).map((group, index) => (
               <div key={group.key} className={index === 0 ? "mt-6 sm:mt-8" : "mt-10 sm:mt-14"}>
-                <div className="mb-4 flex items-baseline justify-between gap-3 sm:mb-5">
-                  <div>
-                    <h3 className="font-serif text-2xl text-foreground sm:text-3xl">
-                      {group.title}
-                    </h3>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
-                      {group.subtitle}
-                    </p>
-                  </div>
-                  <span className="hidden shrink-0 rounded-full border border-border bg-card px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:inline-flex">
-                    {group.items.length} opciones
-                  </span>
+                <div className="mb-4 sm:mb-5">
+                  <h3 className="font-serif text-2xl text-foreground sm:text-3xl">
+                    {group.title}
+                  </h3>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {group.items.map((service) => (
@@ -262,15 +250,9 @@ export function Landing({
               <div className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-cream/60 px-5 py-7 shadow-[0_30px_60px_-50px_rgba(120,90,60,0.45)] sm:px-8 sm:py-9">
                 <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-champagne/30 blur-2xl" />
                 <div className="relative">
-                  <p className="font-serif text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                    Seguí explorando
-                  </p>
-                  <h3 className="mt-2 font-serif text-2xl text-foreground sm:text-3xl">
-                    ¿Querés ver otra especialidad?
+                  <h3 className="font-serif text-2xl text-foreground sm:text-3xl">
+                    Ver otra especialidad
                   </h3>
-                  <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
-                    Tomate tu tiempo. Cambiá de área o volvé al inicio cuando quieras.
-                  </p>
 
                   <div className="mt-5 grid gap-2.5 sm:grid-cols-3 sm:gap-3">
                     {categories
@@ -356,14 +338,6 @@ export function Landing({
   );
 }
 
-function Stat({ n, l }: { n: string; l: string }) {
-  return (
-    <div>
-      <p className="font-serif text-2xl text-foreground">{n}</p>
-      <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{l}</p>
-    </div>
-  );
-}
 
 const categoryAccent: Record<CategoryId, string> = {
   peluqueria: "bg-cream/80",
@@ -372,16 +346,14 @@ const categoryAccent: Record<CategoryId, string> = {
 };
 
 const categoryIntro: Record<CategoryId, string> = {
-  peluqueria:
-    "Desde un corte simple hasta una transformación completa. Tocá una tarjeta para ver qué incluye.",
-  maquillaje: "Para tu casamiento, una fiesta o un evento especial. Cada look se diseña con vos.",
-  unas: "Manicura, esmaltado y diseños. Para verte prolija o lucir un detalle.",
+  peluqueria: "Cortes, color, peinados y tratamientos.",
+  maquillaje: "Looks de novia, evento y producción.",
+  unas: "Manicura, semipermanente y diseño.",
 };
 
 type ServiceGroup = {
   key: string;
   title: string;
-  subtitle: string;
   items: Service[];
 };
 
@@ -391,7 +363,6 @@ function groupServices(categoryId: CategoryId, items: Service[]): ServiceGroup[]
       {
         key: "all",
         title: "Todos los servicios",
-        subtitle: "Tocá una tarjeta para ver detalles y reservar.",
         items,
       },
     ];
@@ -408,13 +379,11 @@ function groupServices(categoryId: CategoryId, items: Service[]): ServiceGroup[]
     {
       key: "populares",
       title: "Más elegidos",
-      subtitle: "Los favoritos de nuestras clientas — un buen punto de partida.",
       items: take((service) => service.tag === "popular"),
     },
     {
       key: "color",
       title: "Color & iluminación",
-      subtitle: "Para refrescar, cubrir raíz o transformar tu color.",
       items: take(
         (service) =>
           service.tag === "color" ||
@@ -424,7 +393,6 @@ function groupServices(categoryId: CategoryId, items: Service[]): ServiceGroup[]
     {
       key: "cortes",
       title: "Cortes & peinados",
-      subtitle: "Diseño, forma y terminación para el día a día o un evento.",
       items: take((service) =>
         ["corte-fem", "brushing", "peinado-diario", "peinado-social", "recogido"].includes(
           service.id,
@@ -434,13 +402,11 @@ function groupServices(categoryId: CategoryId, items: Service[]): ServiceGroup[]
     {
       key: "tratamientos",
       title: "Tratamientos",
-      subtitle: "Para nutrir, reparar y devolverle vida al cabello.",
       items: take((service) => service.tag === "tratamiento" || service.id === "alisado"),
     },
     {
       key: "combos",
       title: "Combos boutique",
-      subtitle: "Más servicios en una sola visita, con precio cuidado.",
       items: take((service) => service.tag === "combinado"),
     },
   ];
@@ -450,7 +416,6 @@ function groupServices(categoryId: CategoryId, items: Service[]): ServiceGroup[]
     groups.push({
       key: "otros",
       title: "Otros servicios",
-      subtitle: "Más opciones disponibles en el salón.",
       items: leftover,
     });
   }
