@@ -89,6 +89,7 @@ export function ServiceDetailsDrawer({
   const categoryExtras = extras[categoryId]?.slice(0, 3) ?? [];
   const recommendedFor =
     recommendedForByServiceId[service.id] ?? recommendedForByCategory[categoryId];
+  const imageSrc = service.imageUrl ?? serviceImages[service.id];
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -102,11 +103,14 @@ export function ServiceDetailsDrawer({
           <div className="overflow-y-auto">
             {/* Bloque visual superior */}
             <div className="relative mx-4 mt-2 overflow-hidden rounded-2xl border border-border/60">
-              <div className="aspect-[16/9] w-full">
-                {service.imageUrl ? (
+              <div className="aspect-[16/9] w-full md:aspect-auto md:h-44 lg:h-52">
+                {imageSrc ? (
                   <img
-                    src={service.imageUrl}
+                    src={imageSrc}
                     alt={service.name}
+                    loading="lazy"
+                    width={1280}
+                    height={736}
                     className="h-full w-full object-cover"
                   />
                 ) : (
