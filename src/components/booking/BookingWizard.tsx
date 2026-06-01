@@ -85,7 +85,7 @@ export function BookingWizard({
     <div className="min-h-svh overflow-x-hidden bg-background">
       <BookingHeader onBack={wizard.goBack} />
 
-      <main className="mx-auto max-w-6xl px-4 pb-[calc(env(safe-area-inset-bottom)+15rem)] pt-3 lg:px-8 lg:pb-28 lg:pt-4">
+      <main className={`mx-auto max-w-6xl px-4 ${wizard.step === BOOKING_STEP_INDEX.review ? "pb-[calc(env(safe-area-inset-bottom)+7rem)]" : "pb-[calc(env(safe-area-inset-bottom)+15rem)]"} pt-3 lg:px-8 lg:pb-28 lg:pt-4`}>
         <div className="mb-4 lg:mb-10">
           <Stepper current={wizard.step} labels={[...BOOKING_STEPS]} total={BOOKING_STEPS.length} />
         </div>
