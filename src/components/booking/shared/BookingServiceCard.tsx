@@ -150,6 +150,21 @@ export function BookingServiceCard({
   );
 }
 
+function intentLabel(tag: NonNullable<Service["tag"]>): string {
+  switch (tag) {
+    case "color":
+      return "Color";
+    case "tratamiento":
+      return "Cuidado";
+    case "combinado":
+      return "Combo";
+    case "evento":
+      return "Evento";
+    default:
+      return "";
+  }
+}
+
 function ServiceTag({ service }: { service: Service }) {
   if (service.tag !== "popular") {
     return null;
