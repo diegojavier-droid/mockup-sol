@@ -12,7 +12,7 @@ export function ExtrasStep({
   onToggleExtra: (extra: Extra) => void;
 }) {
   return (
-    <StepShell title="¿Sumamos algún extra?" subtitle="Opcional. Podés saltear este paso.">
+    <StepShell title="¿Sumamos algún extra?">
       <div className="grid gap-3 sm:grid-cols-2">
         {extras[category].map((extra) => (
           <ExtraCard

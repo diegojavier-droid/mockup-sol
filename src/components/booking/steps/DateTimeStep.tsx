@@ -67,10 +67,7 @@ export function DateTimeStep({
   return (
     <StepShell title="¿Cuándo te gustaría venir?">
       <div>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-foreground">Elegí una fecha</p>
-          </div>
+        <div className="flex items-center justify-end gap-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -157,7 +154,7 @@ export function DateTimeStep({
 
       <div className="mt-8">
         <div className="mb-3">
-          <p className="text-sm font-medium text-foreground">Horarios disponibles</p>
+          <p className="text-sm font-medium text-foreground">Horarios</p>
           {date && <p className="mt-1 text-xs text-muted-foreground">{formatDateLabel(date)}</p>}
         </div>
         {date && selectedSlots.length > 0 ? (

@@ -46,8 +46,7 @@ export function SummaryPanel({
     <aside className="sticky top-28 overflow-hidden rounded-3xl border border-border bg-card shadow-[0_1px_0_0_rgba(0,0,0,0.02),0_30px_50px_-35px_rgba(120,90,60,0.25)]">
       <div className="border-b border-border/70 bg-gradient-to-b from-cream/70 to-card px-6 pb-5 pt-6">
         <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Tu reserva</p>
-        <h3 className="mt-1 font-serif text-2xl text-foreground">Sol Mai</h3>
-        <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-foreground/60">
+        <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-foreground/60">
           <span className="h-1 w-1 rounded-full bg-champagne-deep" /> Santa Fe Capital
         </div>
       </div>
@@ -55,9 +54,8 @@ export function SummaryPanel({
       <div className="space-y-4 px-6 py-5 text-sm">
         {isEmpty ? (
           <div className="rounded-2xl border border-dashed border-border bg-cream/40 p-5 text-center">
-            <p className="font-serif text-base text-foreground">Empezá tu reserva</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              A medida que elijas, tu resumen se completa acá.
+            <p className="text-xs text-muted-foreground">
+              Tu resumen se arma a medida que elegís.
             </p>
           </div>
         ) : (
