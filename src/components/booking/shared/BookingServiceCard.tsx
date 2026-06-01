@@ -61,7 +61,12 @@ export function BookingServiceCard({
           {showAction ? (
             <span className="mt-4 inline-flex items-center justify-between gap-2 rounded-full border border-border bg-cream/60 px-4 py-2.5 font-serif text-sm text-foreground transition-colors group-hover:border-champagne-deep group-hover:bg-cream">
               {actionLabel}
-              <span aria-hidden="true" className="text-champagne-deep transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+              <span
+                aria-hidden="true"
+                className="text-champagne-deep transition-transform duration-200 group-hover:translate-x-0.5"
+              >
+                →
+              </span>
             </span>
           ) : null}
         </div>
