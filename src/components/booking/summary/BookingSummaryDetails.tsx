@@ -4,7 +4,7 @@ import type { CustomerFormState } from "../steps/CustomerDataStep";
 import type { SummaryData } from "../SummaryPanel";
 
 const visibleFieldLabels: Record<string, string> = {
-  quimicos: "Tratamientos o procesos recientes",
+  quimicos: "Tratamientos previos",
 };
 
 export function BookingSummaryDetails({

@@ -34,7 +34,7 @@ const secondaryGroupTitles = {
 } satisfies Record<Exclude<FieldGroup, "hair">, string>;
 
 const visibleFieldLabels: Record<string, string> = {
-  quimicos: "Tratamientos o procesos recientes",
+  quimicos: "Tratamientos previos",
 };
 
 function groupPersonalizationFields(fields: PersonalizationField[]) {
