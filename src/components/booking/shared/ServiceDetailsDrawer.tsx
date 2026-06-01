@@ -89,7 +89,7 @@ export function ServiceDetailsDrawer({
           <div className="overflow-y-auto">
             {/* Bloque visual superior */}
             <div className="relative mx-4 mt-2 overflow-hidden rounded-2xl border border-border/60">
-              <div className="aspect-[16/9] w-full md:aspect-auto md:h-44 lg:h-52">
+              <div className="h-32 w-full sm:h-36 md:h-32 lg:h-36">
                 {imageSrc ? (
                   <img
                     src={imageSrc}
