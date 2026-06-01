@@ -75,7 +75,7 @@ export function ServiceDetailsDrawer({
   const categoryExtras = extras[categoryId]?.slice(0, 3) ?? [];
   const recommendedFor =
     recommendedForByServiceId[service.id] ?? recommendedForByCategory[categoryId];
-  const imageSrc = service.imageUrl ?? serviceImages[service.id];
+  const imageSrc = getServiceImage(service.id, categoryId, service.imageUrl);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
