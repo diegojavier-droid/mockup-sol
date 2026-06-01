@@ -228,7 +228,7 @@ export function PersonalizationStep({
               <span className="flex flex-col">
                 <span className="font-medium">Cuidados y antecedentes</span>
                 <span className="text-xs text-muted-foreground">
-                  Opcional. Nos ayuda a cuidarte mejor.
+                  Necesario para Sol Mai. Nos ayuda a cuidar tu cabello y preparar el servicio.
                 </span>
               </span>
               <span
