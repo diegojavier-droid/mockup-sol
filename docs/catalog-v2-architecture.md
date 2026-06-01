@@ -307,6 +307,8 @@ Servicios públicos sugeridos:
 - Maquillaje;
 - Depilación.
 
+Depilación queda contemplada como línea/categoría pública futura, pero no debe habilitarse como servicio reservable hasta validar con Sol Mai duración, capacidad operativa, agenda, buffers y preguntas previas necesarias.
+
 Ejemplo público para tratamiento:
 
 | Campo | Valor público sugerido |
@@ -538,6 +540,19 @@ Pendientes antes de cargar un catálogo real definitivo:
 - qué servicios se muestran como “desde”;
 - qué servicios requieren consulta;
 - qué productos o líneas pueden mostrarse solo como respaldo profesional o recomendación, sin convertirse en opciones obligatorias de reserva.
+
+### Preguntas pendientes sobre Depilación
+
+Antes de habilitar Depilación como reservable, Sol Mai debe confirmar:
+
+- duración de rostro completo;
+- duración de cejas;
+- duración de bigote;
+- duración de bozo/bigote y mentón;
+- capacidad simultánea;
+- si usa los mismos horarios generales del salón o una agenda propia;
+- buffer necesario entre turnos;
+- si requiere preguntas previas sobre piel sensible, alergias, medicación, irritación o tratamiento facial reciente.
 
 ## 15. Riesgos
 

@@ -37,10 +37,14 @@ Implicancias:
 - Para pasar a `confirmed_returning_customer` sin OTP/login, debe existir doble coincidencia fuerte y no ambigua: WhatsApp normalizado + email coincidente.
 - Si la coincidencia no es suficientemente confiable, se debe pedir email, confirmar por un canal futuro o continuar como reserva nueva; no se debe asumir identidad ni prellenar datos sensibles.
 
-Decisión sobre email en MVP:
+Decisión sobre contacto e identidad en MVP:
 
-- El email **no es obligatorio** para reservar.
+- El **WhatsApp es obligatorio** para crear una reserva normal, porque es el canal operativo principal de contacto y seguimiento del turno.
+- El email **no es obligatorio** para reservar; para una reserva normal es opcional.
 - El email **sí es necesario** para recuperar datos o repetir el último servicio mientras no existan OTP, login o link mágico.
+- WhatsApp solo, aunque coincida con un perfil existente, clasifica como `possible_returning_customer`.
+- WhatsApp normalizado + email coincidentes con un perfil único no ambiguo clasifica como `confirmed_returning_customer`.
+- Sin doble coincidencia WhatsApp normalizado + email, no se debe mostrar último servicio, historial, datos prellenados sensibles ni información interna.
 - Si la clienta no quiere dar email, puede continuar como reserva nueva con WhatsApp obligatorio y email opcional.
 
 ## 3. Estados funcionales
