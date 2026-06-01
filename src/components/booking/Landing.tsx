@@ -22,6 +22,7 @@ export function Landing({
     ? categories.find((category) => category.id === selectedCategory)
     : null;
   const selectedServices = selectedCategory ? services[selectedCategory] : [];
+  const [previewService, setPreviewService] = useState<Service | null>(null);
 
   const scrollToSpecialties = () => {
     window.requestAnimationFrame(() => {
