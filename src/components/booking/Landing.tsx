@@ -226,9 +226,7 @@ export function Landing({
             {groupServices(selectedCategory, selectedServices).map((group, index) => (
               <div key={group.key} className={index === 0 ? "mt-6 sm:mt-8" : "mt-10 sm:mt-14"}>
                 <div className="mb-4 sm:mb-5">
-                  <h3 className="font-serif text-2xl text-foreground sm:text-3xl">
-                    {group.title}
-                  </h3>
+                  <h3 className="font-serif text-2xl text-foreground sm:text-3xl">{group.title}</h3>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {group.items.map((service) => (
@@ -337,7 +335,6 @@ export function Landing({
     </div>
   );
 }
-
 
 const categoryAccent: Record<CategoryId, string> = {
   peluqueria: "bg-cream/80",
