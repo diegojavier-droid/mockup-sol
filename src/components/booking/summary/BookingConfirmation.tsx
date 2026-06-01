@@ -9,9 +9,11 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
             ✓
           </div>
           <p className="mt-5 text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-            Reserva enviada
+            Solicitud preparada
           </p>
-          <h2 className="mt-2 font-serif text-4xl leading-tight text-foreground">¡Gracias!</h2>
+          <h2 className="mt-2 font-serif text-4xl leading-tight text-foreground">
+            Pendiente de seña
+          </h2>
           <div className="mx-auto mt-4 h-px w-10 bg-champagne-deep/40" />
         </div>
 
@@ -37,7 +39,7 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
             </div>
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Te confirmamos el turno por WhatsApp.
+            Tu turno queda reservado cuando se acredita la seña. El saldo se abona en el salón.
           </p>
           <button
             type="button"

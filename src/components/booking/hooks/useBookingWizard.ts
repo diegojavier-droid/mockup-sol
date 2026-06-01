@@ -112,10 +112,13 @@ export function buildBookingRequestPayload({
       durationMinutes: totals.durationMinutes,
       priceAmount: totals.priceAmount,
       priceIsEstimated: totals.priceIsEstimated,
+      depositAmount: totals.depositAmount,
+      remainingAmount: totals.remainingAmount,
+      depositRate: totals.depositRate,
       operationalBufferMinutes: totals.operationalBufferMinutes,
       blockedDurationMinutes: totals.blockedDurationMinutes,
     },
-    status: "requested",
+    status: "pending_payment",
   };
 }
 
@@ -244,7 +247,7 @@ export function useBookingWizard(
   });
   const [customerTouched, setCustomerTouched] = useState<CustomerTouched>({});
   const [isCustomerRecognized, setIsCustomerRecognized] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
+  const [paymentPending, setPaymentPending] = useState(false);
   const [bookingRequestError, setBookingRequestError] = useState<string | null>(null);
 
   const availabilityRequest = useMemo(() => {
@@ -397,7 +400,7 @@ export function useBookingWizard(
 
     const bookingRequestPayload: BookingRequestPayloadInput = payloadResult.data;
     console.log("Booking request payload", bookingRequestPayload);
-    setConfirmed(true);
+    setPaymentPending(true);
   };
 
   const next = () => setStep((currentStep) => clampWizardStep(currentStep + 1));
@@ -435,7 +438,7 @@ export function useBookingWizard(
     chooseService,
     chosenExtras,
     confirmBookingRequest,
-    confirmed,
+    paymentPending,
     customer,
     customerErrors,
     data,

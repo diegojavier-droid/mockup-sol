@@ -20,7 +20,7 @@ export function SummaryPanel({
   variant?: "side" | "bottom";
 }) {
   const cat = categories.find((category) => category.id === data.category);
-  const { dur, price } = computeTotals(data);
+  const { dur, price, depositPrice, remainingPrice } = computeTotals(data);
   const isEmpty = !data.category && !data.service;
 
   if (variant === "bottom") {
@@ -81,12 +81,26 @@ export function SummaryPanel({
         </div>
         <div className="flex items-baseline justify-between">
           <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-            Precio estimado
+            Total estimado
           </span>
           <span className="font-serif text-2xl text-foreground">{price}</span>
         </div>
+        <div className="space-y-1 border-t border-border/70 pt-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Seña 20%
+            </span>
+            <span className="font-serif text-base text-foreground">{depositPrice}</span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Saldo salón
+            </span>
+            <span className="font-serif text-base text-foreground">{remainingPrice}</span>
+          </div>
+        </div>
         <p className="pt-2 text-[11px] leading-relaxed text-muted-foreground">
-          Valores orientativos. El salón confirma el turno por WhatsApp.
+          Valores orientativos. Tu turno queda reservado cuando se acredita la seña.
         </p>
       </div>
     </aside>

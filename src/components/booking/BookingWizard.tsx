@@ -79,7 +79,7 @@ export function BookingWizard({
     return () => window.cancelAnimationFrame(animationFrame);
   }, [wizard.step]);
 
-  if (wizard.confirmed) return <BookingConfirmation data={wizard.data} onClose={onExit} />;
+  if (wizard.paymentPending) return <BookingConfirmation data={wizard.data} onClose={onExit} />;
 
   return (
     <div className="min-h-svh overflow-x-hidden bg-background">
