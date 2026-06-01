@@ -195,6 +195,7 @@ export function Landing({
                 <BookingServiceCard
                   key={`${selectedCategory}-${service.id}`}
                   service={service}
+                  categoryId={selectedCategory}
                   variant="public"
                   actionLabel="Ver servicio"
                   onClick={() => setPreviewService(service)}
