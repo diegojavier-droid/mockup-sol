@@ -7,8 +7,8 @@ const ADDITIONAL_COMMENTS_MAX_LENGTH = 500;
 
 const fieldGroupIds = {
   hair: ["largo", "densidad", "tipo", "estado", "terminacion", "evento", "horario"],
-  history: ["quimicos", "alergias", "retiro", "prueba"],
-  goal: ["objetivo", "estilo", "nailart"],
+  history: ["quimicos", "alergias", "prueba"],
+  goal: ["objetivo", "estilo"],
 };
 
 type FieldGroup = keyof typeof fieldGroupIds;

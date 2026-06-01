@@ -312,6 +312,11 @@ export function useBookingWizard(
   const chooseService = (selectedService: Service) => {
     setService(selectedService);
     setChosenExtras([]);
+    setStep(
+      category && personalizationFields[category].length > 0
+        ? BOOKING_STEP_INDEX.details
+        : BOOKING_STEP_INDEX.extras,
+    );
   };
 
   const choosePersonalization = (fieldId: string, option: string) => {
