@@ -297,3 +297,98 @@ function Stat({ n, l }: { n: string; l: string }) {
     </div>
   );
 }
+
+const categoryAccent: Record<CategoryId, string> = {
+  peluqueria: "bg-cream/80",
+  maquillaje: "bg-sand/60",
+  unas: "bg-blonde/50",
+};
+
+const categoryIntro: Record<CategoryId, string> = {
+  peluqueria:
+    "Desde un corte simple hasta una transformación completa. Tocá una tarjeta para ver qué incluye.",
+  maquillaje:
+    "Para tu casamiento, una fiesta o un evento especial. Cada look se diseña con vos.",
+  unas: "Manicura, esmaltado y diseños. Para verte prolija o lucir un detalle.",
+};
+
+type ServiceGroup = {
+  key: string;
+  title: string;
+  subtitle: string;
+  items: Service[];
+};
+
+function groupServices(categoryId: CategoryId, items: Service[]): ServiceGroup[] {
+  if (categoryId !== "peluqueria") {
+    return [
+      {
+        key: "all",
+        title: "Todos los servicios",
+        subtitle: "Tocá una tarjeta para ver detalles y reservar.",
+        items,
+      },
+    ];
+  }
+
+  const used = new Set<string>();
+  const take = (predicate: (service: Service) => boolean): Service[] => {
+    const picked = items.filter((service) => !used.has(service.id) && predicate(service));
+    picked.forEach((service) => used.add(service.id));
+    return picked;
+  };
+
+  const groups: ServiceGroup[] = [
+    {
+      key: "populares",
+      title: "Más elegidos",
+      subtitle: "Los favoritos de nuestras clientas — un buen punto de partida.",
+      items: take((service) => service.tag === "popular"),
+    },
+    {
+      key: "color",
+      title: "Color & iluminación",
+      subtitle: "Para refrescar, cubrir raíz o transformar tu color.",
+      items: take(
+        (service) =>
+          service.tag === "color" ||
+          ["mechas", "babylights", "balayage", "claritos"].includes(service.id),
+      ),
+    },
+    {
+      key: "cortes",
+      title: "Cortes & peinados",
+      subtitle: "Diseño, forma y terminación para el día a día o un evento.",
+      items: take((service) =>
+        ["corte-fem", "brushing", "peinado-diario", "peinado-social", "recogido"].includes(
+          service.id,
+        ),
+      ),
+    },
+    {
+      key: "tratamientos",
+      title: "Tratamientos",
+      subtitle: "Para nutrir, reparar y devolverle vida al cabello.",
+      items: take((service) => service.tag === "tratamiento" || service.id === "alisado"),
+    },
+    {
+      key: "combos",
+      title: "Combos boutique",
+      subtitle: "Más servicios en una sola visita, con precio cuidado.",
+      items: take((service) => service.tag === "combinado"),
+    },
+  ];
+
+  const leftover = take(() => true);
+  if (leftover.length > 0) {
+    groups.push({
+      key: "otros",
+      title: "Otros servicios",
+      subtitle: "Más opciones disponibles en el salón.",
+      items: leftover,
+    });
+  }
+
+  return groups.filter((group) => group.items.length > 0);
+}
+
