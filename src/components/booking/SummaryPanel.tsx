@@ -54,9 +54,7 @@ export function SummaryPanel({
       <div className="space-y-4 px-6 py-5 text-sm">
         {isEmpty ? (
           <div className="rounded-2xl border border-dashed border-border bg-cream/40 p-5 text-center">
-            <p className="text-xs text-muted-foreground">
-              Tu resumen se arma a medida que elegís.
-            </p>
+            <p className="text-xs text-muted-foreground">Tu resumen se arma a medida que elegís.</p>
           </div>
         ) : (
           <>
