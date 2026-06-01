@@ -168,6 +168,7 @@ export function BookingWizard({
 
       <WizardNavigation
         canNext={wizard.canNext}
+        canRequestCustomerRequiredFeedback={wizard.canRequestCustomerRequiredFeedback}
         data={wizard.data}
         onBack={wizard.goBack}
         onNext={wizard.goNext}
