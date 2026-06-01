@@ -21,7 +21,13 @@ export function Landing({
   const selectedCategoryData = selectedCategory
     ? categories.find((category) => category.id === selectedCategory)
     : null;
-  const selectedServices = selectedCategory ? services[selectedCategory] : [];
+  const rawServices = selectedCategory ? services[selectedCategory] : [];
+  // Populares primero, sin mutar el mock.
+  const selectedServices = [...rawServices].sort((a, b) => {
+    const aPop = a.tag === "popular" ? 0 : 1;
+    const bPop = b.tag === "popular" ? 0 : 1;
+    return aPop - bPop;
+  });
   const [previewService, setPreviewService] = useState<Service | null>(null);
 
   const scrollToSpecialties = () => {
@@ -78,20 +84,53 @@ export function Landing({
       </header>
 
       <main className="mx-auto max-w-6xl px-5 lg:px-8">
-        <section className="grid min-h-[calc(100svh-4.5rem)] items-center gap-7 pb-14 pt-2 sm:min-h-0 sm:gap-10 sm:pb-12 sm:pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-20 lg:pt-12">
+        <section className="grid items-center gap-7 pb-14 pt-2 sm:gap-10 sm:pb-12 sm:pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-20 lg:pt-12">
+          {/* Hero visual mobile — boutique, cálido */}
+          <div className="relative -mx-1 sm:hidden">
+            <div className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-cream shadow-[0_30px_60px_-40px_rgba(120,90,60,0.45)]">
+              <img
+                src={heroImage}
+                alt="Interior cálido y luminoso de Sol Mai Peluquería"
+                width={1024}
+                height={1024}
+                className="h-[260px] w-full object-cover"
+              />
+              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-cream/95 via-cream/40 to-transparent" />
+              <span className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/85 px-3 py-1.5 text-[9px] uppercase tracking-[0.2em] text-foreground/70 backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
+                Santa Fe Capital
+              </span>
+              <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-3">
+                <p className="font-serif text-xs italic text-foreground/70">✦ Itely Hairfashion</p>
+                <p className="rounded-full border border-border/60 bg-card/90 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground/70 backdrop-blur">
+                  Mañana · 11:30
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-[9px] uppercase tracking-[0.2em] text-foreground/70 backdrop-blur sm:text-[10px] sm:tracking-[0.22em]">
+            <span className="hidden items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] text-foreground/70 backdrop-blur sm:inline-flex">
               <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
               Santa Fe Capital
             </span>
-            <h1 className="mt-3 font-serif text-[2.55rem] leading-[1.02] text-foreground sm:mt-6 sm:text-6xl lg:text-[4.5rem]">
+            <h1 className="font-serif text-[2.55rem] leading-[1.02] text-foreground sm:mt-6 sm:text-6xl lg:text-[4.5rem]">
               Belleza <em className="not-italic text-champagne-deep">a tu medida.</em>
             </h1>
             <div className="mt-3 h-px w-14 bg-champagne-deep/40 sm:mt-6 sm:w-16" />
             <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:mt-6 sm:text-base">
-              Tu momento de belleza empieza acá.
+              Tu momento de belleza empieza acá. Explorá los servicios, mirá detalles y reservá
+              cuando estés lista.
             </p>
             <div className="mt-5 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
+              {/* Mobile: Ver servicios primero (explorar). Desktop: Reservar primero. */}
+              <button
+                type="button"
+                onClick={scrollToSpecialties}
+                className="order-1 rounded-full bg-primary px-7 py-3 font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] hover:shadow-[0_22px_44px_-18px_rgba(80,55,30,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:order-2 sm:border sm:border-border sm:bg-card/80 sm:text-foreground sm:shadow-none sm:hover:bg-card"
+              >
+                Ver servicios
+              </button>
               <button
                 type="button"
                 onClick={() =>
@@ -101,16 +140,9 @@ export function Landing({
                     returnTarget: { type: "landing" },
                   })
                 }
-                className="rounded-full bg-primary px-7 py-3 font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] hover:shadow-[0_22px_44px_-18px_rgba(80,55,30,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="order-2 rounded-full border border-border bg-card/80 px-7 py-3 font-serif text-base text-foreground transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:order-1 sm:border-0 sm:bg-primary sm:text-primary-foreground sm:shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] sm:hover:translate-y-[-1px] sm:hover:shadow-[0_22px_44px_-18px_rgba(80,55,30,0.55)]"
               >
                 Reservar turno
-              </button>
-              <button
-                type="button"
-                onClick={scrollToSpecialties}
-                className="rounded-full border border-border bg-card/80 px-7 py-3 font-serif text-base text-foreground transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              >
-                Ver servicios
               </button>
             </div>
             <div className="mt-6 hidden max-w-md grid-cols-3 gap-6 border-t border-border/60 pt-5 text-left sm:grid">

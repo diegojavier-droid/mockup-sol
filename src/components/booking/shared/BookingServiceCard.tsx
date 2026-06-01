@@ -27,48 +27,68 @@ export function BookingServiceCard({
   const imageSrc = getServiceImage(service.id, categoryId, service.imageUrl);
 
   if (variant === "public") {
-    return (
-      <article
-        className={cn(
-          "flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-border bg-card shadow-[0_18px_38px_-34px_rgba(120,90,60,0.35)] transition-all hover:border-champagne hover:shadow-[0_24px_44px_-36px_rgba(120,90,60,0.45)]",
-          selected && "border-champagne-deep ring-1 ring-champagne-deep/30",
-          className,
-        )}
-      >
-        <div className="aspect-[16/10] w-full overflow-hidden bg-cream">
+    const content = (
+      <>
+        <div className="relative aspect-[16/10] w-full overflow-hidden bg-cream">
           <img
             src={imageSrc}
             alt={service.name}
             loading="lazy"
             width={1280}
             height={736}
-            className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
+            className="h-full w-full object-cover transition-transform duration-[600ms] ease-out group-hover:scale-[1.04] group-active:scale-[1.02]"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-foreground/15 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          {service.tag === "popular" ? (
+            <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-champagne/60 bg-card/90 px-2.5 py-1 text-[9px] uppercase tracking-[0.16em] text-champagne-deep backdrop-blur">
+              <span className="h-1 w-1 rounded-full bg-champagne-deep" />
+              Popular
+            </span>
+          ) : null}
+          <span className="absolute right-3 bottom-3 rounded-full border border-border/60 bg-card/90 px-3 py-1 font-serif text-sm text-foreground backdrop-blur">
+            {service.price}
+          </span>
         </div>
         <div className="flex flex-1 flex-col p-4">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="font-serif text-xl leading-tight text-foreground">{service.name}</h3>
-            <ServiceTag service={service} publicVariant />
-          </div>
-
-          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+          <h3 className="font-serif text-xl leading-tight text-foreground">{service.name}</h3>
+          <p className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+            <span className="h-1 w-1 rounded-full bg-champagne/70" />
+            {service.duration}
+          </p>
+          <p className="mt-2.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
             {service.desc}
           </p>
-
-          <ServiceMeta service={service} className="mt-3 text-sm" />
-
           {showAction ? (
-            <button
-              type="button"
-              onClick={onClick}
-              className="mt-4 rounded-full bg-primary px-5 py-2.5 font-serif text-base text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-              aria-label={`${actionLabel} ${service.name}`}
-            >
+            <span className="mt-4 inline-flex items-center justify-between gap-2 rounded-full border border-border bg-cream/60 px-4 py-2.5 font-serif text-sm text-foreground transition-colors group-hover:border-champagne-deep group-hover:bg-cream">
               {actionLabel}
-            </button>
+              <span
+                aria-hidden="true"
+                className="text-champagne-deep transition-transform duration-200 group-hover:translate-x-0.5"
+              >
+                →
+              </span>
+            </span>
           ) : null}
         </div>
-      </article>
+      </>
+    );
+
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={`${actionLabel}: ${service.name}`}
+        className={cn(
+          "group flex h-full w-full flex-col overflow-hidden rounded-[1.35rem] border border-border bg-card text-left shadow-[0_18px_38px_-34px_rgba(120,90,60,0.35)] transition-all duration-300",
+          "hover:-translate-y-0.5 hover:border-champagne hover:shadow-[0_28px_50px_-32px_rgba(120,90,60,0.5)]",
+          "active:translate-y-0 active:scale-[0.995] active:shadow-[0_14px_28px_-22px_rgba(120,90,60,0.45)]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          selected && "border-champagne-deep ring-1 ring-champagne-deep/30",
+          className,
+        )}
+      >
+        {content}
+      </button>
     );
   }
 
@@ -122,23 +142,9 @@ export function BookingServiceCard({
   );
 }
 
-function ServiceTag({
-  service,
-  publicVariant = false,
-}: {
-  service: Service;
-  publicVariant?: boolean;
-}) {
+function ServiceTag({ service }: { service: Service }) {
   if (service.tag !== "popular") {
     return null;
-  }
-
-  if (publicVariant) {
-    return (
-      <span className="shrink-0 rounded-full border border-champagne/50 bg-cream px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-champagne-deep">
-        Popular
-      </span>
-    );
   }
 
   return (
