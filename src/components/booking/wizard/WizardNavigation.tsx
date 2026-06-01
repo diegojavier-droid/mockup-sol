@@ -20,7 +20,7 @@ export function WizardNavigation({
   const isFinalStep = step === BOOKING_STEPS.length - 1;
   const showNextButton = !isCategoryStep && !isFinalStep;
   const showSummary = Boolean(data.service);
-  const showMobileSummary = showSummary && !isMobileInputFocused;
+  const showMobileSummary = showSummary && !isMobileInputFocused && !isFinalStep;
 
   return (
     <>
