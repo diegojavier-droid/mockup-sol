@@ -7,6 +7,21 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import corteFemeninoImg from "@/assets/services/corte-femenino.jpg";
+import balayageImg from "@/assets/services/balayage.jpg";
+import maquillajeSocialImg from "@/assets/services/maquillaje-social.jpg";
+import maquillajeFiestaImg from "@/assets/services/maquillaje-fiesta.jpg";
+import esmaltadoSemipermanenteImg from "@/assets/services/esmaltado-semipermanente.jpg";
+import softGelImg from "@/assets/services/soft-gel.jpg";
+
+const serviceImages: Record<string, string> = {
+  "corte-fem": corteFemeninoImg,
+  balayage: balayageImg,
+  "mk-social": maquillajeSocialImg,
+  "mk-fiesta": maquillajeFiestaImg,
+  semi: esmaltadoSemipermanenteImg,
+  softgel: softGelImg,
+};
 
 type ServiceDetailsDrawerProps = {
   service: Service | null;
