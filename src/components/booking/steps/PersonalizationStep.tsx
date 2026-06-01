@@ -222,7 +222,7 @@ export function PersonalizationStep({
         {buckets.history.length > 0 && (
           <details
             className="group border-t border-border/60"
-            open={buckets.history.some((field) => Boolean(personal[field.id]))}
+            open={historyDefaultOpen || undefined}
           >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm text-foreground lg:px-6">
               <span className="flex flex-col">
