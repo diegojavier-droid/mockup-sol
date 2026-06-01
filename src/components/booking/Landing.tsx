@@ -1,8 +1,9 @@
-import { useEffect } from "react";
-import { categories, services, type CategoryId } from "@/lib/booking-data";
+import { useEffect, useState } from "react";
+import { categories, services, type CategoryId, type Service } from "@/lib/booking-data";
 import type { StartBookingInput } from "./booking-navigation-types";
 import { BookingCategoryCard } from "./shared/BookingCategoryCard";
 import { BookingServiceCard } from "./shared/BookingServiceCard";
+import { ServiceDetailsDrawer } from "./shared/ServiceDetailsDrawer";
 import heroImage from "@/assets/sol-mai-hero.jpg";
 import solMaiLogo from "@/assets/sol-mai-logo-header.png";
 
@@ -21,6 +22,7 @@ export function Landing({
     ? categories.find((category) => category.id === selectedCategory)
     : null;
   const selectedServices = selectedCategory ? services[selectedCategory] : [];
+  const [previewService, setPreviewService] = useState<Service | null>(null);
 
   const scrollToSpecialties = () => {
     window.requestAnimationFrame(() => {
@@ -194,22 +196,35 @@ export function Landing({
                   key={`${selectedCategory}-${service.id}`}
                   service={service}
                   variant="public"
-                  onClick={() =>
-                    onStart({
-                      entryPoint: "public-catalog",
-                      initialSelection: {
-                        categoryId: selectedCategory,
-                        serviceId: service.id,
-                      },
-                      returnTarget: { type: "catalog", categoryId: selectedCategory },
-                    })
-                  }
+                  actionLabel="Ver servicio"
+                  onClick={() => setPreviewService(service)}
                 />
               ))}
             </div>
           </section>
         ) : null}
       </main>
+
+      <ServiceDetailsDrawer
+        service={previewService}
+        categoryId={selectedCategory}
+        open={previewService !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewService(null);
+        }}
+        onReserve={() => {
+          if (!previewService || !selectedCategory) return;
+          onStart({
+            entryPoint: "public-catalog",
+            initialSelection: {
+              categoryId: selectedCategory,
+              serviceId: previewService.id,
+            },
+            returnTarget: { type: "catalog", categoryId: selectedCategory },
+          });
+          setPreviewService(null);
+        }}
+      />
 
       <footer className="border-t border-border/60 py-8 text-center text-xs text-muted-foreground">
         Sol Mai Peluquería · Santa Fe Capital · Representante Itely Hairfashion
