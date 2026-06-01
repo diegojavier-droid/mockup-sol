@@ -363,7 +363,6 @@ function groupServices(categoryId: CategoryId, items: Service[]): ServiceGroup[]
       {
         key: "all",
         title: "Todos los servicios",
-        subtitle: "Tocá una tarjeta para ver detalles y reservar.",
         items,
       },
     ];
