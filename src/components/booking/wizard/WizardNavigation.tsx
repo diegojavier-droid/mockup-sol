@@ -1,5 +1,5 @@
 import { SummaryPanel, type SummaryData } from "../SummaryPanel";
-import { BOOKING_STEPS } from "./booking-steps";
+import { BOOKING_STEP_INDEX, BOOKING_STEPS } from "./booking-steps";
 
 export function WizardNavigation({
   canNext,
@@ -18,11 +18,13 @@ export function WizardNavigation({
   step: number;
   isMobileInputFocused?: boolean;
 }) {
-  const isCategoryStep = step === 0;
+  const isCategoryStep = step === BOOKING_STEP_INDEX.category;
+  const isServiceStep = step === BOOKING_STEP_INDEX.service;
   const isFinalStep = step === BOOKING_STEPS.length - 1;
-  const showNextButton = !isCategoryStep && !isFinalStep;
+  const showNextButton = !isCategoryStep && !isServiceStep && !isFinalStep;
   const showSummary = Boolean(data.service);
-  const showMobileSummary = showSummary && !isMobileInputFocused && !isFinalStep;
+  const showMobileSummary =
+    showSummary && step > BOOKING_STEP_INDEX.service && !isMobileInputFocused && !isFinalStep;
 
   return (
     <>
@@ -69,7 +71,7 @@ function NavBackButton({ onBack, step }: { onBack: () => void; step: number }) {
       onClick={onBack}
       className="min-h-11 flex-1 rounded-full border border-border bg-card px-4 py-2.5 font-serif text-sm text-foreground/80 shadow-sm transition-all hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:px-8 lg:py-3.5 lg:text-base"
     >
-      {step === 0 ? "← Volver al inicio" : "← Atrás"}
+      {step === BOOKING_STEP_INDEX.category ? "← Volver al inicio" : "← Atrás"}
     </button>
   );
 }

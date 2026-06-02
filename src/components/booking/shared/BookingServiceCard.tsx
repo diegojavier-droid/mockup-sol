@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { CategoryId, Service } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { getServiceImage } from "@/lib/service-images";
-import { selectableCardClass, tagStyle } from "../booking-styles";
+import { selectableCardClass } from "../booking-styles";
 import { SelectedMark } from "../cards/SelectedMark";
 
 export function BookingServiceCard({
@@ -124,7 +124,6 @@ export function BookingServiceCard({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h4 className="font-serif text-lg leading-snug text-foreground">{service.name}</h4>
-              <ServiceTag service={service} />
             </div>
             <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
               {service.desc}
@@ -157,23 +156,6 @@ function intentLabel(tag: NonNullable<Service["tag"]>): string {
     default:
       return "";
   }
-}
-
-function ServiceTag({ service }: { service: Service }) {
-  if (service.tag !== "popular") {
-    return null;
-  }
-
-  return (
-    <span
-      className={cn(
-        "rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]",
-        tagStyle.popular,
-      )}
-    >
-      Popular
-    </span>
-  );
 }
 
 function ServiceMeta({
