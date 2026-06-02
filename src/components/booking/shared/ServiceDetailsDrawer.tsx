@@ -68,9 +68,13 @@ export function ServiceDetailsDrawer({
   }
 
   const category = categories.find((c) => c.id === categoryId);
-  const categoryExtras = extras[categoryId]?.slice(0, 3) ?? [];
-  const recommendedFor =
+  const recommendedRaw =
     recommendedForByServiceId[service.id] ?? recommendedForByCategory[categoryId];
+  const recommendedSentence = recommendedRaw
+    ? /^ideal\b/i.test(recommendedRaw)
+      ? recommendedRaw
+      : `Ideal ${recommendedRaw.charAt(0).toLowerCase()}${recommendedRaw.slice(1)}`
+    : null;
   const imageSrc = getServiceImage(service.id, categoryId, service.imageUrl);
 
   return (
