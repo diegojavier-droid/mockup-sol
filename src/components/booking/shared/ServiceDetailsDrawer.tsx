@@ -127,39 +127,17 @@ export function ServiceDetailsDrawer({
             {/* Cuerpo */}
             <div className="px-5 pb-4 pt-4">
               <h2 className="font-serif text-2xl leading-tight text-foreground">{service.name}</h2>
-              <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                <span>{service.duration}</span>
-                <span className="h-1 w-1 rounded-full bg-champagne/70" />
-                <span className="font-serif text-base text-foreground">Desde {service.price}</span>
-              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {service.duration} <span className="text-champagne/80">·</span>{" "}
+                <span className="font-serif text-foreground">Desde {service.price}</span>
+              </p>
 
               <p className="mt-4 text-sm leading-relaxed text-foreground/80">{service.desc}</p>
 
-              <div className="mt-5">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Recomendado para
+              {recommendedSentence ? (
+                <p className="mt-3 font-serif text-sm italic leading-relaxed text-foreground/75">
+                  {recommendedSentence}
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-foreground/80">{recommendedFor}</p>
-              </div>
-
-              {categoryExtras.length > 0 ? (
-                <div className="mt-5">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Podés sumar
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {categoryExtras.map((extra) => (
-                      <span
-                        key={extra.id}
-                        className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground/80"
-                      >
-                        <span className="font-serif text-sm text-foreground">{extra.name}</span>
-                        <span className="h-1 w-1 rounded-full bg-champagne/70" />
-                        <span className="text-muted-foreground">{extra.price}</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
               ) : null}
             </div>
           </div>
