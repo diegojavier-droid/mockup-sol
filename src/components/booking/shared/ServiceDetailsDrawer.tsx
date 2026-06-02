@@ -126,7 +126,7 @@ export function ServiceDetailsDrawer({
               <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
                 <span>{service.duration}</span>
                 <span className="h-1 w-1 rounded-full bg-champagne/70" />
-                <span className="font-serif text-base text-foreground">{service.price}</span>
+                <span className="font-serif text-base text-foreground">Desde {service.price}</span>
               </div>
 
               <p className="mt-4 text-sm leading-relaxed text-foreground/80">{service.desc}</p>

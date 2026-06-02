@@ -152,10 +152,6 @@ export function PersonalizationStep({
 }) {
   const buckets = bucketFields(personalizationFields[category]);
   const [noteOpen, setNoteOpen] = useState(additionalComments.trim().length > 0);
-  const historyHasRequiredFields = buckets.history.length > 0;
-  const [historyDefaultOpen] = useState(
-    () => historyHasRequiredFields || buckets.history.some((field) => Boolean(personal[field.id])),
-  );
 
   return (
     <StepShell title={personalizationStepTitleByCategory[category]}>
@@ -221,25 +217,12 @@ export function PersonalizationStep({
 
         {/* 4. Cuidados y antecedentes */}
         {buckets.history.length > 0 && (
-          <details
-            className="group border-t border-border/60"
-            open={historyDefaultOpen || undefined}
-          >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm text-foreground lg:px-6">
-              <span className="flex flex-col">
-                <span className="font-medium">Cuidados y antecedentes</span>
-                <span className="text-xs text-muted-foreground">
-                  Necesario para preparar tu servicio.
-                </span>
-              </span>
-              <span
-                aria-hidden
-                className="text-muted-foreground transition-transform group-open:rotate-180"
-              >
-                ▾
-              </span>
-            </summary>
-            <div className="space-y-3 px-5 pb-5 lg:px-6 lg:pb-6">
+          <section className="border-t border-border/60 px-5 py-4 lg:px-6 lg:py-5">
+            <header className="text-sm text-foreground">
+              <h3 className="font-medium">Cuidados y antecedentes</h3>
+              <p className="text-xs text-muted-foreground">Necesario para preparar tu servicio.</p>
+            </header>
+            <div className="mt-4 space-y-3">
               {buckets.history.map((field) => (
                 <FieldRow
                   key={field.id}
@@ -249,7 +232,7 @@ export function PersonalizationStep({
                 />
               ))}
             </div>
-          </details>
+          </section>
         )}
 
         {/* 5. Nota — disclosure */}
