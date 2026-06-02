@@ -98,13 +98,15 @@ export function Landing({
               <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-cream/95 via-cream/40 to-transparent" />
               <span className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/85 px-3 py-1.5 text-[9px] uppercase tracking-[0.2em] text-foreground/70 backdrop-blur">
                 <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
-                Santa Fe Capital
+                República de Siria 3798 · Santa Fe
               </span>
-              <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-3">
-                <p className="font-serif text-xs italic text-foreground/70">✦ Itely Hairfashion</p>
-                <p className="rounded-full border border-border/60 bg-card/90 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground/70 backdrop-blur">
-                  Mañana · 11:30
-                </p>
+              <div className="absolute bottom-3 left-4 right-4 flex justify-end">
+                <div className="rounded-2xl border border-border/60 bg-card/90 px-3 py-1.5 text-right backdrop-blur">
+                  <p className="text-[8px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Próximo turno disponible
+                  </p>
+                  <p className="mt-0.5 font-serif text-xs text-foreground">Mañana · 11:30</p>
+                </div>
               </div>
             </div>
           </div>
@@ -112,7 +114,7 @@ export function Landing({
           <div>
             <span className="hidden items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] text-foreground/70 backdrop-blur sm:inline-flex">
               <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
-              Santa Fe Capital
+              República de Siria 3798 · Santa Fe
             </span>
             <h1 className="font-serif text-[2.55rem] leading-[1.02] text-foreground sm:mt-6 sm:text-6xl lg:text-[4.5rem]">
               Belleza <em className="not-italic text-champagne-deep">a tu medida.</em>
@@ -161,9 +163,6 @@ export function Landing({
                 Próximo turno disponible
               </p>
               <p className="mt-1 font-serif text-lg text-foreground">Mañana · 11:30</p>
-            </div>
-            <div className="absolute -top-4 -right-3 hidden rotate-3 rounded-full border border-border bg-card px-4 py-2 font-serif text-xs text-foreground/80 shadow-md sm:block">
-              ✦ Itely Hairfashion
             </div>
           </div>
         </section>
