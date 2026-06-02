@@ -105,7 +105,9 @@ export function Landing({
                   <p className="text-[8px] uppercase tracking-[0.18em] text-muted-foreground">
                     Próximo turno
                   </p>
-                  <p className="font-serif text-[11px] leading-tight text-foreground">Mañana · 11:30</p>
+                  <p className="font-serif text-[11px] leading-tight text-foreground">
+                    Mañana · 11:30
+                  </p>
                 </div>
               </div>
             </div>

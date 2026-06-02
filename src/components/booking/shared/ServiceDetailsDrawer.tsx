@@ -19,7 +19,7 @@ type ServiceDetailsDrawerProps = {
 
 const recommendedForByServiceId: Record<string, string> = {
   // Peluquería
-  "corte-femenino": "Si querés renovar tu estilo o mantener un corte cuidado y bien terminado.",
+  "corte-fem": "Si querés renovar tu estilo o mantener un corte cuidado y bien terminado.",
   brushing: "Para una ocasión especial o si querés salir con el pelo impecable.",
   "peinado-diario": "Reuniones, salidas o un look prolijo del día a día.",
   "peinado-social": "Eventos, fiestas y producciones especiales.",
@@ -33,21 +33,21 @@ const recommendedForByServiceId: Record<string, string> = {
   balayage: "Un degradé prolijo, pintado a mano, con mantenimiento espaciado.",
   claritos: "Sumar reflejos suaves en zonas estratégicas del rostro.",
   alisado: "Si querés reducir el frizz y ganar manejabilidad por varios meses.",
-  "botox-capilar": "Devolver suavidad, brillo y control del frizz al cabello castigado.",
-  "nutricion-capilar": "Cabello seco o castigado que necesita nutrientes profundos.",
-  "hidratacion-profunda": "Recuperar elasticidad y brillo cuando sentís el pelo apagado.",
-  "reparacion-capilar": "Si tu pelo tiene fibras dañadas que querés restaurar.",
+  botox: "Devolver suavidad, brillo y control del frizz al cabello castigado.",
+  nutricion: "Cabello seco o castigado que necesita nutrientes profundos.",
+  hidratacion: "Recuperar elasticidad y brillo cuando sentís el pelo apagado.",
+  reparacion: "Si tu pelo tiene fibras dañadas que querés restaurar.",
   reconstruccion: "Plan intensivo para cabellos muy castigados.",
-  "tratamiento-post-color": "Sellar y proteger el color después de un servicio químico.",
+  "post-color": "Sellar y proteger el color después de un servicio químico.",
   // Maquillaje
-  "maquillaje-social": "Eventos, fiestas y salidas donde querés un look prolijo y duradero.",
-  "maquillaje-novia": "Tu día, con prueba previa y maquillaje de larga duración.",
-  "maquillaje-evento": "Quinces, casamientos y producciones con terminación impecable.",
+  "mk-social": "Eventos, fiestas y salidas donde querés un look prolijo y duradero.",
+  "mk-novia": "Tu día, con prueba previa y maquillaje de larga duración.",
+  "mk-evento": "Quinces, casamientos y producciones con terminación impecable.",
   // Uñas
-  semipermanente: "Una manicura prolija y duradera para el día a día.",
-  "soft-gel": "Si buscás más resistencia y largo sin descuidar lo natural.",
-  "nail-art": "Sumar diseño y personalidad a tu manicura.",
-  manicura: "Una manicura clásica: cuidado, prolijidad y terminación.",
+  semi: "Una manicura prolija y duradera para el día a día.",
+  softgel: "Si buscás más resistencia y largo sin descuidar lo natural.",
+  nailart: "Sumar diseño y personalidad a tu manicura.",
+  mani: "Una manicura clásica: cuidado, prolijidad y terminación.",
 };
 
 const recommendedForByCategory: Record<CategoryId, string> = {
