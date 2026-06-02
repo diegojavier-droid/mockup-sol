@@ -243,65 +243,44 @@ export function Landing({
               </div>
             ))}
 
-            {/* Cierre del catálogo: navegación contextual para no quedar atrapado al final */}
-            <div className="mt-12 sm:mt-16">
-              <div className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-cream/60 px-5 py-7 shadow-[0_30px_60px_-50px_rgba(120,90,60,0.45)] sm:px-8 sm:py-9">
-                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-champagne/30 blur-2xl" />
-                <div className="relative">
-                  <h3 className="font-serif text-2xl text-foreground sm:text-3xl">
-                    Ver otra especialidad
-                  </h3>
+            {/* Cierre del catálogo: CTA principal + navegación secundaria discreta */}
+            <div className="mt-10 flex flex-col items-center gap-5 border-t border-border/60 pt-8 sm:mt-14 sm:pt-10">
+              <button
+                type="button"
+                onClick={() =>
+                  onStart({
+                    entryPoint: "public-catalog",
+                    initialSelection: { categoryId: selectedCategory },
+                    returnTarget: { type: "catalog", categoryId: selectedCategory },
+                  })
+                }
+                className="inline-flex items-center justify-center rounded-full bg-primary px-7 py-3 font-serif text-base text-primary-foreground shadow-[0_18px_40px_-22px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                Reservar en {selectedCategoryData.name.toLowerCase()}
+              </button>
 
-                  <div className="mt-5 grid gap-2.5 sm:grid-cols-3 sm:gap-3">
-                    {categories
-                      .filter((category) => category.id !== selectedCategory)
-                      .map((category) => (
-                        <button
-                          key={category.id}
-                          type="button"
-                          onClick={() => showSpecialtyServices(category.id)}
-                          className="group flex items-center justify-between gap-3 rounded-full border border-border bg-card/90 px-5 py-3 text-left font-serif text-base text-foreground transition-all hover:border-champagne hover:bg-card hover:shadow-[0_12px_28px_-18px_rgba(80,55,30,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                        >
-                          <span className="flex items-center gap-2.5">
-                            <span className="text-lg">{category.emoji}</span>
-                            <span>{category.name}</span>
-                          </span>
-                          <span className="text-champagne-deep transition-transform group-hover:translate-x-0.5">
-                            →
-                          </span>
-                        </button>
-                      ))}
-                  </div>
-
-                  <div className="mt-5 flex flex-col gap-2 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        window.requestAnimationFrame(() => {
-                          document
-                            .getElementById("areas")
-                            ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                        });
-                      }}
-                      className="inline-flex items-center justify-center rounded-full border border-border bg-card px-5 py-2.5 text-xs uppercase tracking-[0.2em] text-foreground/70 transition-colors hover:border-champagne hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    >
-                      ↑ Volver a especialidades
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onStart({
-                          entryPoint: "public-catalog",
-                          initialSelection: { categoryId: selectedCategory },
-                          returnTarget: { type: "catalog", categoryId: selectedCategory },
-                        })
-                      }
-                      className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-2.5 font-serif text-sm text-primary-foreground shadow-[0_18px_40px_-22px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    >
-                      Reservar en {selectedCategoryData.name.toLowerCase()}
-                    </button>
-                  </div>
-                </div>
+              <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground/80">
+                  Ver también
+                </span>
+                {categories
+                  .filter((category) => category.id !== selectedCategory)
+                  .map((category, index, arr) => (
+                    <span key={category.id} className="inline-flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => showSpecialtyServices(category.id)}
+                        className="font-serif text-foreground/80 underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      >
+                        {category.name}
+                      </button>
+                      {index < arr.length - 1 ? (
+                        <span aria-hidden className="text-border">
+                          ·
+                        </span>
+                      ) : null}
+                    </span>
+                  ))}
               </div>
             </div>
           </section>
