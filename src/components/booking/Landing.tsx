@@ -114,7 +114,7 @@ export function Landing({
           <div>
             <span className="hidden items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] text-foreground/70 backdrop-blur sm:inline-flex">
               <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
-              Santa Fe Capital
+              República de Siria 3798 · Santa Fe
             </span>
             <h1 className="font-serif text-[2.55rem] leading-[1.02] text-foreground sm:mt-6 sm:text-6xl lg:text-[4.5rem]">
               Belleza <em className="not-italic text-champagne-deep">a tu medida.</em>
