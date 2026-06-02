@@ -73,7 +73,7 @@ export function BookingWizard({
         return;
       }
 
-      stepContentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
     return () => window.cancelAnimationFrame(animationFrame);
