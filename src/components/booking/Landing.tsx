@@ -96,16 +96,16 @@ export function Landing({
                 className="h-[260px] w-full object-cover"
               />
               <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-cream/95 via-cream/40 to-transparent" />
-              <span className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/85 px-3 py-1.5 text-[9px] uppercase tracking-[0.2em] text-foreground/70 backdrop-blur">
-                <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
-                República de Siria 3798 · Santa Fe
+              <span className="absolute left-3 top-3 inline-flex max-w-[55%] items-center gap-1.5 rounded-full border border-border/50 bg-foreground/55 px-2 py-0.5 text-[10px] font-medium text-background/95 backdrop-blur-sm">
+                <span className="h-1 w-1 rounded-full bg-champagne-deep" />
+                <span className="truncate">República de Siria 3798</span>
               </span>
-              <div className="absolute bottom-3 left-4 right-4 flex justify-end">
-                <div className="rounded-2xl border border-border/60 bg-card/90 px-3 py-1.5 text-right backdrop-blur">
-                  <p className="text-[8px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Próximo turno disponible
+              <div className="absolute bottom-3 right-3">
+                <div className="rounded-xl border border-border/50 bg-card/85 px-2.5 py-1 text-right backdrop-blur-sm">
+                  <p className="text-[8px] uppercase tracking-[0.18em] text-muted-foreground">
+                    Próximo turno
                   </p>
-                  <p className="mt-0.5 font-serif text-xs text-foreground">Mañana · 11:30</p>
+                  <p className="font-serif text-[11px] leading-tight text-foreground">Mañana · 11:30</p>
                 </div>
               </div>
             </div>
