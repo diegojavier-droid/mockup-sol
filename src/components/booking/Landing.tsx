@@ -98,13 +98,15 @@ export function Landing({
               <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-cream/95 via-cream/40 to-transparent" />
               <span className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/85 px-3 py-1.5 text-[9px] uppercase tracking-[0.2em] text-foreground/70 backdrop-blur">
                 <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
-                Santa Fe Capital
+                República de Siria 3798 · Santa Fe
               </span>
-              <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-3">
-                <p className="font-serif text-xs italic text-foreground/70">✦ Itely Hairfashion</p>
-                <p className="rounded-full border border-border/60 bg-card/90 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground/70 backdrop-blur">
-                  Mañana · 11:30
-                </p>
+              <div className="absolute bottom-3 left-4 right-4 flex justify-end">
+                <div className="rounded-2xl border border-border/60 bg-card/90 px-3 py-1.5 text-right backdrop-blur">
+                  <p className="text-[8px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Próximo turno disponible
+                  </p>
+                  <p className="mt-0.5 font-serif text-xs text-foreground">Mañana · 11:30</p>
+                </div>
               </div>
             </div>
           </div>
