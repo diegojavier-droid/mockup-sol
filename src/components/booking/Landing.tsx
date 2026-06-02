@@ -164,9 +164,6 @@ export function Landing({
               </p>
               <p className="mt-1 font-serif text-lg text-foreground">Mañana · 11:30</p>
             </div>
-            <div className="absolute -top-4 -right-3 hidden rotate-3 rounded-full border border-border bg-card px-4 py-2 font-serif text-xs text-foreground/80 shadow-md sm:block">
-              ✦ Itely Hairfashion
-            </div>
           </div>
         </section>
 
