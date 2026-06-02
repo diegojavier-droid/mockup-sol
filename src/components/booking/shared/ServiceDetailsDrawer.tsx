@@ -168,13 +168,6 @@ export function ServiceDetailsDrawer({
             >
               Reservar turno
             </button>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="w-full rounded-full border border-border bg-card px-6 py-3 font-serif text-base text-foreground transition-colors hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              Volver a servicios
-            </button>
           </DrawerFooter>
         </div>
       </DrawerContent>

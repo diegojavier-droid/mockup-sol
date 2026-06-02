@@ -5,12 +5,12 @@ export function BookingHeader({ onBack }: { onBack: () => void }) {
         <button
           type="button"
           onClick={onBack}
-          className="relative z-10 flex min-h-11 items-center gap-1.5 pr-3 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:gap-2 lg:text-sm"
+          aria-label="Salir de la reserva"
+          className="relative z-10 inline-flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <span aria-hidden="true" className="text-sm lg:text-base">
+          <span aria-hidden="true" className="text-base lg:text-lg">
             ←
           </span>
-          Volver
         </button>
         <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+0.5rem)] -translate-x-1/2 text-center lg:static lg:pointer-events-auto lg:translate-x-0">
           <p className="font-serif text-base leading-none text-foreground lg:text-lg">Sol Mai</p>
