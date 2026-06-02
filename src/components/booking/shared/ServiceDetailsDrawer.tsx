@@ -1,4 +1,4 @@
-import { categories, extras, type CategoryId, type Service } from "@/lib/booking-data";
+import { categories, type CategoryId, type Service } from "@/lib/booking-data";
 import {
   Drawer,
   DrawerContent,
