@@ -43,7 +43,7 @@ export function BookingServiceCard({
             className="h-full w-full object-cover transition-transform duration-[600ms] ease-out group-hover:scale-[1.04] group-active:scale-[1.02]"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-foreground/15 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-          {service.tag === "popular" ? (
+          {shouldShowPopular ? (
             <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-champagne/60 bg-card/90 px-2.5 py-1 text-[9px] uppercase tracking-[0.16em] text-champagne-deep backdrop-blur">
               <span className="h-1 w-1 rounded-full bg-champagne-deep" />
               Popular
