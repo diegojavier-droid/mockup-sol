@@ -96,9 +96,9 @@ export function Landing({
                 className="h-[260px] w-full object-cover"
               />
               <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-cream/95 via-cream/40 to-transparent" />
-              <span className="absolute left-3 top-3 inline-flex max-w-[55%] items-center gap-1.5 rounded-full border border-border/50 bg-foreground/55 px-2 py-0.5 text-[10px] font-medium text-background/95 backdrop-blur-sm">
+              <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-border/50 bg-foreground/55 px-2.5 py-0.5 text-[10px] font-medium text-background/95 backdrop-blur-sm">
                 <span className="h-1 w-1 rounded-full bg-champagne-deep" />
-                <span className="truncate">República de Siria 3798</span>
+                Santa Fe
               </span>
               <div className="absolute bottom-3 right-3">
                 <div className="rounded-xl border border-border/50 bg-card/85 px-2.5 py-1 text-right backdrop-blur-sm">
@@ -111,6 +111,10 @@ export function Landing({
                 </div>
               </div>
             </div>
+            <p className="mt-2.5 flex items-center gap-1.5 px-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              <span className="h-1 w-1 rounded-full bg-champagne-deep" />
+              República de Siria 3798 · Santa Fe
+            </p>
           </div>
 
           <div>
@@ -223,6 +227,7 @@ export function Landing({
                       categoryId={selectedCategory}
                       variant="public"
                       actionLabel="Ver servicio"
+                      showPopularBadge={group.key === "populares"}
                       onClick={() => setPreviewService(service)}
                     />
                   ))}
