@@ -13,6 +13,7 @@ export function BookingServiceCard({
   onClick,
   actionLabel = "Reservar",
   showAction,
+  showPopularBadge = true,
   className,
 }: {
   service: Service;
@@ -22,10 +23,12 @@ export function BookingServiceCard({
   onClick: () => void;
   actionLabel?: string;
   showAction?: boolean;
+  showPopularBadge?: boolean;
   className?: string;
 }) {
   const imageSrc = getServiceImage(service.id, categoryId, service.imageUrl);
   const shouldShowAction = showAction ?? variant === "public";
+  const shouldShowPopular = showPopularBadge && service.tag === "popular";
 
   if (variant === "public") {
     const content = (
