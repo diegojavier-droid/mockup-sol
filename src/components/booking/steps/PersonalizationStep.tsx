@@ -153,16 +153,18 @@ export function PersonalizationStep({
   const buckets = bucketFields(personalizationFields[category]);
   const [noteOpen, setNoteOpen] = useState(additionalComments.trim().length > 0);
 
-  const sections: { key: Intent; title: string; fields: PersonalizationField[] }[] = [
-    { key: "goal", title: sectionTitles.goal, fields: buckets.goal },
-    {
-      key: "current",
-      title: currentSectionTitleByCategory[category] ?? sectionTitles.current,
-      fields: buckets.current,
-    },
-    { key: "allergies", title: sectionTitles.allergies, fields: buckets.allergies },
-    { key: "history", title: sectionTitles.history, fields: buckets.history },
-  ].filter((section) => section.fields.length > 0);
+  const sections = (
+    [
+      { key: "goal", title: sectionTitles.goal, fields: buckets.goal },
+      {
+        key: "current",
+        title: currentSectionTitleByCategory[category] ?? sectionTitles.current,
+        fields: buckets.current,
+      },
+      { key: "allergies", title: sectionTitles.allergies, fields: buckets.allergies },
+      { key: "history", title: sectionTitles.history, fields: buckets.history },
+    ] as const
+  ).filter((section) => section.fields.length > 0);
 
   return (
     <StepShell title={personalizationStepTitleByCategory[category]}>
