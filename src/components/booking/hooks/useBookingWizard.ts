@@ -17,11 +17,7 @@ import {
   type Service,
 } from "@/lib/booking-data";
 import { computeBookingOperationalTotals } from "@/lib/booking-totals";
-import type {
-  BookingEntryPoint,
-  BookingInitialSelection,
-  BookingReturnTarget,
-} from "../booking-navigation-types";
+import type { BookingInitialSelection, BookingReturnTarget } from "../booking-navigation-types";
 import type { SummaryData } from "../SummaryPanel";
 import { BOOKING_STEP_INDEX, BOOKING_STEPS, type WizardStep } from "../wizard/booking-steps";
 
@@ -196,7 +192,6 @@ function getVisibleCustomerErrors(
 }
 
 interface BookingNavigationContext {
-  entryPoint: BookingEntryPoint;
   onExitToTarget: (target: BookingReturnTarget) => void;
   returnTarget: BookingReturnTarget;
 }
@@ -433,21 +428,13 @@ export function useBookingWizard(
     setStep((currentStep) => clampWizardStep(currentStep + 1));
   };
   const back = () => {
-    const shouldExitToReturnTarget =
-      navigationContext &&
-      navigationContext.entryPoint !== "hero-reserve" &&
-      step === initialStepRef.current;
+    const shouldExitToReturnTarget = navigationContext && step === initialStepRef.current;
 
     if (shouldExitToReturnTarget) {
       return navigationContext.onExitToTarget(navigationContext.returnTarget);
     }
 
     if (step === BOOKING_STEP_INDEX.category) return onExit();
-
-    if (step === BOOKING_STEP_INDEX.service && navigationContext?.entryPoint === "hero-reserve") {
-      setCategory(null);
-      resetSelectedTurnDetails();
-    }
 
     setStep((currentStep) => clampWizardStep(currentStep - 1));
   };
