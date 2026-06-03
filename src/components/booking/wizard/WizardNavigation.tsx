@@ -86,13 +86,19 @@ function NavNextButton({
   onNext: () => void;
 }) {
   const isActionable = canNext || canRequestCustomerRequiredFeedback;
+  const looksDisabled = !canNext;
 
   return (
     <button
       type="button"
       onClick={onNext}
       disabled={!isActionable}
-      className="min-h-11 flex-[1.2] rounded-full bg-primary px-5 py-2.5 font-serif text-sm text-primary-foreground shadow-[0_14px_30px_-14px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:px-10 lg:py-3.5 lg:text-base"
+      aria-disabled={looksDisabled}
+      className={
+        looksDisabled
+          ? "min-h-11 flex-[1.2] cursor-not-allowed rounded-full border border-border bg-muted px-5 py-2.5 font-serif text-sm text-muted-foreground/70 shadow-none transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:px-10 lg:py-3.5 lg:text-base"
+          : "min-h-11 flex-[1.2] rounded-full bg-primary px-5 py-2.5 font-serif text-sm text-primary-foreground shadow-[0_14px_30px_-14px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-none lg:px-10 lg:py-3.5 lg:text-base"
+      }
     >
       Continuar →
     </button>
