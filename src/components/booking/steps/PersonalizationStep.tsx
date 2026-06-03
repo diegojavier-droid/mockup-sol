@@ -174,10 +174,7 @@ export function PersonalizationStep({
 
       <div className="mt-5 divide-y divide-border/40">
         {sections.map((section, index) => (
-          <section
-            key={section.key}
-            className={cn("space-y-4", index === 0 ? "pb-5" : "py-5")}
-          >
+          <section key={section.key} className={cn("space-y-4", index === 0 ? "pb-5" : "py-5")}>
             <SectionEyebrow>{section.title}</SectionEyebrow>
             <div className="space-y-4">
               {section.fields.map((field) => (
