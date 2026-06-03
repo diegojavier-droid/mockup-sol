@@ -227,7 +227,6 @@ export function Landing({
                       categoryId={selectedCategory}
                       variant="public"
                       actionLabel="Ver servicio"
-                      showPopularBadge={group.key === "populares"}
                       onClick={() => setPreviewService(service)}
                     />
                   ))}

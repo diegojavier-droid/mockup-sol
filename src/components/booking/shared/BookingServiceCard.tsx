@@ -13,7 +13,6 @@ export function BookingServiceCard({
   onClick,
   actionLabel = "Reservar",
   showAction,
-  showPopularBadge = true,
   className,
 }: {
   service: Service;
@@ -23,12 +22,10 @@ export function BookingServiceCard({
   onClick: () => void;
   actionLabel?: string;
   showAction?: boolean;
-  showPopularBadge?: boolean;
   className?: string;
 }) {
   const imageSrc = getServiceImage(service.id, categoryId, service.imageUrl);
-  const shouldShowAction = showAction ?? variant === "public";
-  const shouldShowPopular = showPopularBadge && service.tag === "popular";
+  const shouldShowAction = showAction ?? false;
 
   if (variant === "public") {
     const content = (
@@ -42,38 +39,15 @@ export function BookingServiceCard({
             height={736}
             className="h-full w-full object-cover transition-transform duration-[600ms] ease-out group-hover:scale-[1.04] group-active:scale-[1.02]"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-foreground/15 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-          {shouldShowPopular ? (
-            <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-champagne/60 bg-card/90 px-2.5 py-1 text-[9px] uppercase tracking-[0.16em] text-champagne-deep backdrop-blur">
-              <span className="h-1 w-1 rounded-full bg-champagne-deep" />
-              Popular
-            </span>
-          ) : null}
-          <span className="absolute right-3 bottom-3 rounded-full border border-border/60 bg-card/90 px-3 py-1 font-serif text-sm text-foreground backdrop-blur">
-            Desde {service.price}
-          </span>
+          <div className="absolute inset-0 bg-gradient-to-t from-foreground/10 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         </div>
-        <div className="flex flex-1 flex-col p-4">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-serif text-xl leading-tight text-foreground">{service.name}</h3>
-            {service.tag && service.tag !== "popular" ? (
-              <span className="mt-1 shrink-0 rounded-full border border-border/70 bg-cream/70 px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
-                {intentLabel(service.tag)}
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-            <span className="h-1 w-1 rounded-full bg-champagne/70" />
-            {service.duration}
+        <div className="flex flex-1 flex-col gap-2 p-3.5 sm:p-4">
+          <h3 className="font-serif text-lg leading-tight text-foreground sm:text-xl">
+            {service.name}
+          </h3>
+          <p className="font-serif text-base leading-none text-foreground/85">
+            Desde {service.price}
           </p>
-          <p className="mt-2.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-            {service.desc}
-          </p>
-          {shouldShowAction ? (
-            <span className="mt-4 inline-flex items-center justify-center rounded-full border border-border bg-cream/60 px-4 py-2.5 font-serif text-sm text-foreground transition-colors group-hover:border-champagne-deep group-hover:bg-cream">
-              {actionLabel}
-            </span>
-          ) : null}
         </div>
       </>
     );
@@ -144,21 +118,6 @@ export function BookingServiceCard({
       </div>
     </button>
   );
-}
-
-function intentLabel(tag: NonNullable<Service["tag"]>): string {
-  switch (tag) {
-    case "color":
-      return "Color";
-    case "tratamiento":
-      return "Cuidado";
-    case "combinado":
-      return "Combo";
-    case "evento":
-      return "Evento";
-    default:
-      return "";
-  }
 }
 
 function ServiceMeta({
