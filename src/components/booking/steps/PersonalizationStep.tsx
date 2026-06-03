@@ -4,7 +4,6 @@ import { personalizationFields, type CategoryId, type Personalization } from "@/
 import type { PersonalizationField } from "@/lib/booking-types";
 import { cn } from "@/lib/utils";
 import { selectableCardClass } from "../booking-styles";
-import { OptionPill } from "../cards/OptionPill";
 import { StepShell } from "../wizard/StepShell";
 
 const ADDITIONAL_COMMENTS_MAX_LENGTH = 500;
@@ -23,7 +22,7 @@ const fieldIntent: Record<string, Intent> = {
   densidad: "current",
   tipo: "current",
   estado: "current",
-  // allergies (always visible)
+  // allergies
   alergias: "allergies",
   // history & care
   quimicos: "history",
@@ -45,9 +44,15 @@ const visibleFieldLabels: Record<string, string> = {
   prueba: "¿Querés prueba previa?",
 };
 
-const currentSectionTitleByCategory: Record<CategoryId, string> = {
+const sectionTitles: Record<Intent, string> = {
+  goal: "Lo que buscás",
+  current: "Cómo estás hoy",
+  allergies: "Salud",
+  history: "Cuidados",
+};
+
+const currentSectionTitleByCategory: Partial<Record<CategoryId, string>> = {
   peluqueria: "Tu cabello hoy",
-  maquillaje: "Sobre vos hoy",
   unas: "Tus uñas hoy",
 };
 
@@ -71,7 +76,7 @@ function bucketFields(fields: PersonalizationField[]) {
   return buckets;
 }
 
-function CompactPill({
+function Chip({
   option,
   selected,
   onSelect,
@@ -86,11 +91,11 @@ function CompactPill({
       aria-pressed={selected}
       onClick={onSelect}
       className={cn(
-        "min-h-9 rounded-full border px-3 py-1.5 text-[13px]",
+        "min-h-10 rounded-full border px-3.5 py-1.5 text-[13px] leading-none",
         selectableCardClass,
         selected
           ? "border-champagne-deep bg-champagne text-accent-foreground"
-          : "border-border/70 bg-transparent text-foreground/75 hover:border-champagne",
+          : "border-border/70 bg-transparent text-foreground/80 hover:border-champagne",
       )}
     >
       {option}
@@ -102,30 +107,19 @@ function FieldRow({
   field,
   personal,
   onChooseOption,
-  compact = false,
-  emphasis = false,
 }: {
   field: PersonalizationField;
   personal: Personalization;
   onChooseOption: (fieldId: string, option: string) => void;
-  compact?: boolean;
-  emphasis?: boolean;
 }) {
-  const Pill = compact ? CompactPill : OptionPill;
   return (
     <fieldset>
-      <legend
-        className={cn(
-          "mb-2 text-foreground",
-          emphasis ? "text-[15px] font-medium" : "text-sm",
-          compact && "text-xs font-medium uppercase tracking-wide text-muted-foreground",
-        )}
-      >
+      <legend className="mb-2 text-sm text-foreground/85">
         {visibleFieldLabels[field.id] ?? field.label}
       </legend>
-      <div className={cn("flex flex-wrap", compact ? "gap-1.5" : "gap-2")}>
+      <div className="flex flex-wrap gap-1.5">
         {field.options.map((option) => (
-          <Pill
+          <Chip
             key={option}
             option={option}
             selected={personal[field.id] === option}
@@ -134,6 +128,12 @@ function FieldRow({
         ))}
       </div>
     </fieldset>
+  );
+}
+
+function SectionEyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="mb-3 font-serif text-[13px] tracking-[0.04em] text-foreground/70">{children}</h3>
   );
 }
 
@@ -153,77 +153,32 @@ export function PersonalizationStep({
   const buckets = bucketFields(personalizationFields[category]);
   const [noteOpen, setNoteOpen] = useState(additionalComments.trim().length > 0);
 
+  const sections: { key: Intent; title: string; fields: PersonalizationField[] }[] = [
+    { key: "goal", title: sectionTitles.goal, fields: buckets.goal },
+    {
+      key: "current",
+      title: currentSectionTitleByCategory[category] ?? sectionTitles.current,
+      fields: buckets.current,
+    },
+    { key: "allergies", title: sectionTitles.allergies, fields: buckets.allergies },
+    { key: "history", title: sectionTitles.history, fields: buckets.history },
+  ].filter((section) => section.fields.length > 0);
+
   return (
     <StepShell title={personalizationStepTitleByCategory[category]}>
       <p className="-mt-1 text-sm text-muted-foreground">
         Cuanto más nos contás, mejor preparamos tu visita.
       </p>
 
-      <div className="mt-4 overflow-hidden rounded-3xl border border-border bg-card/70 shadow-[0_18px_36px_-34px_rgba(120,90,60,0.35)]">
-        {/* 1. Lo que buscás — protagonista */}
-        {buckets.goal.length > 0 && (
-          <section className="px-5 py-5 lg:px-6 lg:py-6">
-            <h3 className="font-serif text-xl text-foreground lg:text-2xl">Lo que buscás</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Lo más importante para que Sol Mai piense tu visita.
-            </p>
-            <div className="mt-4 space-y-4">
-              {buckets.goal.map((field) => (
-                <FieldRow
-                  key={field.id}
-                  field={field}
-                  personal={personal}
-                  onChooseOption={onChooseOption}
-                  emphasis
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 2. Tu cabello hoy — compacto */}
-        {buckets.current.length > 0 && (
-          <section className="border-t border-border/60 px-5 py-4 lg:px-6 lg:py-5">
-            <h3 className="text-sm font-medium text-foreground">
-              {currentSectionTitleByCategory[category]}
-            </h3>
-            <div className="mt-3 space-y-3">
-              {buckets.current.map((field) => (
-                <FieldRow
-                  key={field.id}
-                  field={field}
-                  personal={personal}
-                  onChooseOption={onChooseOption}
-                  compact
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 3. Alergias — visible */}
-        {buckets.allergies.length > 0 && (
-          <section className="border-t border-border/60 px-5 py-4 lg:px-6 lg:py-5">
-            {buckets.allergies.map((field) => (
-              <FieldRow
-                key={field.id}
-                field={field}
-                personal={personal}
-                onChooseOption={onChooseOption}
-              />
-            ))}
-          </section>
-        )}
-
-        {/* 4. Cuidados y antecedentes */}
-        {buckets.history.length > 0 && (
-          <section className="border-t border-border/60 px-5 py-4 lg:px-6 lg:py-5">
-            <header className="text-sm text-foreground">
-              <h3 className="font-medium">Cuidados y antecedentes</h3>
-              <p className="text-xs text-muted-foreground">Necesario para preparar tu servicio.</p>
-            </header>
-            <div className="mt-4 space-y-3">
-              {buckets.history.map((field) => (
+      <div className="mt-5 divide-y divide-border/40">
+        {sections.map((section, index) => (
+          <section
+            key={section.key}
+            className={cn("space-y-4", index === 0 ? "pb-5" : "py-5")}
+          >
+            <SectionEyebrow>{section.title}</SectionEyebrow>
+            <div className="space-y-4">
+              {section.fields.map((field) => (
                 <FieldRow
                   key={field.id}
                   field={field}
@@ -233,10 +188,10 @@ export function PersonalizationStep({
               ))}
             </div>
           </section>
-        )}
+        ))}
 
-        {/* 5. Nota — disclosure */}
-        <div className="border-t border-border/60 px-5 py-4 lg:px-6 lg:py-5">
+        {/* Nota — disclosure */}
+        <div className="pt-5">
           {noteOpen ? (
             <label className="block">
               <span className="text-sm font-medium text-foreground">Nota para Sol Mai</span>
