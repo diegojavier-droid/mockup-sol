@@ -13,18 +13,16 @@ import { BookingConfirmation } from "./summary/BookingConfirmation";
 import { BOOKING_STEP_INDEX, BOOKING_STEPS } from "./wizard/booking-steps";
 import { BookingHeader } from "./wizard/BookingHeader";
 import { WizardNavigation } from "./wizard/WizardNavigation";
-import type { BookingEntryPoint, BookingReturnTarget } from "./booking-navigation-types";
+import type { BookingReturnTarget } from "./booking-navigation-types";
 import type { CategoryId } from "@/lib/booking-data";
 
 export function BookingWizard({
-  entryPoint,
   initialCategory,
   initialServiceId,
   onExit,
   onExitToTarget,
   returnTarget,
 }: {
-  entryPoint: BookingEntryPoint;
   initialCategory?: CategoryId;
   initialServiceId?: string;
   onExit: () => void;
@@ -38,7 +36,6 @@ export function BookingWizard({
       serviceId: initialServiceId,
     },
     {
-      entryPoint,
       onExitToTarget,
       returnTarget,
     },

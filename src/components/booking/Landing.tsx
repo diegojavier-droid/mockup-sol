@@ -126,26 +126,12 @@ export function Landing({
               Explorá los servicios y reservá cuando estés lista.
             </p>
             <div className="mt-5 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
-              {/* Mobile: Ver servicios primero (explorar). Desktop: Reservar primero. */}
               <button
                 type="button"
                 onClick={scrollToSpecialties}
-                className="order-1 rounded-full bg-primary px-7 py-3 font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] hover:shadow-[0_22px_44px_-18px_rgba(80,55,30,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:order-2 sm:border sm:border-border sm:bg-card/80 sm:text-foreground sm:shadow-none sm:hover:bg-card"
+                className="rounded-full bg-primary px-7 py-3 font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] hover:shadow-[0_22px_44px_-18px_rgba(80,55,30,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Ver servicios
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  onStart({
-                    entryPoint: "hero-reserve",
-                    initialSelection: {},
-                    returnTarget: { type: "landing" },
-                  })
-                }
-                className="order-2 rounded-full border border-border bg-card/80 px-7 py-3 font-serif text-base text-foreground transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:order-1 sm:border-0 sm:bg-primary sm:text-primary-foreground sm:shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] sm:hover:translate-y-[-1px] sm:hover:shadow-[0_22px_44px_-18px_rgba(80,55,30,0.55)]"
-              >
-                Reservar turno
               </button>
             </div>
           </div>
@@ -250,7 +236,6 @@ export function Landing({
                 type="button"
                 onClick={() =>
                   onStart({
-                    entryPoint: "public-catalog",
                     initialSelection: { categoryId: selectedCategory },
                     returnTarget: { type: "catalog", categoryId: selectedCategory },
                   })
@@ -298,7 +283,6 @@ export function Landing({
         onReserve={() => {
           if (!previewService || !selectedCategory) return;
           onStart({
-            entryPoint: "public-catalog",
             initialSelection: {
               categoryId: selectedCategory,
               serviceId: previewService.id,

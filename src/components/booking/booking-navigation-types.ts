@@ -1,7 +1,5 @@
 import type { CategoryId } from "@/lib/booking-data";
 
-export type BookingEntryPoint = "hero-reserve" | "public-catalog" | "service-detail";
-
 export type BookingReturnTarget =
   | { type: "landing" }
   | { type: "catalog"; categoryId: CategoryId }
@@ -14,6 +12,5 @@ export type BookingInitialSelection = {
 
 export type StartBookingInput = {
   initialSelection?: BookingInitialSelection;
-  entryPoint: BookingEntryPoint;
   returnTarget: BookingReturnTarget;
 };

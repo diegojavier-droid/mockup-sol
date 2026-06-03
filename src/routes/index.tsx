@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Landing } from "@/components/booking/Landing";
 import { BookingWizard } from "@/components/booking/BookingWizard";
 import type {
-  BookingEntryPoint,
   BookingReturnTarget,
   StartBookingInput,
 } from "@/components/booking/booking-navigation-types";
@@ -32,7 +31,6 @@ function Index() {
   const [mode, setMode] = useState<"landing" | "wizard">("landing");
   const [initialCategory, setInitialCategory] = useState<CategoryId | undefined>();
   const [initialServiceId, setInitialServiceId] = useState<string | undefined>();
-  const [entryPoint, setEntryPoint] = useState<BookingEntryPoint | undefined>();
   const [returnTarget, setReturnTarget] = useState<BookingReturnTarget | undefined>();
   const [selectedPublicCategory, setSelectedPublicCategory] = useState<CategoryId | null>(null);
   const [restoreServicesViewKey, setRestoreServicesViewKey] = useState(0);
@@ -40,18 +38,15 @@ function Index() {
   const clearBookingContext = () => {
     setInitialCategory(undefined);
     setInitialServiceId(undefined);
-    setEntryPoint(undefined);
     setReturnTarget(undefined);
   };
 
   const handleStartBooking = ({
     initialSelection,
-    entryPoint: nextEntryPoint,
     returnTarget: nextReturnTarget,
   }: StartBookingInput) => {
     setInitialCategory(initialSelection?.categoryId);
     setInitialServiceId(initialSelection?.serviceId);
-    setEntryPoint(nextEntryPoint);
     setReturnTarget(nextReturnTarget);
     setMode("wizard");
   };
@@ -87,7 +82,6 @@ function Index() {
   if (mode === "wizard") {
     return (
       <BookingWizard
-        entryPoint={entryPoint ?? "hero-reserve"}
         initialCategory={initialCategory}
         initialServiceId={initialServiceId}
         onExit={handleExitBooking}
