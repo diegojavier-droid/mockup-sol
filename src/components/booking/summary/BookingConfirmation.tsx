@@ -9,22 +9,22 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
     {
       state: "done" as const,
       title: "Solicitud enviada",
-      desc: "Recibimos tus datos y preferencias.",
+      desc: "Recibimos tu reserva.",
     },
     {
       state: "current" as const,
-      title: "Abonar seña · pendiente",
-      desc: "La solicitud pasa a confirmada cuando Mercado Pago acredita el pago.",
+      title: "Seña pendiente",
+      desc: "Confirmás el turno con la seña.",
     },
     {
       state: "todo" as const,
-      title: "Confirmación por email y WhatsApp",
-      desc: "Cuando se acredite la seña, te llegará la confirmación por ambos canales.",
+      title: "Confirmación",
+      desc: "Te avisamos por email y WhatsApp.",
     },
     {
       state: "todo" as const,
-      title: "Recordatorio 30 minutos antes",
-      desc: "Te enviaremos un recordatorio por email y WhatsApp antes del turno.",
+      title: "Recordatorio previo",
+      desc: "Te recordamos tu turno 30 min antes.",
     },
   ];
 
@@ -49,7 +49,7 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
           </h2>
           <div className="mx-auto mt-4 h-px w-10 bg-champagne-deep/40" />
           <p className="mt-4 text-sm leading-relaxed text-foreground/80">
-            Falta un paso: abonar la seña del 20% para que la solicitud pase a confirmada.
+            Aboná la seña del 20% para confirmar tu turno.
           </p>
           <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-champagne-deep/30 bg-champagne/40 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-foreground/70">
             <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
@@ -125,16 +125,19 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
               {payLabel}
             </button>
             <p className="text-center text-xs leading-relaxed text-muted-foreground">
-              Se abre Mercado Pago en una pestaña nueva. Cuando la seña se acredite, Sol Mai te envía la confirmación por WhatsApp o email. El saldo se abona en el salón.
+              Se abre Mercado Pago en una pestaña nueva. La seña confirma tu turno.
             </p>
           </div>
 
           <div className="rounded-2xl border border-border/70 bg-cream/30 px-4 py-3">
             <p className="text-xs leading-relaxed text-muted-foreground">
-              ¿No pudiste completar el pago? Podés volver a intentarlo desde esta pantalla mientras no la cierres.
+              ¿No pudiste pagar? Podés intentarlo nuevamente desde esta pantalla.
             </p>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/90">
-              WhatsApp {solMaiContact.whatsappDisplay} · {solMaiContact.email}
+              WhatsApp {solMaiContact.whatsappDisplay}
+            </p>
+            <p className="text-[11px] leading-relaxed text-muted-foreground/90">
+              {solMaiContact.email}
             </p>
           </div>
 
