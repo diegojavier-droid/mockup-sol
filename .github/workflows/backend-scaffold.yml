@@ -2,7 +2,7 @@ name: Backend scaffold CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, lovable/navigation-ux-playground]
     paths:
       - "server/**"
       - "package.json"
@@ -14,7 +14,7 @@ on:
       - "src/**"
       - "vite.config.ts"
   push:
-    branches: [main]
+    branches: [main, lovable/navigation-ux-playground]
     paths:
       - "server/**"
       - "package.json"
