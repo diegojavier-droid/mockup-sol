@@ -42,7 +42,7 @@ export function ReviewStep({
         Confirmar solicitud
       </button>
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        En el paso siguiente vas a poder abonar la seña del 20%. Tu turno queda confirmado cuando se acredita.
+        En el paso siguiente vas a poder abonar la seña del 20%. La solicitud pasa a confirmada cuando se acredita.
       </p>
     </StepShell>
   );
