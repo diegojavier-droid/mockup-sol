@@ -48,8 +48,11 @@ export function CustomerDataStep({
 
   return (
     <StepShell title="¿Cómo podemos contactarte?">
+      <p className="-mt-1 text-sm leading-relaxed text-muted-foreground">
+        Usaremos estos datos para enviarte la confirmación, el enlace de seña y el recordatorio del turno.
+      </p>
       <div
-        className="rounded-3xl border border-border bg-card p-5 pb-28 shadow-sm lg:p-6"
+        className="mt-5 rounded-3xl border border-border bg-card p-5 pb-28 shadow-sm lg:p-6"
         onBlurCapture={handleBlurCapture}
         onFocusCapture={handleFocusCapture}
       >
@@ -86,7 +89,8 @@ export function CustomerDataStep({
             inputMode="email"
             label="Email"
             onChange={(value) => onChangeCustomerField("email", value)}
-            placeholder="tu@email.com (opcional)"
+            placeholder="tu@email.com"
+            required
             type="email"
             value={customer.email}
           />

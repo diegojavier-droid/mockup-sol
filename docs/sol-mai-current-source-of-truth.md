@@ -43,8 +43,12 @@ Para validar la rama real del producto se debe mirar la UI de Codex, GitHub, el 
 - La personalización por categoría/servicio está implementada.
 - La selección de extras está implementada.
 - El resumen final está implementado.
+- Email y teléfono/WhatsApp son obligatorios para reservar.
+- La UI debe explicar que esos datos se usan para enviar confirmación, enlace de seña y recordatorio del turno.
 - El cálculo vigente mantiene seña del 20% sobre el total estimado.
 - El estado final actual del flujo es pendiente de seña/pago: la solicitud queda en estado `pending_payment` y el turno solo debe considerarse confirmado cuando se acredita la seña.
+- La confirmación queda preparada para enviarse por email y WhatsApp cuando exista backend real.
+- El recordatorio queda preparado para enviarse 30 minutos antes del turno por email y WhatsApp cuando exista backend real.
 
 ## Qué es mock/local hoy
 
@@ -59,6 +63,8 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - No hay CRM real integrado.
 - No hay backend real integrado.
 - No hay pago real integrado para cobrar o acreditar la seña.
+- Mercado Pago se muestra con un link ficticio temporal centralizado en configuración; el link real se reemplazará cuando Sol Mai lo tenga.
+- No hay API real de email, WhatsApp ni Mercado Pago: esas integraciones quedan como evolución backend futura.
 
 ## Decisiones vigentes
 
@@ -70,6 +76,8 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - Depilación usa los mismos horarios generales del salón, no requiere buffer entre turnos y no requiere preguntas previas obligatorias en el MVP.
 - Depilación atiende con capacidad MVP de 1 clienta por turno. La excepción operativa de dos servicios de cejas simultáneos cuando atienden Ani y la dueña queda documentada, pero fuera del MVP.
 - El catálogo Admin/Catálogo futuro debe permitir que la dueña o encargada edite precios, duraciones y visibilidad de servicios, especialmente por inflación y ajustes frecuentes.
+- WhatsApp funciona como canal transaccional saliente para confirmaciones y recordatorios; no debe presentarse como canal principal de consulta ni competir con el flujo de reserva.
+- El link de seña de Mercado Pago debe permanecer centralizado y ser reemplazable por el link real cuando esté disponible.
 - Los documentos maestros anteriores quedan como históricos/contextuales, no como fuente operativa vigente.
 - La fuente operativa vigente es la combinación de:
   - GitHub/repo actual;
@@ -83,6 +91,7 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - Implementar en una fase Admin/Catálogo la edición de precios, duraciones y visibilidad de servicios.
 - Definir flujo real para clientas recurrentes, incluyendo criterios de identificación, privacidad, recuperación de datos y eventual CRM.
 - Definir integración real de seña/pago, proveedor, confirmación, estados y conciliación operativa.
+- Implementar API/backend real para enviar confirmaciones y recordatorios por email y WhatsApp.
 - Crear estrategia para futuras categorías sin sobrecargar el catálogo público.
 - Separar formalmente catálogo público, catálogo técnico y catálogo operativo.
 

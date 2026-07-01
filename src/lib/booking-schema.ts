@@ -24,7 +24,7 @@ const emptyStringToUndefined = (value: unknown) =>
 
 export const customerContactSchema: z.ZodType<CustomerContact> = z.object({
   whatsapp: z.string().trim().min(1, "WhatsApp es requerido"),
-  email: z.string().trim().email("Email inválido").nullish(),
+  email: z.string().trim().min(1, "Email es requerido").email("Email inválido"),
   phone: z.string().trim().min(1).nullish(),
   preferredContactChannel: contactChannelSchema,
   acceptsTransactionalMessages: z.boolean(),
@@ -78,11 +78,24 @@ export const recurringBookingPreferenceSchema: z.ZodType<RecurringBookingPrefere
   notes: z.string().trim().min(1).nullish(),
 });
 
+export const bookingNotificationChannelsSchema = z.object({
+  email: z.literal(true),
+  whatsapp: z.literal(true),
+});
+
+export const bookingReminderSchema = z.object({
+  enabled: z.literal(true),
+  offsetMinutes: z.literal(30),
+  channels: z.array(z.enum(["email", "whatsapp"])),
+});
+
 export const bookingRequestPayloadSchema: z.ZodType<BookingRequestPayload> = z.object({
   customer: customerIdentitySchema,
   selection: bookingSelectionSchema,
   totals: bookingTotalsSchema,
   recurringPreference: recurringBookingPreferenceSchema.nullish(),
+  notificationChannels: bookingNotificationChannelsSchema,
+  reminder: bookingReminderSchema,
   status: bookingStatusSchema,
 });
 

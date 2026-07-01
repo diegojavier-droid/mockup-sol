@@ -110,7 +110,7 @@ export type CustomerType = "new" | "returning" | "unknown";
 
 export interface CustomerContact {
   whatsapp: string;
-  email?: string | null;
+  email: string;
   phone?: string | null;
   preferredContactChannel: ContactChannel;
   acceptsTransactionalMessages: boolean;
@@ -161,11 +161,24 @@ export interface RecurringBookingPreference {
   notes?: string | null;
 }
 
+export interface BookingNotificationChannels {
+  email: boolean;
+  whatsapp: boolean;
+}
+
+export interface BookingReminder {
+  enabled: boolean;
+  offsetMinutes: number;
+  channels: Array<Extract<ContactChannel, "email" | "whatsapp">>;
+}
+
 export interface BookingRequestPayload {
   customer: CustomerIdentity;
   selection: BookingSelection;
   totals: BookingTotals;
   recurringPreference?: RecurringBookingPreference | null;
+  notificationChannels: BookingNotificationChannels;
+  reminder: BookingReminder;
   status: BookingStatus;
 }
 
