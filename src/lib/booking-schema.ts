@@ -24,7 +24,7 @@ const emptyStringToUndefined = (value: unknown) =>
 
 export const customerContactSchema: z.ZodType<CustomerContact> = z.object({
   whatsapp: z.string().trim().min(1, "WhatsApp es requerido"),
-  email: z.string().trim().min(1, "Email es requerido").email("Email inválido"),
+  email: z.string().trim().min(1, "Email es requerido").email("Ingresá un email válido."),
   phone: z.string().trim().min(1).nullish(),
   preferredContactChannel: contactChannelSchema,
   acceptsTransactionalMessages: z.boolean(),

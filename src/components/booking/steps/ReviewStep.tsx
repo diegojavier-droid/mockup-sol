@@ -42,14 +42,19 @@ export function ReviewStep({
             <ReviewField label="Hora" value={data.time ?? "—"} />
           </div>
 
-          <section className="rounded-2xl bg-cream/50 px-4 py-3">
+          <section className="min-w-0 rounded-2xl bg-cream/50 px-4 py-3">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
               Datos de clienta
             </p>
             <div className="mt-2 grid gap-2 text-sm text-foreground/90">
-              <p>{customer.firstName || "—"}</p>
-              <p>{customer.whatsapp || "—"}</p>
-              <p>{customer.email || "—"}</p>
+              <p className="min-w-0 break-words">{customer.firstName || "—"}</p>
+              <p className="min-w-0 break-words">{customer.whatsapp || "—"}</p>
+              <div className="min-w-0">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Email</p>
+                <p className="mt-0.5 min-w-0 break-all text-sm text-foreground/90">
+                  {customer.email || "—"}
+                </p>
+              </div>
             </div>
           </section>
 
