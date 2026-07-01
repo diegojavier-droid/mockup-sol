@@ -85,4 +85,4 @@ Ninguno de esos casos se implementa en este bloque.
 - [x] Sin instanciación en top-level.
 - [x] `publicEnv.ts` sin secretos.
 - [x] Guard CI: `src/` no importa `server/`.
-- [x] Guard CI: sin `VITE_*(SERVICE|SECRET|TOKEN|PASSWORD|KEY)`.
+- [x] Guard CI: sin variables Vite públicas con nombres sensibles.
