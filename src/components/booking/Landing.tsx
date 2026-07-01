@@ -313,7 +313,7 @@ const categoryAccent: Record<CategoryId, string> = {
 const categoryIntro: Record<CategoryId, string> = {
   peluqueria: "Cortes, color, peinados y tratamientos.",
   maquillaje: "Looks de novia, evento y producción.",
-  unas: "Manicura, semipermanente y diseño.",
+  unas: "Uñas cuidadas, semipermanente y diseño.",
 };
 
 type ServiceGroup = {

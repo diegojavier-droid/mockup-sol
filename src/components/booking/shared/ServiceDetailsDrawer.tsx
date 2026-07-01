@@ -53,7 +53,7 @@ const recommendedForByServiceId: Record<string, string> = {
 const recommendedForByCategory: Record<CategoryId, string> = {
   peluqueria: "Cabello cuidado con productos profesionales Itely Hairfashion.",
   maquillaje: "Maquillaje profesional para que te sientas cómoda y luminosa.",
-  unas: "Manicura cuidada con terminación prolija y productos de calidad.",
+  unas: "Uñas cuidadas con terminación prolija y productos de calidad.",
 };
 
 export function ServiceDetailsDrawer({

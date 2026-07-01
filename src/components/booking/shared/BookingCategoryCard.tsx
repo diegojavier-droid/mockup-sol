@@ -21,7 +21,7 @@ const publicCategoryLabels: Record<CategoryId, string> = {
 const publicCategoryDescriptions: Record<CategoryId, string> = {
   peluqueria: "Cortes, color, peinados y tratamientos pensados para cuidar tu pelo.",
   maquillaje: "Looks sociales, de evento y producción para sentirte cómoda y luminosa.",
-  unas: "Manicura, semipermanente, soft gel y detalles de nail art con terminación prolija.",
+  unas: "Uñas cuidadas: manicura, semipermanente, soft gel y detalles de nail art con terminación prolija.",
 };
 
 export function BookingCategoryCard({

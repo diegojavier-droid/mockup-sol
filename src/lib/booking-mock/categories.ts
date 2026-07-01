@@ -4,7 +4,7 @@ export const categories: Category[] = [
   { id: "peluqueria", name: "Peluquería", tagline: "Corte, color y tratamientos", emoji: "✂" },
   {
     id: "maquillaje",
-    name: "Maquillaje profesional",
+    name: "Maquillaje",
     tagline: "Social, eventos y novias",
     emoji: "✿",
   },
