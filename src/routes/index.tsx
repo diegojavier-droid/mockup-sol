@@ -6,6 +6,7 @@ import type {
   BookingReturnTarget,
   StartBookingInput,
 } from "@/components/booking/booking-navigation-types";
+import { hasValidBookingDraft } from "@/lib/booking-draft-storage";
 import type { CategoryId } from "@/lib/booking-data";
 
 export const Route = createFileRoute("/")({
@@ -28,7 +29,9 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const [mode, setMode] = useState<"landing" | "wizard">("landing");
+  const [mode, setMode] = useState<"landing" | "wizard">(() =>
+    hasValidBookingDraft() ? "wizard" : "landing",
+  );
   const [initialCategory, setInitialCategory] = useState<CategoryId | undefined>();
   const [initialServiceId, setInitialServiceId] = useState<string | undefined>();
   const [returnTarget, setReturnTarget] = useState<BookingReturnTarget | undefined>();

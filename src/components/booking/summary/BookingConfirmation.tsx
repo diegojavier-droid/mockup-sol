@@ -5,7 +5,15 @@ import type { SummaryData } from "../SummaryPanel";
 
 type LocalPaymentView = "pending" | "informed";
 
-export function BookingConfirmation({ data, onClose }: { data: SummaryData; onClose: () => void }) {
+export function BookingConfirmation({
+  data,
+  onClose,
+  wasDraftRestored = false,
+}: {
+  data: SummaryData;
+  onClose: () => void;
+  wasDraftRestored?: boolean;
+}) {
   const { depositPrice, depositAmount } = computeBookingTotals(data);
   const payLabel = depositAmount ? `Abonar seña — ${depositPrice}` : "Abonar seña";
   const [view, setView] = useState<LocalPaymentView>("pending");
@@ -18,6 +26,12 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
     <div className="flex min-h-screen items-start justify-center bg-background px-4 py-6 sm:items-center sm:py-12">
       <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-border bg-card shadow-[0_40px_80px_-40px_rgba(120,90,60,0.4)]">
         <div className="space-y-4 px-5 py-5 sm:space-y-5 sm:px-8 sm:py-8">
+          {wasDraftRestored && (
+            <p className="rounded-full border border-champagne-deep/20 bg-cream/50 px-4 py-2 text-center text-xs text-muted-foreground">
+              Retomamos tu reserva en curso.
+            </p>
+          )}
+
           {/* Estado compacto */}
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-foreground/70">
             <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />

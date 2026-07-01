@@ -77,7 +77,13 @@ export function BookingWizard({
   }, [wizard.step]);
 
   if (wizard.paymentPending) {
-    return <BookingConfirmation data={wizard.data} onClose={wizard.closeAndClearDraft} />;
+    return (
+      <BookingConfirmation
+        data={wizard.data}
+        onClose={wizard.closeAndClearDraft}
+        wasDraftRestored={wizard.wasDraftRestored}
+      />
+    );
   }
 
   return (

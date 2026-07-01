@@ -71,6 +71,10 @@ function isBookingDraft(value: unknown): value is BookingDraft {
   );
 }
 
+export function hasValidBookingDraft(): boolean {
+  return loadBookingDraft() !== null;
+}
+
 export function loadBookingDraft(): BookingDraft | null {
   if (!isBrowser()) return null;
 
