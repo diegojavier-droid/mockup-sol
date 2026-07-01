@@ -21,10 +21,10 @@
 ## Fase 2: reservas reales + disponibilidad real
 
 - Objetivo: reemplazar disponibilidad mock por reservas persistidas y slots reales.
-- Entregables: endpoints de catálogo, disponibilidad, creación de reserva, bloqueo temporal, expiración de impagas y consulta de estado.
+- Entregables: endpoints de catálogo, disponibilidad, creación de reserva, bloqueo temporal de 10 minutos con `payment_required_until = created_at + 10 minutos`, expiración de impagas y consulta de estado.
 - Módulos afectados: wizard como consumidor API, backend reservas, PostgreSQL, jobs programados.
 - Riesgos: dobles reservas, holds demasiado largos, cálculos inconsistentes de duración/precio, mala UX ante expiración.
-- Validaciones: pruebas de concurrencia básica, creación de reservas pending_payment, expiración automática y no solapamiento.
+- Validaciones: pruebas de concurrencia básica, creación de reservas `pending_payment`, retención del slot por 10 minutos, expiración automática a `expired`, liberación de slot y no solapamiento.
 - Definición de terminado: una clienta puede crear una reserva persistida con slot retenido y estado consultable.
 
 ## Fase 3: Mercado Pago real + webhooks
@@ -32,8 +32,8 @@
 - Objetivo: cobrar seña real por reserva y confirmar turnos por conciliación confiable.
 - Entregables: creación de preference por reserva, webhook, tabla de pagos/eventos, idempotencia, estados de pago y auditoría.
 - Módulos afectados: backend pagos, reservations, jobs de conciliación, frontend de retorno/estado.
-- Riesgos: confirmar por retorno del navegador, duplicar pagos, no manejar pagos tardíos, credenciales mal separadas.
-- Validaciones: sandbox end-to-end, webhooks duplicados, pagos rechazados, pagos en revisión, pagos tardíos y doble pago.
+- Riesgos: confirmar por retorno del navegador, duplicar pagos, confirmar pagos aprobados después del vencimiento de 10 minutos, no manejar pagos tardíos como excepción manual, credenciales mal separadas.
+- Validaciones: sandbox end-to-end, webhooks duplicados, pagos rechazados, pagos en revisión, pagos aprobados antes de `payment_required_until`, pagos tardíos tratados como excepción manual y doble pago.
 - Definición de terminado: una reserva se confirma automáticamente solo cuando el backend verifica pago válido.
 
 ## Fase 4: notificaciones email/WhatsApp + recordatorio 30 min

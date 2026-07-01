@@ -12,7 +12,7 @@ Este documento define el flujo productivo para convertir una intención de reser
 4. El frontend envía datos de reserva al backend.
 5. El backend valida servicio, extras, duración, precio, datos obligatorios y disponibilidad.
 6. El backend crea una reserva `draft` o directamente `pending_payment` según el punto exacto de persistencia elegido.
-7. El backend bloquea temporalmente el slot con `expires_at`.
+7. El backend bloquea temporalmente el slot con `payment_required_until = created_at + 10 minutos`.
 8. El backend crea una preferencia de Mercado Pago para esa reserva.
 9. La clienta es redirigida a Mercado Pago.
 10. El backend confirma, revisa o cancela estados mediante webhook y reconsulta server-to-server.
@@ -36,8 +36,8 @@ Este documento define el flujo productivo para convertir una intención de reser
 | `draft` | `pending_payment` | Datos completos, slot válido y preference creada | Backend |
 | `draft` | `cancelled` | Abandono explícito o limpieza operativa | Backend/job |
 | `pending_payment` | `payment_in_review` | Webhook indica pago pendiente o en revisión | Backend webhook |
-| `pending_payment` | `confirmed` | Webhook confirma pago aprobado/acreditado | Backend webhook |
-| `pending_payment` | `expired` | Vence `expires_at` sin pago válido | Job programado |
+| `pending_payment` | `confirmed` | Webhook confirma pago aprobado/acreditado antes de `payment_required_until` | Backend webhook |
+| `pending_payment` | `expired` | Vence `payment_required_until` sin pago aprobado válido | Job programado |
 | `pending_payment` | `cancelled` | Cancelación manual antes del pago | Panel interno/API |
 | `payment_in_review` | `confirmed` | Proveedor confirma aprobación | Backend webhook/conciliación |
 | `payment_in_review` | `cancelled` | Proveedor rechaza definitivamente o cancelación manual | Backend/panel |
@@ -49,19 +49,22 @@ Este documento define el flujo productivo para convertir una intención de reser
 
 ## Bloqueo temporal de slot
 
-Al crear una reserva pendiente de pago, el backend debe retener el slot por un plazo corto, por ejemplo 10 a 20 minutos. Durante ese período:
+Al crear una reserva pendiente de pago, el backend debe retener el slot durante 10 minutos exactos. El vencimiento operativo debe persistirse/calcularse como `payment_required_until = created_at + 10 minutos`. Durante ese período:
 
 - el slot no debe ofrecerse a otra clienta si la capacidad quedó completa;
-- la retención debe estar asociada a `reservation_id` y `expires_at`;
+- la retención debe estar asociada a `reservation_id` y `payment_required_until`;
 - el cálculo debe considerar duración del servicio, extras, staff, capacidad y bloqueos;
-- si el pago no llega antes del vencimiento, el slot se libera mediante expiración.
+- solo un pago aprobado antes de `payment_required_until` puede confirmar la reserva;
+- si el pago no llega aprobado antes del vencimiento, la reserva pasa a `expired` y el slot se libera mediante expiración.
+
+Criterio de negocio: si una clienta no paga la seña en 10 minutos, se considera que no está suficientemente decidida sobre el servicio y no debe seguir bloqueando agenda.
 
 ## Expiración de reservas impagas
 
-Un job programado debe buscar reservas `pending_payment` vencidas. Para cada reserva:
+Un job programado debe buscar reservas `pending_payment` con `payment_required_until` vencido. Para cada reserva:
 
 - reconsulta pagos asociados por seguridad;
-- si no hay pago aprobado o en revisión válido, marca `expired`;
+- si no hay pago aprobado antes de `payment_required_until`, marca `expired`;
 - registra auditoría;
 - libera disponibilidad;
 - opcionalmente envía notificación de expiración.
@@ -76,7 +79,7 @@ La preference debe crearse desde backend y por reserva. Debe incluir:
 - monto exacto de seña desde snapshot;
 - descripción legible del servicio;
 - URLs de retorno;
-- fecha de expiración compatible con el hold;
+- fecha de expiración compatible con el hold estricto de 10 minutos;
 - metadata mínima para soporte;
 - ambiente sandbox o producción según environment.
 
@@ -108,11 +111,12 @@ El sistema debe tolerar webhooks duplicados, retrasados o fuera de orden. Reglas
 
 ## Pago tardío
 
-Un pago tardío ocurre cuando Mercado Pago acredita después de que la reserva expiró o fue liberada. Regla recomendada:
+Un pago tardío ocurre cuando el proveedor acredita después de `payment_required_until` o después de que la reserva ya pasó a `expired`. Regla vigente:
 
-- si la reserva está `expired` y el slot sigue libre, permitir confirmación automática solo si la política lo acepta;
-- si el slot ya fue tomado, marcar pago para revisión manual y no confirmar automáticamente;
-- notificar internamente para resolver reprogramación o devolución;
+- un pago aprobado después de `payment_required_until` no confirma automáticamente la reserva;
+- si la reserva está `expired`, el pago debe marcarse como excepción manual aunque el slot siga libre;
+- el sistema no debe volver a bloquear el slot ni pasar la reserva a `confirmed` sin revisión operativa;
+- notificar internamente para resolver reprogramación, confirmación manual excepcional o devolución;
 - registrar todo en auditoría.
 
 ## Doble pago
