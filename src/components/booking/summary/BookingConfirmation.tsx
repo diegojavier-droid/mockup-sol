@@ -1,7 +1,10 @@
+import { computeBookingTotals } from "@/lib/booking-totals";
 import { solMaiContact } from "@/lib/sol-mai-contact";
 import type { SummaryData } from "../SummaryPanel";
 
 export function BookingConfirmation({ data, onClose }: { data: SummaryData; onClose: () => void }) {
+  const { depositPrice, depositAmount } = computeBookingTotals(data);
+
   const timeline = [
     {
       state: "done" as const,
@@ -10,8 +13,8 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
     },
     {
       state: "current" as const,
-      title: "Seña del 20%",
-      desc: "La seña queda pendiente hasta que Mercado Pago acredite el pago.",
+      title: "Abonar seña · pendiente",
+      desc: "Tu turno queda confirmado cuando Mercado Pago acredita el pago.",
     },
     {
       state: "todo" as const,
@@ -25,6 +28,12 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
     },
   ];
 
+  const handlePayDeposit = () => {
+    window.open(solMaiContact.mercadoPagoDepositUrl, "_blank", "noopener");
+  };
+
+  const payLabel = depositAmount ? `Abonar seña — ${depositPrice}` : "Abonar seña";
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-border bg-card shadow-[0_40px_80px_-40px_rgba(120,90,60,0.4)]">
@@ -36,11 +45,15 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
             Solicitud recibida
           </p>
           <h2 className="mt-2 font-serif text-4xl leading-tight text-foreground">
-            Ya casi está
+            Solicitud registrada
           </h2>
           <div className="mx-auto mt-4 h-px w-10 bg-champagne-deep/40" />
-          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Recibimos tu solicitud. La reserva queda pendiente hasta que se acredite la seña del 20%; después recibirás la confirmación por email y WhatsApp.
+          <p className="mt-4 text-sm leading-relaxed text-foreground/80">
+            Falta un paso: abonar la seña del 20% para confirmar tu turno.
+          </p>
+          <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-champagne-deep/30 bg-champagne/40 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-foreground/70">
+            <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
+            Estado: pendiente de seña
           </p>
         </div>
 
@@ -103,23 +116,32 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
             ))}
           </ol>
 
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            La reserva se confirma cuando se acredita la seña. El saldo restante se abona en el salón.
-          </p>
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={handlePayDeposit}
+              className="block w-full rounded-full bg-primary py-4 text-center font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              {payLabel}
+            </button>
+            <p className="text-center text-xs leading-relaxed text-muted-foreground">
+              Se abre Mercado Pago en una pestaña nueva. Cuando la seña se acredite, Sol Mai te confirma el turno por WhatsApp o email. El saldo se abona en el salón.
+            </p>
+          </div>
 
-          <a
-            href={solMaiContact.mercadoPagoDepositUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="block w-full rounded-full bg-primary py-4 text-center font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            Abonar seña
-          </a>
+          <div className="rounded-2xl border border-border/70 bg-cream/30 px-4 py-3">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              ¿No pudiste completar el pago? Podés volver a intentarlo desde esta pantalla mientras no la cierres.
+            </p>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/90">
+              WhatsApp {solMaiContact.whatsappDisplay} · {solMaiContact.email}
+            </p>
+          </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-full border border-border bg-card py-4 font-serif text-base text-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="w-full rounded-full border border-border bg-card py-3 font-serif text-sm text-muted-foreground transition-all hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Volver al inicio
           </button>
