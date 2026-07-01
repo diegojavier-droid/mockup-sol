@@ -108,7 +108,7 @@ const cases: Array<[CategoryId, string, Personalization]> = [
   ["peluqueria", "alisado", { largo: "Largo", densidad: "Abundante", tipo: "Crespo" }],
   ["peluqueria", "nutricion", { largo: "Largo", densidad: "Abundante", tipo: "Rizado" }],
   ["maquillaje", "mk-social", { prueba: "Sí", estilo: "Glam" }],
-  ["unas", "semi", { retiro: "Sí", nailart: "Sí" }],
+  ["unas", "semi", { estado: "Con semipermanente", terminacion: "Color liso" }],
 ];
 
 for (const [category, serviceId, personalization] of cases) {
@@ -148,16 +148,18 @@ assert(
   "Makeup contextual answer must not show impact chip",
 );
 assert(
-  totals("unas", "semi", { retiro: "Sí" }).durationMinutes === 70,
-  "Nails removal must add 25 min",
+  totals("unas", "semi", { estado: "Con semipermanente" }, ["retiro-extra"]).durationMinutes ===
+    70,
+  "Nails removal extra must add 25 min",
 );
 assert(
-  totals("unas", "semi", { retiro: "Sí" }).priceAmount === 13500,
-  "Nails removal must add fixed price",
+  totals("unas", "semi", { estado: "Con semipermanente" }, ["retiro-extra"]).priceAmount ===
+    13500,
+  "Nails removal extra must add fixed price",
 );
 assert(
-  impact("unas", "semi", "retiro", "Sí") === "+25 min · +$3.500",
-  "Nails removal impact chip must match totals",
+  impact("unas", "semi", "estado", "Con semipermanente") === null,
+  "Nails current state is contextual and must not show impact chip",
 );
 
 const corteVisibleTotals = totals("peluqueria", "corte-fem", {});
