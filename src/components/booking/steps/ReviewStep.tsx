@@ -18,9 +18,9 @@ export function ReviewStep({
   onConfirm: () => void;
 }) {
   return (
-    <StepShell title="Revisá y registrá tu solicitud">
+    <StepShell title="Revisá y confirmá tu solicitud">
       <p className="-mt-1 text-sm text-muted-foreground">
-        Primero registramos tu solicitud en estado pendiente de seña. Después vas a poder abonar la seña del 20%.
+        Primero registramos tu solicitud en estado pendiente de seña. En el paso siguiente vas a poder abonar la seña del 20%.
       </p>
       <div className="mt-5">
         <BookingSummaryDetails customer={customer} data={data} personal={personal} />
@@ -31,7 +31,7 @@ export function ReviewStep({
         </p>
       )}
       <div className="mt-5 rounded-2xl border border-border bg-cream/40 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
-        <p>Recibirás la confirmación por email y WhatsApp.</p>
+        <p>Recibirás la confirmación por email y WhatsApp cuando se acredite la seña.</p>
         <p>Te enviaremos un recordatorio 30 minutos antes del turno.</p>
       </div>
       <button
@@ -39,10 +39,10 @@ export function ReviewStep({
         onClick={onConfirm}
         className="mt-6 w-full rounded-full bg-primary py-4 font-serif text-lg text-primary-foreground shadow-[0_20px_40px_-18px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        Registrar solicitud
+        Confirmar solicitud
       </button>
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        Al registrar la solicitud, te mostramos el enlace de Mercado Pago para abonar la seña. El saldo se abona en el salón.
+        En el paso siguiente vas a poder abonar la seña del 20%. Tu turno queda confirmado cuando se acredita.
       </p>
     </StepShell>
   );
