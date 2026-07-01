@@ -444,10 +444,11 @@ export const bookingServiceRuleMatrix: Record<string, ServicePersonalizationRule
   nailart: { category: "unas", fields: nailFields },
   mani: { category: "unas", fields: nailFields },
   retiro: { category: "unas", fields: nailFields },
-  "depi-rostro-completo": { category: "depilacion", fields: [] },
-  "depi-cejas": { category: "depilacion", fields: [] },
-  "depi-bigote": { category: "depilacion", fields: [] },
-  "depi-bozo-menton": { category: "depilacion", fields: [] },
+  "depi-rostro-completo": { category: "depilacion", fields: {} },
+  "depi-cejas": { category: "depilacion", fields: {} },
+  "depi-bigote": { category: "depilacion", fields: {} },
+  "depi-bozo-menton": { category: "depilacion", fields: {} },
+
 };
 
 export const bookingRules: Record<CategoryId, CategoryBookingRules> = {
@@ -465,7 +466,7 @@ export const bookingRules: Record<CategoryId, CategoryBookingRules> = {
   },
   depilacion: {
     fallbackServiceDecision: "no_personalization_modifiers",
-    personalizationModifiers: [],
+    personalizationModifiers: {},
   },
 };
 
