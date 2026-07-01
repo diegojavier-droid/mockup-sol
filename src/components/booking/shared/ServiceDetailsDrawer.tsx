@@ -136,6 +136,10 @@ export function ServiceDetailsDrawer({
                 {service.duration} <span className="text-champagne/80">·</span>{" "}
                 <span className="font-serif text-foreground">Desde {service.price}</span>
               </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Reservá con seña del 20%. El saldo se abona en el salón.
+              </p>
+
 
               <p className="mt-4 text-sm leading-relaxed text-foreground/80">{service.desc}</p>
 
