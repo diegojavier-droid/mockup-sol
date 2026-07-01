@@ -22,9 +22,11 @@ Para validar la rama real del producto se debe mirar la UI de Codex, GitHub, el 
 - Las categorías públicas actuales son:
   - Peluquería;
   - Maquillaje;
-  - Uñas.
+  - Uñas;
+  - Depilación.
 - La categoría pública de maquillaje debe mostrarse como “Maquillaje”. “Maquillaje profesional” puede usarse solo como texto descriptivo o comercial, no como nombre de categoría principal.
 - Uñas está vigente como categoría pública final. “Manicura” debe quedar como servicio o subfamilia dentro de Uñas, no como nombre de categoría principal.
+- Depilación está vigente como cuarta categoría pública y reservable, con alcance MVP acotado a servicios faciales simples.
 
 ### Exploración de servicios
 
@@ -51,6 +53,7 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - Payload de reserva: se construye y valida localmente como contrato funcional, pero no se envía a un backend real.
 - Estado `pending_payment`: representa el estado esperado del flujo, pero hoy no confirma pagos reales ni persistencia productiva.
 - Datos de catálogo: servicios, categorías, extras, reglas y precios son datos locales/mock hasta validación definitiva con Sol.
+- Los precios base de Depilación se cargan como seed/mock desde el archivo operativo `precios.xlsx` y no deben tratarse como precios hardcodeados definitivos.
 - Disponibilidad: agenda, horarios, bloqueos y turnos existentes son mock/locales.
 - No hay CRM real integrado.
 - No hay backend real integrado.
@@ -63,6 +66,9 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - La clienta no debe ver toda la complejidad técnica de productos, fórmulas, líneas, reglas profesionales o combinaciones internas.
 - Uñas es la categoría pública final para los servicios de uñas.
 - Manicura debe usarse solo como servicio o subfamilia dentro de Uñas, no como categoría principal.
+- Depilación usa los mismos horarios generales del salón, no requiere buffer entre turnos y no requiere preguntas previas obligatorias en el MVP.
+- Depilación atiende con capacidad MVP de 1 clienta por turno. La excepción operativa de dos servicios de cejas simultáneos cuando atienden Ani y la dueña queda documentada, pero fuera del MVP.
+- El catálogo Admin/Catálogo futuro debe permitir que la dueña o encargada edite precios, duraciones y visibilidad de servicios, especialmente por inflación y ajustes frecuentes.
 - Los documentos maestros anteriores quedan como históricos/contextuales, no como fuente operativa vigente.
 - La fuente operativa vigente es la combinación de:
   - GitHub/repo actual;
@@ -73,10 +79,29 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 ## Pendientes
 
 - Validar catálogo real con Sol antes de convertirlo en dataset definitivo.
+- Implementar en una fase Admin/Catálogo la edición de precios, duraciones y visibilidad de servicios.
 - Definir flujo real para clientas recurrentes, incluyendo criterios de identificación, privacidad, recuperación de datos y eventual CRM.
 - Definir integración real de seña/pago, proveedor, confirmación, estados y conciliación operativa.
 - Crear estrategia para futuras categorías sin sobrecargar el catálogo público.
 - Separar formalmente catálogo público, catálogo técnico y catálogo operativo.
+
+## Depilación — seed/mock vigente
+
+Servicios iniciales de Depilación cargados con precios actuales tomados de `precios.xlsx`:
+
+- Rostro completo / Depi rostro completo: 30 min, desde $30.000.
+- Cejas: 15 min, desde $12.000.
+- Bigote: 10 min, desde $5.000.
+- Bozo / bigote y mentón: 15 min, desde $11.500.
+
+Notas operativas:
+
+- El tiempo puede variar según si se trabaja con pinza o cera.
+- La capacidad MVP es 1 clienta por turno.
+- No se implementa selección de profesional.
+- No se implementa doble capacidad para cejas en MVP.
+- No hay extras inventados para Depilación.
+- No hay preguntas previas obligatorias de piel, alergias o tratamientos en MVP.
 
 ## Alcance de este documento
 

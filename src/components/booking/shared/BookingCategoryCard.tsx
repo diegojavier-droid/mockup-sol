@@ -10,18 +10,21 @@ const categoryImages: Record<CategoryId, string> = {
   peluqueria: peluImg,
   maquillaje: makeImg,
   unas: nailsImg,
+  depilacion: makeImg,
 };
 
 const publicCategoryLabels: Record<CategoryId, string> = {
   peluqueria: "Peluquería",
   maquillaje: "Maquillaje",
   unas: "Uñas",
+  depilacion: "Depilación",
 };
 
 const publicCategoryDescriptions: Record<CategoryId, string> = {
   peluqueria: "Cortes, color, peinados y tratamientos pensados para cuidar tu pelo.",
   maquillaje: "Looks sociales, de evento y producción para sentirte cómoda y luminosa.",
   unas: "Uñas cuidadas: manicura, semipermanente, soft gel y detalles de nail art con terminación prolija.",
+  depilacion: "Depilación facial, cejas y bozo con atención simple, rápida y prolija.",
 };
 
 export function BookingCategoryCard({

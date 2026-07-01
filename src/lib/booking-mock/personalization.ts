@@ -47,4 +47,5 @@ export const personalizationFields: Record<CategoryId, PersonalizationField[]> =
       options: ["Brillante", "Mate", "Francesa", "Color liso"],
     },
   ],
+  depilacion: [],
 };

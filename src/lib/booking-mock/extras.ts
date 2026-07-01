@@ -74,4 +74,5 @@ export const extras: Record<CategoryId, Extra[]> = {
     },
     { id: "refuerzo", name: "Refuerzo", durationMinutes: 15, price: "$4.000", priceAmount: 4000 },
   ],
+  depilacion: [],
 };

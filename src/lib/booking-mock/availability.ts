@@ -198,6 +198,14 @@ export function inferLegacyAreaId(serviceName?: string): AreaId {
   if (normalizedServiceName.includes("maquillaje")) return "maquillaje";
 
   if (
+    ["depilación", "depilacion", "cejas", "bigote", "bozo", "mentón", "menton"].some((keyword) =>
+      normalizedServiceName.includes(keyword),
+    )
+  ) {
+    return "depilacion";
+  }
+
+  if (
     ["uñas", "manicura", "semi", "kapping", "soft gel", "nail"].some((keyword) =>
       normalizedServiceName.includes(keyword),
     )

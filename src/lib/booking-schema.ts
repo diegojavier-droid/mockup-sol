@@ -51,7 +51,7 @@ export const returningCustomerLookupSchema = z
   }) satisfies z.ZodType<ReturningCustomerLookup, z.ZodTypeDef, unknown>;
 
 export const bookingSelectionSchema: z.ZodType<BookingSelection> = z.object({
-  categoryId: z.enum(["peluqueria", "maquillaje", "unas"]),
+  categoryId: z.enum(["peluqueria", "maquillaje", "unas", "depilacion"]),
   serviceId: z.string().trim().min(1, "Servicio es requerido"),
   extraIds: z.array(z.string().trim().min(1)).optional(),
   personalization: z.record(z.string()).optional(),

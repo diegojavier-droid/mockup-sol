@@ -6,6 +6,7 @@ export const operationalBufferSettings: OperationalBufferSettings = {
     peluqueria: 10,
     maquillaje: 5,
     unas: 5,
+    depilacion: 0,
   },
   byServiceId: {
     balayage: 15,

@@ -9,4 +9,5 @@ export const categories: Category[] = [
     emoji: "✿",
   },
   { id: "unas", name: "Uñas", tagline: "Semipermanente, soft gel y nail art", emoji: "✦" },
+  { id: "depilacion", name: "Depilación", tagline: "Rostro, cejas y bozo", emoji: "◦" },
 ];

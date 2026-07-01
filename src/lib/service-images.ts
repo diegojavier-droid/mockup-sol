@@ -71,6 +71,7 @@ const byCategory: Record<CategoryId, string> = {
   peluqueria: peluqueriaCover,
   maquillaje: maquillajeCover,
   unas: unasCover,
+  depilacion: maquillajeCover,
 };
 
 export function getServiceImage(
