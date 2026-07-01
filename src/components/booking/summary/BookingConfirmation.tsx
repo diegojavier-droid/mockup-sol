@@ -131,10 +131,13 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
 
           <div className="rounded-2xl border border-border/70 bg-cream/30 px-4 py-3">
             <p className="text-xs leading-relaxed text-muted-foreground">
-              ¿No pudiste completar el pago? Podés volver a intentarlo desde esta pantalla mientras no la cierres.
+              ¿No pudiste pagar? Podés intentarlo nuevamente desde esta pantalla.
             </p>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/90">
-              WhatsApp {solMaiContact.whatsappDisplay} · {solMaiContact.email}
+              WhatsApp {solMaiContact.whatsappDisplay}
+            </p>
+            <p className="text-[11px] leading-relaxed text-muted-foreground/90">
+              {solMaiContact.email}
             </p>
           </div>
 
