@@ -166,105 +166,105 @@ export function DateTimeStep({
         </div>
       )}
 
-      {/* Carrusel de días */}
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-medium text-foreground">Elegí un día</p>
-          <button
-            type="button"
-            onClick={() => setShowMonthView((v) => !v)}
-            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-expanded={showMonthView}
-          >
-            {showMonthView ? "Ocultar calendario" : "Ver calendario"}
-          </button>
+      <Collapsible open={showMonthView} onOpenChange={setShowMonthView}>
+        {/* Carrusel de días */}
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-medium text-foreground">Elegí un día</p>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                {showMonthView ? "Ocultar calendario" : "Ver calendario"}
+              </button>
+            </CollapsibleTrigger>
+          </div>
+
+          {availableUpcomingDays.length > 0 ? (
+            <div
+              className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              role="listbox"
+              aria-label="Próximos días disponibles"
+            >
+              <div className="flex gap-2">
+                {availableUpcomingDays.map((day) => {
+                  const selected = date === day.dateKey;
+                  return (
+                    <button
+                      key={day.dateKey}
+                      ref={selected ? selectedRef : undefined}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      onClick={() => handleCarouselPick(day.dateKey)}
+                      className={cn(
+                        "flex min-w-[64px] shrink-0 flex-col items-center rounded-2xl border px-3 py-2.5 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        selected
+                          ? "border-champagne-deep bg-champagne text-accent-foreground shadow-sm"
+                          : "border-border bg-card text-foreground hover:border-champagne",
+                      )}
+                    >
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {day.weekday}
+                      </span>
+                      <span className="mt-0.5 font-serif text-xl leading-none">{day.day}</span>
+                      {day.showMonth && (
+                        <span className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {day.month}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+              No hay días con cupo en las próximas semanas. Probá abrir el calendario.
+            </p>
+          )}
+
+          {date && !selectedInCarousel && !showMonthView && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Fecha elegida fuera de las próximas semanas — abrí el calendario para modificarla.
+            </p>
+          )}
         </div>
 
-        {availableUpcomingDays.length > 0 ? (
-          <div
-            className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            role="listbox"
-            aria-label="Próximos días disponibles"
-          >
-            <div className="flex gap-2">
-              {availableUpcomingDays.map((day) => {
-                const selected = date === day.dateKey;
-                return (
-                  <button
-                    key={day.dateKey}
-                    ref={selected ? selectedRef : undefined}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    onClick={() => handleCarouselPick(day.dateKey)}
-                    className={cn(
-                      "flex min-w-[64px] shrink-0 flex-col items-center rounded-2xl border px-3 py-2.5 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                      selected
-                        ? "border-champagne-deep bg-champagne text-accent-foreground shadow-sm"
-                        : "border-border bg-card text-foreground hover:border-champagne",
-                    )}
-                  >
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      {day.weekday}
-                    </span>
-                    <span className="mt-0.5 font-serif text-xl leading-none">{day.day}</span>
-                    {day.showMonth && (
-                      <span className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {day.month}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+        {/* Calendario mensual: sección plegable liviana, sin bottom sheet */}
+        <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+          <div className="mt-4 rounded-3xl border border-border/70 bg-card/60 p-3 sm:p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="font-serif text-base text-foreground">{getMonthLabel(visibleMonth)}</p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => moveMonth(-1)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-base text-foreground transition-colors hover:border-champagne focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  aria-label="Ver mes anterior"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveMonth(1)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-base text-foreground transition-colors hover:border-champagne focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  aria-label="Ver mes siguiente"
+                >
+                  ›
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <p className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-            No hay días con cupo en las próximas semanas. Probá abrir el calendario.
-          </p>
-        )}
 
-        {date && !selectedInCarousel && !showMonthView && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Fecha elegida fuera de las próximas semanas — abrí el calendario para modificarla.
-          </p>
-        )}
-      </div>
-
-      {/* Calendario mensual (secundario, plegable) */}
-      {showMonthView && (
-        <div className="mt-4">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="font-serif text-lg text-foreground">{getMonthLabel(visibleMonth)}</p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => moveMonth(-1)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-base text-foreground transition-colors hover:border-champagne focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                aria-label="Ver mes anterior"
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                onClick={() => moveMonth(1)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-base text-foreground transition-colors hover:border-champagne focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                aria-label="Ver mes siguiente"
-              >
-                ›
-              </button>
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-border bg-card p-3 shadow-[0_24px_50px_-42px_rgba(120,90,60,0.45)] sm:p-4">
             <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               {weekdayLabels.map((weekday, index) => (
-                <span key={`${weekday}-${index}`} className="py-1.5">
+                <span key={`${weekday}-${index}`} className="py-1">
                   {weekday}
                 </span>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+            <div className="grid grid-cols-7 gap-1">
               {monthDays.map((dateKey, index) => {
                 if (!dateKey) return <span key={`blank-${index}`} aria-hidden="true" />;
 
@@ -281,7 +281,7 @@ export function DateTimeStep({
                     aria-disabled={unavailable}
                     onClick={() => handleMonthPick(dateKey)}
                     className={cn(
-                      "aspect-square rounded-xl border text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
+                      "aspect-square rounded-lg border text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
                       selected &&
                         "border-champagne-deep bg-champagne text-accent-foreground shadow-sm",
                       !selected &&
@@ -289,10 +289,10 @@ export function DateTimeStep({
                         "border-border bg-background text-foreground hover:border-champagne hover:bg-cream",
                       !selected &&
                         status === "past" &&
-                        "cursor-not-allowed border-transparent bg-muted/45 text-muted-foreground/35",
+                        "cursor-not-allowed border-transparent bg-muted/40 text-muted-foreground/35",
                       !selected &&
                         status === "closed" &&
-                        "cursor-not-allowed border-border/70 bg-muted text-muted-foreground line-through",
+                        "cursor-not-allowed border-border/60 bg-muted text-muted-foreground line-through",
                       !selected &&
                         status === "unavailable" &&
                         "cursor-not-allowed border-dashed border-border bg-card text-muted-foreground/55",
@@ -303,15 +303,16 @@ export function DateTimeStep({
                 );
               })}
             </div>
-          </div>
 
-          {!monthHasAvailability && (
-            <p className="mt-2 rounded-2xl border border-border bg-card px-4 py-2.5 text-xs text-muted-foreground">
-              No hay turnos disponibles en este mes. Probá con otro mes.
-            </p>
-          )}
-        </div>
-      )}
+            {!monthHasAvailability && (
+              <p className="mt-2 rounded-xl border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                No hay turnos disponibles en este mes. Probá con otro mes.
+              </p>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
 
       {dayFeedback && (
         <p className="mt-3 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
