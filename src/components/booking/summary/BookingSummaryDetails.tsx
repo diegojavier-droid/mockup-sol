@@ -46,7 +46,6 @@ export function BookingSummaryDetails({
         </div>
       </div>
 
-
       {customer && (
         <div className="mt-5 border-t border-border pt-5">
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Tus datos</p>
