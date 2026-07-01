@@ -18,8 +18,13 @@ export function ReviewStep({
   onConfirm: () => void;
 }) {
   return (
-    <StepShell title="Prepará la seña de tu reserva">
-      <BookingSummaryDetails customer={customer} data={data} personal={personal} />
+    <StepShell title="Confirmá tu reserva con la seña">
+      <p className="-mt-1 text-sm text-muted-foreground">
+        Revisá los datos y solicitá el enlace para pagar la seña del 20%. Tu turno queda confirmado cuando se acredita.
+      </p>
+      <div className="mt-5">
+        <BookingSummaryDetails customer={customer} data={data} personal={personal} />
+      </div>
       {error && (
         <p className="mt-5 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
@@ -33,8 +38,9 @@ export function ReviewStep({
         Solicitar enlace de pago
       </button>
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        Tu turno queda reservado cuando se acredita la seña. El saldo se abona en el salón.
+        Te enviamos el enlace por WhatsApp o email. El saldo se abona en el salón.
       </p>
+
     </StepShell>
   );
 }

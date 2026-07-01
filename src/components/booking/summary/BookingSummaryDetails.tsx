@@ -44,10 +44,8 @@ export function BookingSummaryDetails({
           </span>
           <span className="font-serif text-base text-foreground">{remainingPrice}</span>
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-          Tu turno queda reservado cuando se acredita la seña. El saldo se abona en el salón.
-        </p>
       </div>
+
 
       {customer && (
         <div className="mt-5 border-t border-border pt-5">
