@@ -14,7 +14,7 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
     {
       state: "current" as const,
       title: "Abonar seña · pendiente",
-      desc: "Tu turno queda confirmado cuando Mercado Pago acredita el pago.",
+      desc: "La solicitud pasa a confirmada cuando Mercado Pago acredita el pago.",
     },
     {
       state: "todo" as const,
@@ -49,7 +49,7 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
           </h2>
           <div className="mx-auto mt-4 h-px w-10 bg-champagne-deep/40" />
           <p className="mt-4 text-sm leading-relaxed text-foreground/80">
-            Falta un paso: abonar la seña del 20% para confirmar tu turno.
+            Falta un paso: abonar la seña del 20% para que la solicitud pase a confirmada.
           </p>
           <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-champagne-deep/30 bg-champagne/40 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-foreground/70">
             <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
@@ -125,7 +125,7 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
               {payLabel}
             </button>
             <p className="text-center text-xs leading-relaxed text-muted-foreground">
-              Se abre Mercado Pago en una pestaña nueva. Cuando la seña se acredite, Sol Mai te confirma el turno por WhatsApp o email. El saldo se abona en el salón.
+              Se abre Mercado Pago en una pestaña nueva. Cuando la seña se acredite, Sol Mai te envía la confirmación por WhatsApp o email. El saldo se abona en el salón.
             </p>
           </div>
 
