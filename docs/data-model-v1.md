@@ -1,185 +1,192 @@
 # Sol Mai Peluquería — modelo de datos v1
 
-## Principios del modelo
+## Principios
 
-El modelo v1 debe soportar reservas y pagos reales sin perder trazabilidad. La regla central es conservar snapshots en reservas, pagos y notificaciones para que cambios posteriores de catálogo, precios, duración o datos de clienta no modifiquen el historial.
+El modelo v1 soporta reservas persistidas, disponibilidad real, seña, webhooks, notificaciones, roles y CRM futuro. Regla base: toda reserva, pago y notificación debe guardar snapshots suficientes para que cambios posteriores de catálogo, precios, duración, contacto o reglas no reescriban historial.
 
-## `clients`
+## Entidades
 
-- Objetivo: representar clientas y contactos que realizan reservas.
-- Campos principales: `id`, `first_name`, `last_name`, `email`, `phone`, `whatsapp_phone`, `created_at`, `updated_at`, `marketing_opt_in`, `notes_summary`.
-- Relaciones: tiene muchas `reservations`, `notifications`, `crm_notes` y puede estar vinculado a `users` si en el futuro existe cuenta de clienta.
-- Datos sensibles: nombre, email, teléfono, WhatsApp y notas.
-- Snapshots necesarios: datos de contacto copiados en cada reserva y notificación.
-- No debe recalcularse retroactivamente: reservas históricas no deben cambiar si la clienta actualiza teléfono, email o nombre.
+### `clients`
+- Objetivo: identificar clientas y contactos que reservan.
+- Campos principales: `id`, `first_name`, `last_name`, `email`, `phone`, `whatsapp_phone`, `marketing_opt_in`, `created_at`, `updated_at`, `deleted_at`.
+- Relaciones: muchas `reservations`, `notifications`, `crm_notes`, `client_history`; opcional vínculo futuro con `users`.
+- Datos sensibles: nombre, email, teléfono, WhatsApp, preferencias.
+- Snapshots necesarios: contacto copiado en reserva, pago y notificación.
+- No recalcular retroactivamente: reservas históricas no cambian si la clienta actualiza contacto.
 
-## `categories`
-
-- Objetivo: agrupar servicios públicos y operativos.
+### `categories`
+- Objetivo: agrupar servicios públicos/operativos.
 - Campos principales: `id`, `name`, `slug`, `description`, `public_order`, `is_public`, `is_active`, `created_at`, `updated_at`.
-- Relaciones: tiene muchos `services` y puede condicionar `personalization_fields`.
+- Relaciones: muchas `services`; puede tener `personalization_fields`.
 - Datos sensibles: ninguno por defecto.
-- Snapshots necesarios: nombre y slug de categoría en la reserva.
-- No debe recalcularse retroactivamente: categoría histórica visible en una reserva no cambia por renombres futuros.
+- Snapshots necesarios: nombre/slug de categoría en reserva.
+- No recalcular retroactivamente: renombres no cambian reservas pasadas.
 
-## `services`
-
-- Objetivo: definir servicios reservables, duración estimada y precio base operativo.
-- Campos principales: `id`, `category_id`, `name`, `slug`, `description`, `base_price`, `duration_minutes`, `deposit_percentage`, `is_public`, `is_active`, `created_at`, `updated_at`.
-- Relaciones: pertenece a `categories`; tiene muchos `extras`, `personalization_fields`, `specialties` y `reservations`.
+### `services`
+- Objetivo: definir servicios reservables, precio, duración y seña.
+- Campos principales: `id`, `category_id`, `name`, `slug`, `description`, `base_price`, `duration_minutes`, `deposit_percentage`, `deposit_amount`, `is_public`, `is_active`, `version`, `created_at`, `updated_at`.
+- Relaciones: pertenece a `categories`; muchas `extras`, `personalization_fields`, `specialties`, `reservations`.
 - Datos sensibles: ninguno por defecto.
-- Snapshots necesarios: nombre, precio base, duración, porcentaje de seña y descripción corta en reserva.
-- No debe recalcularse retroactivamente: precio, duración y seña de reservas existentes no cambian cuando se actualiza el catálogo.
+- Snapshots necesarios: nombre, descripción corta, precio, duración, seña, versión.
+- No recalcular retroactivamente: reservas existentes mantienen precio/duración/seña originales.
 
-## `extras`
-
-- Objetivo: representar adicionales opcionales seleccionables en una reserva.
-- Campos principales: `id`, `service_id`, `name`, `description`, `price_delta`, `duration_delta_minutes`, `is_active`, `public_order`.
-- Relaciones: pertenece a `services`; se snapshottea en `reservations`.
+### `extras`
+- Objetivo: adicionales opcionales con impacto en precio/duración.
+- Campos principales: `id`, `service_id`, `name`, `description`, `price_delta`, `duration_delta_minutes`, `is_active`, `public_order`, `version`.
+- Relaciones: pertenece a `services`; snapshot dentro de `reservations`.
 - Datos sensibles: ninguno por defecto.
-- Snapshots necesarios: extras seleccionados con precio y duración al momento de reservar.
-- No debe recalcularse retroactivamente: total histórico no cambia si un extra sube de precio o se desactiva.
+- Snapshots necesarios: extras seleccionados, precio y duración al reservar.
+- No recalcular retroactivamente: cambios de extra no modifican totales históricos.
 
-## `personalization_fields`
+### `personalization_fields`
+- Objetivo: preguntas/campos de personalización por categoría o servicio.
+- Campos principales: `id`, `category_id`, `service_id`, `label`, `field_type`, `is_required`, `public_order`, `is_active`, `version`.
+- Relaciones: muchas `personalization_options` y `personalization_responses`.
+- Datos sensibles: depende de la pregunta; puede capturar preferencias o información personal.
+- Snapshots necesarios: etiqueta, tipo, obligatoriedad y versión al responder.
+- No recalcular retroactivamente: respuestas pasadas no se reinterpretan por cambios de pregunta.
 
-- Objetivo: definir preguntas o campos de personalización por categoría o servicio.
-- Campos principales: `id`, `category_id`, `service_id`, `label`, `field_type`, `options`, `is_required`, `public_order`, `is_active`.
-- Relaciones: pertenece opcionalmente a `categories` y/o `services`; tiene muchas `personalization_responses`.
-- Datos sensibles: depende del contenido de la pregunta; puede incluir datos de salud o preferencias personales.
-- Snapshots necesarios: etiqueta, tipo y opciones vigentes al responder.
-- No debe recalcularse retroactivamente: respuestas históricas no se reinterpretan si cambia la pregunta.
+### `personalization_options`
+- Objetivo: opciones posibles para campos de selección.
+- Campos principales: `id`, `field_id`, `label`, `value`, `public_order`, `is_active`, `price_delta`, `duration_delta_minutes`.
+- Relaciones: pertenece a `personalization_fields`; referenciable por `personalization_responses`.
+- Datos sensibles: ninguno por defecto, salvo que revele preferencia sensible.
+- Snapshots necesarios: opción elegida con label/value e impacto de precio/duración.
+- No recalcular retroactivamente: una respuesta mantiene la opción original aunque se renombre.
 
-## `personalization_responses`
+### `personalization_responses`
+- Objetivo: guardar respuestas de clienta asociadas a una reserva.
+- Campos principales: `id`, `reservation_id`, `personalization_field_id`, `personalization_option_id`, `field_label_snapshot`, `option_label_snapshot`, `response_value`, `created_at`.
+- Relaciones: pertenece a `reservations`; referencia campos/opciones.
+- Datos sensibles: respuestas de clienta, potencialmente información personal.
+- Snapshots necesarios: pregunta, opción, texto y valores aplicados al momento de reservar.
+- No recalcular retroactivamente: respuestas históricas conservan significado original.
 
-- Objetivo: guardar respuestas de clienta para una reserva concreta.
-- Campos principales: `id`, `reservation_id`, `personalization_field_id`, `field_label_snapshot`, `response_value`, `created_at`.
-- Relaciones: pertenece a `reservations` y referencia `personalization_fields`.
-- Datos sensibles: respuestas de clienta, potencialmente datos personales o de salud.
-- Snapshots necesarios: pregunta y respuesta exactas al momento de reservar.
-- No debe recalcularse retroactivamente: una respuesta mantiene su significado original aunque el campo cambie.
-
-## `staff`
-
-- Objetivo: representar profesionales o personas que atienden turnos.
+### `staff` / `professionals`
+- Objetivo: representar profesionales que atienden turnos.
 - Campos principales: `id`, `display_name`, `email`, `phone`, `is_active`, `created_at`, `updated_at`.
-- Relaciones: tiene muchas `specialties`, `availability_rules`, `blocked_times` y `reservations` asignadas.
-- Datos sensibles: email y teléfono del staff.
-- Snapshots necesarios: nombre del staff asignado en la reserva.
-- No debe recalcularse retroactivamente: una reserva mantiene quién fue asignado aunque el staff cambie de nombre o se desactive.
+- Relaciones: muchas `specialties`, `availability_rules`, `blocked_times`, `reservations`.
+- Datos sensibles: contacto y disponibilidad laboral.
+- Snapshots necesarios: profesional asignado en reserva.
+- No recalcular retroactivamente: reservas mantienen profesional histórico.
 
-## `specialties`
-
-- Objetivo: mapear qué staff puede prestar qué servicios o categorías.
-- Campos principales: `id`, `staff_id`, `service_id`, `category_id`, `priority`, `is_active`.
-- Relaciones: pertenece a `staff` y opcionalmente a `services` o `categories`.
+### `specialties` / `areas`
+- Objetivo: mapear qué profesional puede atender qué área, categoría o servicio.
+- Campos principales: `id`, `staff_id`, `category_id`, `service_id`, `area_key`, `priority`, `is_active`.
+- Relaciones: pertenece a `staff`; opcionalmente a `categories`/`services`.
 - Datos sensibles: ninguno por defecto.
-- Snapshots necesarios: regla usada para asignación si afecta una reserva.
-- No debe recalcularse retroactivamente: asignaciones pasadas no cambian si cambian especialidades futuras.
+- Snapshots necesarios: regla usada para asignar si afecta la reserva.
+- No recalcular retroactivamente: cambios futuros no reasignan reservas pasadas.
 
-## `business_hours`
-
-- Objetivo: definir horarios generales de atención del salón.
-- Campos principales: `id`, `weekday`, `opens_at`, `closes_at`, `is_closed`, `valid_from`, `valid_to`.
-- Relaciones: alimenta cálculo de disponibilidad y se combina con `availability_rules` y `blocked_times`.
+### `business_hours`
+- Objetivo: horario general del salón.
+- Campos principales: `id`, `weekday`, `opens_at`, `closes_at`, `is_closed`, `valid_from`, `valid_to`, `timezone`.
+- Relaciones: alimenta disponibilidad junto con reglas, bloqueos y reservas.
 - Datos sensibles: ninguno por defecto.
-- Snapshots necesarios: ventana horaria usada para calcular el slot reservado.
-- No debe recalcularse retroactivamente: una reserva pasada no se invalida si cambian horarios comerciales.
+- Snapshots necesarios: ventana horaria aplicada al slot.
+- No recalcular retroactivamente: cambios de horario no invalidan turnos históricos.
 
-## `availability_rules`
-
-- Objetivo: definir reglas específicas de disponibilidad por staff, servicio o período.
+### `availability_rules`
+- Objetivo: reglas específicas de capacidad por profesional, servicio o período.
 - Campos principales: `id`, `staff_id`, `service_id`, `weekday`, `starts_at`, `ends_at`, `capacity`, `valid_from`, `valid_to`, `is_active`.
-- Relaciones: opcionalmente pertenece a `staff` y `services`; afecta `reservations`.
-- Datos sensibles: disponibilidad laboral del staff.
-- Snapshots necesarios: capacidad/regla aplicada al confirmar o mantener un slot.
-- No debe recalcularse retroactivamente: disponibilidad histórica no cambia por reglas futuras.
+- Relaciones: opcional a `staff`/`services`; afecta creación de `reservations`.
+- Datos sensibles: disponibilidad laboral.
+- Snapshots necesarios: regla/capacidad aplicada a la reserva.
+- No recalcular retroactivamente: disponibilidad histórica no cambia por reglas futuras.
 
-## `blocked_times`
-
-- Objetivo: bloquear agenda por feriados, descansos, ausencias o tareas internas.
-- Campos principales: `id`, `staff_id`, `starts_at`, `ends_at`, `reason`, `created_by_user_id`, `created_at`.
-- Relaciones: pertenece opcionalmente a `staff` y a `users` creador.
+### `blocked_times`
+- Objetivo: bloquear agenda por feriados, ausencias, descanso o tareas internas.
+- Campos principales: `id`, `staff_id`, `starts_at`, `ends_at`, `reason`, `created_by_user_id`, `created_at`, `updated_at`.
+- Relaciones: opcional a `staff`; creado por `users`.
 - Datos sensibles: motivo del bloqueo si revela información personal.
-- Snapshots necesarios: bloqueo considerado al rechazar o mover una reserva.
-- No debe recalcularse retroactivamente: una disponibilidad consultada históricamente no debe reescribirse.
+- Snapshots necesarios: bloqueo considerado para rechazar/mover reservas.
+- No recalcular retroactivamente: no reescribir disponibilidad consultada históricamente.
 
-## `reservations`
+### `reservations`
+- Objetivo: fuente de verdad de intención, hold, turno confirmado y estado operativo.
+- Campos principales: `id`, `client_id`, `service_id`, `staff_id`, `status`, `starts_at`, `ends_at`, `payment_required_until`, `expires_at`, `expired_at`, `confirmed_at`, `cancelled_at`, `completed_at`, `no_show_at`, `source`, `version`, `created_at`, `updated_at`.
+- Snapshots principales: `category_snapshot`, `service_snapshot`, `extras_snapshot`, `personalization_snapshot`, `price_snapshot`, `duration_minutes_snapshot`, `deposit_amount_snapshot`, `deposit_percentage_snapshot`, `client_name_snapshot`, `client_email_snapshot`, `client_phone_snapshot`, `client_whatsapp_snapshot`, `staff_snapshot`, `timezone_snapshot`.
+- Relaciones: pertenece a `clients`, `services`, opcional `staff`; tiene muchos `payments`, `payment_events`, `notifications`, `personalization_responses`, `audit_logs`.
+- Datos sensibles: contacto, servicio, preferencias, horarios y notas operativas.
+- Reglas: `pending_payment` retiene slot 10 minutos; `payment_required_until = created_at + 10 minutos`; al vencer pasa a `expired` y libera slot; solo webhook `approved` antes del vencimiento pasa a `confirmed`; pago tardío va a `payment_exception`/revisión manual.
+- No recalcular retroactivamente: servicio, precio, duración, seña, contacto, source y versión usados para decidir la reserva.
 
-- Objetivo: fuente de verdad de solicitudes, holds, turnos confirmados y estados operativos.
-- Campos principales: `id`, `client_id`, `service_id`, `staff_id`, `status`, `starts_at`, `ends_at`, `expires_at`, `client_name_snapshot`, `client_email_snapshot`, `client_phone_snapshot`, `category_snapshot`, `service_snapshot`, `extras_snapshot`, `price_snapshot`, `deposit_amount_snapshot`, `duration_minutes_snapshot`, `created_at`, `updated_at`, `cancelled_at`, `completed_at`.
-- Relaciones: pertenece a `clients`, `services` y opcionalmente `staff`; tiene `payments`, `notifications`, `personalization_responses` y `audit_logs`.
-- Datos sensibles: datos de clienta, servicio solicitado, notas y respuestas.
-- Snapshots necesarios: contacto, servicio, categoría, extras, precio, seña, duración, hora, staff y condiciones de pago.
-- No debe recalcularse retroactivamente: total, seña, duración, servicio y contacto usados en la reserva.
+### `payments`
+- Objetivo: registrar intentos y resultados de pago de seña por reserva.
+- Campos principales: `id`, `reservation_id`, `provider`, `provider_payment_id`, `provider_preference_id`, `external_reference`, `status`, `provider_status`, `amount`, `currency`, `paid_at`, `expires_at`, `idempotency_key`, `raw_payload_ref`, `created_at`, `updated_at`.
+- Relaciones: pertenece a `reservations`; muchos `payment_events`.
+- Datos sensibles: ids de proveedor, payloads asociados y datos parciales de pagador si se guardan.
+- Snapshots necesarios: monto, moneda, provider=`mercado_pago`, preference id, external reference, estado interno/proveedor.
+- No recalcular retroactivamente: monto cobrado y conciliación no cambian salvo ajuste explícito auditado.
 
-## `payments`
+### `payment_events` / webhooks
+- Objetivo: registrar eventos crudos y procesamiento de webhooks.
+- Campos principales: `id`, `payment_id`, `reservation_id`, `provider`, `provider_event_id`, `event_type`, `provider_payment_id`, `payload_ref`, `payload`, `headers_snapshot`, `received_at`, `processed_at`, `processing_status`, `idempotency_key`, `error_message`.
+- Relaciones: opcional a `payments` y `reservations`.
+- Datos sensibles: payload del proveedor puede contener datos personales/de pago.
+- Snapshots necesarios: payload crudo o referencia segura, headers, interpretación y resultado.
+- No recalcular retroactivamente: eventos son append-only; reprocesos agregan auditoría.
 
-- Objetivo: representar intentos y resultados de pago asociados a una reserva.
-- Campos principales: `id`, `reservation_id`, `provider`, `provider_payment_id`, `provider_preference_id`, `status`, `amount`, `currency`, `external_reference`, `paid_at`, `expires_at`, `created_at`, `updated_at`.
-- Relaciones: pertenece a `reservations`; tiene muchos `payment_events`.
-- Datos sensibles: identificadores de pago y datos parciales del pagador si se almacenan.
-- Snapshots necesarios: monto, moneda, reserva, preference y estado acreditado.
-- No debe recalcularse retroactivamente: monto cobrado y estado conciliado no cambian por modificaciones futuras de reserva salvo ajuste explícito auditado.
+### `notifications`
+- Objetivo: cola lógica de notificaciones transaccionales.
+- Campos principales: `id`, `reservation_id`, `client_id`, `channel`, `template_key`, `recipient_snapshot`, `payload_snapshot`, `status`, `scheduled_at`, `sent_at`, `created_at`.
+- Relaciones: pertenece a `reservations`/`clients`; muchos `notification_logs`.
+- Datos sensibles: destinatario y contenido.
+- Snapshots necesarios: destinatario, template, variables y canal.
+- No recalcular retroactivamente: mensajes enviados conservan contenido original.
 
-## `payment_events`
-
-- Objetivo: registrar eventos crudos y procesados de Mercado Pago u otro proveedor.
-- Campos principales: `id`, `payment_id`, `provider`, `provider_event_id`, `event_type`, `payload`, `received_at`, `processed_at`, `processing_status`, `idempotency_key`.
-- Relaciones: pertenece opcionalmente a `payments`.
-- Datos sensibles: payload del proveedor puede contener datos personales o de pago.
-- Snapshots necesarios: payload crudo, headers relevantes e interpretación aplicada.
-- No debe recalcularse retroactivamente: el evento recibido debe conservarse aunque luego se reprocesse o corrija.
-
-## `notifications`
-
-- Objetivo: representar una notificación transaccional a enviar.
-- Campos principales: `id`, `reservation_id`, `client_id`, `channel`, `template_key`, `recipient`, `status`, `scheduled_at`, `sent_at`, `created_at`.
-- Relaciones: pertenece a `reservations` y `clients`; tiene muchos `notification_logs`.
-- Datos sensibles: destinatario, contenido transaccional y datos de reserva.
-- Snapshots necesarios: destinatario, template, variables y canal al momento de programar.
-- No debe recalcularse retroactivamente: una notificación enviada mantiene contenido y destinatario original.
-
-## `notification_logs`
-
-- Objetivo: auditar intentos de envío, respuestas de proveedor y errores.
-- Campos principales: `id`, `notification_id`, `provider`, `provider_message_id`, `status`, `request_payload`, `response_payload`, `error_message`, `attempted_at`.
+### `notification_logs`
+- Objetivo: auditar intentos, respuestas y errores de proveedores.
+- Campos principales: `id`, `notification_id`, `provider`, `provider_message_id`, `status`, `request_payload_ref`, `response_payload_ref`, `error_message`, `attempted_at`.
 - Relaciones: pertenece a `notifications`.
-- Datos sensibles: payloads con destinatario y contenido.
-- Snapshots necesarios: request, response, proveedor y error exacto.
-- No debe recalcularse retroactivamente: logs no se sobrescriben; se agregan intentos nuevos.
+- Datos sensibles: payloads con contacto/contenido.
+- Snapshots necesarios: request/response, proveedor y error.
+- No recalcular retroactivamente: se agregan intentos; no se sobrescriben logs.
 
-## `crm_notes`
+### `crm_notes`
+- Objetivo: notas internas sobre clientas recurrentes y preferencias.
+- Campos principales: `id`, `client_id`, `reservation_id`, `author_user_id`, `note`, `visibility`, `created_at`, `updated_at`, `deleted_at`.
+- Relaciones: pertenece a `clients`, opcional `reservations`, autor `users`.
+- Datos sensibles: alto; preferencias, historial y observaciones personales.
+- Snapshots necesarios: autor, fecha y contexto de reserva.
+- No recalcular retroactivamente: edición debe auditarse; no usar para modificar reservas pasadas.
 
-- Objetivo: registrar notas internas sobre clientas recurrentes y preferencias.
-- Campos principales: `id`, `client_id`, `reservation_id`, `author_user_id`, `note`, `visibility`, `created_at`, `updated_at`.
-- Relaciones: pertenece a `clients`, opcionalmente a `reservations` y a `users` autor.
-- Datos sensibles: alto; puede contener preferencias, historial y observaciones personales.
-- Snapshots necesarios: autor, fecha y contexto de reserva si aplica.
-- No debe recalcularse retroactivamente: una nota histórica no cambia por nuevas reservas salvo edición auditada.
+### `client_history`
+- Objetivo: vista/registro operativo de hitos de clienta.
+- Campos principales: `id`, `client_id`, `reservation_id`, `event_type`, `summary`, `metadata`, `occurred_at`, `created_at`.
+- Relaciones: pertenece a `clients`; opcional a `reservations`/`payments`.
+- Datos sensibles: historial de atención y comportamiento.
+- Snapshots necesarios: resumen del evento y metadata mínima.
+- No recalcular retroactivamente: historial no cambia por nuevas reservas salvo evento correctivo auditado.
 
-## `users`
-
-- Objetivo: representar usuarios internos autenticados.
+### `users`
+- Objetivo: usuarios internos autenticados.
 - Campos principales: `id`, `auth_provider_id`, `email`, `display_name`, `is_active`, `last_login_at`, `created_at`, `updated_at`.
-- Relaciones: tiene roles mediante `roles` o tabla puente futura; crea `audit_logs`, `crm_notes` y bloqueos.
-- Datos sensibles: email, identidad y actividad interna.
-- Snapshots necesarios: usuario actor en auditoría.
-- No debe recalcularse retroactivamente: acciones pasadas mantienen el usuario que las ejecutó.
+- Relaciones: muchos `user_roles`; crea `audit_logs`, `crm_notes`, `blocked_times`.
+- Datos sensibles: identidad y actividad interna.
+- Snapshots necesarios: actor en auditoría.
+- No recalcular retroactivamente: acciones pasadas mantienen usuario actor original.
 
-## `roles`
+### `roles`
+- Objetivo: permisos para panel/API interna.
+- Campos principales: `id`, `key`, `name`, `description`, `permissions`, `is_active`, `created_at`.
+- Relaciones: muchos `user_roles`.
+- Datos sensibles: estructura de permisos.
+- Snapshots necesarios: permisos efectivos en acciones críticas.
+- No recalcular retroactivamente: auditoría conserva permiso usado al actuar.
 
-- Objetivo: definir permisos de acceso para panel y API interna.
-- Campos principales: `id`, `key`, `name`, `description`, `permissions`, `is_active`.
-- Relaciones: asignable a `users`; afecta autorización en endpoints internos.
-- Datos sensibles: ninguno por defecto, aunque permisos exponen estructura operativa.
-- Snapshots necesarios: rol/permisos efectivos en acciones críticas de auditoría.
-- No debe recalcularse retroactivamente: una acción auditada mantiene el permiso con que fue realizada.
+### `user_roles`
+- Objetivo: asignar roles a usuarios internos.
+- Campos principales: `id`, `user_id`, `role_id`, `assigned_by_user_id`, `created_at`, `revoked_at`.
+- Relaciones: puente `users`/`roles`.
+- Datos sensibles: permisos internos.
+- Snapshots necesarios: asignación vigente al ejecutar acción.
+- No recalcular retroactivamente: cambios de rol no reescriben acciones previas.
 
-## `audit_logs`
-
-- Objetivo: registrar acciones relevantes del sistema, usuarios internos y procesos automáticos.
+### `audit_logs`
+- Objetivo: trazabilidad append-only de acciones críticas.
 - Campos principales: `id`, `actor_user_id`, `actor_type`, `action`, `entity_type`, `entity_id`, `before_snapshot`, `after_snapshot`, `metadata`, `created_at`.
-- Relaciones: referencia `users` cuando aplica y cualquier entidad auditada.
+- Relaciones: referencia `users` cuando aplica y entidad auditada.
 - Datos sensibles: puede contener datos personales y cambios operativos.
-- Snapshots necesarios: antes/después de cambios críticos y metadata de origen.
-- No debe recalcularse retroactivamente: auditoría es append-only; no debe editarse salvo políticas legales estrictas.
+- Snapshots necesarios: before/after, actor, IP/user agent si corresponde, origen (`api`, `webhook`, `job`, `panel`).
+- No recalcular retroactivamente: auditoría no se edita salvo política legal excepcional y trazada.

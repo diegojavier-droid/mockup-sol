@@ -95,10 +95,15 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 
 ## Transición a producto real
 
+- El frontend actual queda como base UX validada para la capa pública.
 - El mock frontend queda congelado salvo bugs críticos que bloqueen la validación o dañen la experiencia pública ya aprobada.
-- Lovable queda como herramienta de UI/preview, no como fuente de arquitectura productiva ni de reglas críticas de negocio.
+- Lovable queda como herramienta de UI/preview, no como backend, fuente productiva ni dueño de reglas críticas de negocio.
 - Codex/GitHub gobiernan la arquitectura real, la documentación ejecutable, los contratos técnicos y la evolución hacia backend productivo.
 - La próxima etapa es backend + base de datos + auth + reservas reales, con persistencia y disponibilidad calculada del lado servidor.
+- Una reserva `pending_payment` retiene el slot 10 minutos con `payment_required_until = created_at + 10 minutos`.
+- Una reserva `expired` libera el slot y no debe volver a bloquearlo sin decisión manual auditada.
+- Mercado Pago producción será Checkout Pro, con una preference por reserva creada desde backend y confirmación por webhook.
+- El link fijo/manual de Mercado Pago queda descartado para producción.
 - Mercado Pago real va después de tener reservas persistidas y estados confiables sobre los cuales crear una preferencia por reserva.
 - CRM y clientas recurrentes van después de reservas/pagos reales, para evitar construir memoria operativa sobre datos mock.
 

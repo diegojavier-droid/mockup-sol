@@ -2,137 +2,111 @@
 
 ## Objetivo
 
-Este documento define el flujo productivo para convertir una intención de reserva en un turno confirmado mediante persistencia real, bloqueo temporal de slot, preferencia de Mercado Pago y conciliación por webhook.
+Definir el flujo productivo para convertir una intención de reserva en turno confirmado con backend, disponibilidad real, reserva persistida, hold de 10 minutos, Mercado Pago Checkout Pro, webhook, notificaciones y excepciones manuales.
 
-## Flujo real de reserva
+## Flujo real de reserva + seña
 
-1. La clienta explora catálogo y selecciona categoría, servicio, extras y personalización.
-2. El frontend consulta disponibilidad real al backend.
-3. La clienta selecciona fecha y horario disponible.
-4. El frontend envía datos de reserva al backend.
-5. El backend valida servicio, extras, duración, precio, datos obligatorios y disponibilidad.
-6. El backend crea una reserva `draft` o directamente `pending_payment` según el punto exacto de persistencia elegido.
-7. El backend bloquea temporalmente el slot con `payment_required_until = created_at + 10 minutos`.
-8. El backend crea una preferencia de Mercado Pago para esa reserva.
-9. La clienta es redirigida a Mercado Pago.
-10. El backend confirma, revisa o cancela estados mediante webhook y reconsulta server-to-server.
-11. El frontend solo muestra el resultado conocido y consulta el estado real de la reserva.
+1. Clienta elige servicio desde el frontend público.
+2. Backend consulta disponibilidad real usando catálogo, duración, profesionales, horarios, bloqueos y reservas existentes.
+3. Clienta elige fecha/hora disponible.
+4. Clienta completa nombre, WhatsApp y email.
+5. Frontend envía solicitud de reserva al backend.
+6. Backend revalida servicio, precio, duración, seña, extras, datos obligatorios y disponibilidad.
+7. Backend crea reserva `pending_payment` persistida.
+8. Backend retiene el slot durante 10 minutos con `payment_required_until = created_at + 10 minutos`.
+9. Backend crea una preference de Mercado Pago Checkout Pro para esa reserva.
+10. Frontend redirige a Mercado Pago en la misma ventana.
+11. Mercado Pago envía webhook al backend.
+12. Si el pago llega `approved` dentro del plazo: `pending_payment -> confirmed`.
+13. Si la clienta no paga en 10 minutos: `pending_payment -> expired` y el slot se libera.
+14. Si el pago llega tarde después de `expired`: `payment_exception` / revisión manual; no confirmar automáticamente.
+15. Confirmación por email/WhatsApp cuando la reserva pasa a `confirmed`.
+16. Recordatorio por email/WhatsApp 30 minutos antes del turno.
+
+## Regla de negocio de expiración
+
+- Toda reserva `pending_payment` retiene slot solo por 10 minutos.
+- `payment_required_until = created_at + 10 minutos`.
+- Criterio: si la clienta no paga la seña en 10 minutos, no está suficientemente decidida y no debe seguir bloqueando agenda.
+- `expired` libera el slot.
+- Solo un webhook con pago `approved` antes de `payment_required_until` puede confirmar automáticamente.
+- Un pago aprobado tarde después de `expired` no debe reabrir, confirmar ni volver a bloquear el slot sin revisión operativa.
 
 ## Estados de reserva
 
-- `draft`: reserva iniciada pero todavía no enviada a pago o incompleta.
-- `pending_payment`: reserva persistida con slot retenido y seña pendiente.
-- `payment_in_review`: Mercado Pago recibió un pago que requiere revisión o no está acreditado definitivamente.
-- `confirmed`: seña acreditada o aprobada según regla; el turno queda confirmado.
-- `cancelled`: reserva cancelada por clienta, staff o administración.
-- `expired`: la reserva no fue pagada dentro del plazo del hold.
-- `completed`: el turno fue realizado.
-- `no_show`: la clienta no asistió y el salón marca la ausencia.
+| Estado | Cuándo se usa | Transiciones permitidas | Quién dispara | ¿Bloquea slot? | Notificación |
+|---|---|---|---|---|---|
+| `draft` | Intención no persistida o prevalidación sin hold. | `draft -> pending_payment`; descarte sin estado final. | Frontend/backend durante creación. | No. | No. |
+| `pending_payment` | Reserva persistida esperando seña. | `pending_payment -> confirmed`; `pending_payment -> expired`; `pending_payment -> cancelled`; `pending_payment -> payment_in_review`; `pending_payment -> payment_exception`. | Backend al crear; webhook; job de expiración; staff autorizado. | Sí, hasta `payment_required_until`. | Puede enviar aviso de pago pendiente. |
+| `payment_in_review` | Mercado Pago informa pago pendiente/en revisión antes del vencimiento o requiere conciliación. | `payment_in_review -> confirmed`; `payment_in_review -> expired`; `payment_in_review -> payment_exception`; `payment_in_review -> cancelled`. | Webhook/backend; revisión manual. | Sí o bajo ventana operativa definida; debe ser explícito. | Aviso de revisión opcional. |
+| `confirmed` | Pago aprobado y validado dentro del plazo, o confirmación manual auditada. | `confirmed -> cancelled`; `confirmed -> completed`; `confirmed -> no_show`. | Webhook aprobado válido; staff autorizado para casos manuales. | Sí. | Confirmación email/WhatsApp y recordatorio. |
+| `cancelled` | Reserva cancelada por clienta o staff. | Estado final salvo reapertura manual auditada creando nueva reserva. | Staff autorizado o flujo de cancelación. | No. | Aviso de cancelación. |
+| `expired` | No se pagó dentro de 10 minutos. | `expired -> payment_exception` si aparece pago tardío; no vuelve a `confirmed` automáticamente. | Job de expiración/backend. | No. | Aviso de expiración opcional. |
+| `completed` | Servicio realizado. | Estado final. | Staff autorizado/job operativo. | No. | Opcional post-atención. |
+| `no_show` | Clienta no se presenta. | Estado final salvo corrección manual auditada. | Staff autorizado. | No desde el momento en que se marca. | Opcional aviso interno. |
+| `payment_exception` | Pago tardío, duplicado, inconsistente o conciliación manual. | Resolución manual: mantener, reprogramar, devolver, crear nueva reserva o confirmar excepcionalmente con auditoría. | Webhook/backend detecta; staff/owner resuelve. | No por defecto. | Alerta interna obligatoria; mensaje externo según resolución. |
 
-## Transiciones entre estados
+## Mercado Pago Checkout Pro
 
-| Desde | Hacia | Disparador | Responsable |
-| --- | --- | --- | --- |
-| `draft` | `pending_payment` | Datos completos, slot válido y preference creada | Backend |
-| `draft` | `cancelled` | Abandono explícito o limpieza operativa | Backend/job |
-| `pending_payment` | `payment_in_review` | Webhook indica pago pendiente o en revisión | Backend webhook |
-| `pending_payment` | `confirmed` | Webhook confirma pago aprobado/acreditado antes de `payment_required_until` | Backend webhook |
-| `pending_payment` | `expired` | Vence `payment_required_until` sin pago aprobado válido | Job programado |
-| `pending_payment` | `cancelled` | Cancelación manual antes del pago | Panel interno/API |
-| `payment_in_review` | `confirmed` | Proveedor confirma aprobación | Backend webhook/conciliación |
-| `payment_in_review` | `cancelled` | Proveedor rechaza definitivamente o cancelación manual | Backend/panel |
-| `payment_in_review` | `expired` | Regla operativa decide liberar slot tras plazo máximo | Job/panel |
-| `confirmed` | `cancelled` | Cancelación manual según política | Panel interno/API |
-| `confirmed` | `completed` | Turno atendido | Panel interno/job asistido |
-| `confirmed` | `no_show` | Clienta no asiste | Panel interno |
-| `expired` | `pending_payment` | Solo si se reactiva manualmente y el slot sigue disponible | Panel interno/API |
+### Preference por reserva
 
-## Bloqueo temporal de slot
+La preference debe crearse desde backend y una sola reserva debe ser la unidad de conciliación. Requisitos:
 
-Al crear una reserva pendiente de pago, el backend debe retener el slot durante 10 minutos exactos. El vencimiento operativo debe persistirse/calcularse como `payment_required_until = created_at + 10 minutos`. Durante ese período:
+- `external_reference = reservation_id` o identificador estable equivalente.
+- `metadata` con `reservationId`, ambiente, versión de contrato y datos mínimos de soporte.
+- `expiration_date_from` al momento de crear preference.
+- `expiration_date_to = now + 10 min`, alineado con `payment_required_until`.
+- Monto exacto de seña desde snapshot de reserva.
+- `back_urls.success`, `back_urls.failure`, `back_urls.pending` para UX post-pago.
+- `notification_url` al endpoint backend de webhooks.
+- Exclusión de medios offline que no sirven para seña con vencimiento de 10 minutos.
+- `binary_mode` queda para análisis futuro; no activarlo sin evaluar efectos sobre pagos en revisión.
+- Bricks/Payment Brick queda como evolución futura, no MVP.
 
-- el slot no debe ofrecerse a otra clienta si la capacidad quedó completa;
-- la retención debe estar asociada a `reservation_id` y `payment_required_until`;
-- el cálculo debe considerar duración del servicio, extras, staff, capacidad y bloqueos;
-- solo un pago aprobado antes de `payment_required_until` puede confirmar la reserva;
-- si el pago no llega aprobado antes del vencimiento, la reserva pasa a `expired` y el slot se libera mediante expiración.
+### Seguridad
 
-Criterio de negocio: si una clienta no paga la seña en 10 minutos, se considera que no está suficientemente decidida sobre el servicio y no debe seguir bloqueando agenda.
+- El access token de Mercado Pago nunca debe estar en React, Lovable ni variables `VITE_`.
+- El frontend no crea preferences, no calcula montos confiables y no confirma pagos.
+- En mobile productivo se prefiere redirect en la misma ventana, no `window.open`.
 
-## Expiración de reservas impagas
+## Webhook: única confirmación confiable
 
-Un job programado debe buscar reservas `pending_payment` con `payment_required_until` vencido. Para cada reserva:
+El redirect/back_url no confirma el turno; solo permite mostrar estado. El webhook sí puede confirmar si pasa validaciones.
 
-- reconsulta pagos asociados por seguridad;
-- si no hay pago aprobado antes de `payment_required_until`, marca `expired`;
-- registra auditoría;
-- libera disponibilidad;
-- opcionalmente envía notificación de expiración.
-
-Las reservas `payment_in_review` pueden tener una ventana mayor o requerir revisión manual para evitar liberar un slot con pago potencialmente válido.
-
-## Mercado Pago preference
-
-La preference debe crearse desde backend y por reserva. Debe incluir:
-
-- `external_reference` con `reservation_id`;
-- monto exacto de seña desde snapshot;
-- descripción legible del servicio;
-- URLs de retorno;
-- fecha de expiración compatible con el hold estricto de 10 minutos;
-- metadata mínima para soporte;
-- ambiente sandbox o producción según environment.
-
-El frontend nunca debe construir montos confiables ni usar credenciales privadas.
-
-## Webhook
-
-El webhook debe ser el canal confiable para cambiar estados críticos. Al recibir un evento:
+Procesamiento mínimo:
 
 1. Persistir evento crudo en `payment_events`.
-2. Validar autenticidad según mecanismo disponible del proveedor.
-3. Aplicar idempotencia por evento y pago.
-4. Consultar a Mercado Pago desde backend para obtener estado definitivo.
-5. Ubicar reserva por `external_reference` o payment/preference persistidos.
-6. Actualizar `payments`.
-7. Actualizar `reservations` si corresponde.
-8. Registrar auditoría.
-9. Disparar notificaciones transaccionales.
+2. Validar autenticidad/firma o mecanismo disponible del proveedor.
+3. Aplicar idempotencia por `provider_event_id`, `provider_payment_id` e `idempotency_key`.
+4. Reconsultar server-to-server a Mercado Pago.
+5. Ubicar reserva por `external_reference`, metadata o preference persistida.
+6. Actualizar `payments` con `provider_status`, estado interno, monto, moneda y `paid_at`.
+7. Confirmar solo si reserva está `pending_payment` o estado equivalente permitido y `paid_at/approved_at <= payment_required_until`.
+8. Si la reserva está `expired` o el pago llegó tarde, pasar a `payment_exception` / revisión manual.
+9. Registrar `audit_logs` y disparar notificaciones.
 
-## Idempotencia
+## Idempotencia, duplicados y casos borde
 
-El sistema debe tolerar webhooks duplicados, retrasados o fuera de orden. Reglas mínimas:
+### Pago duplicado
 
-- `payment_events.provider_event_id` no se procesa dos veces;
-- `payments.provider_payment_id` es único por proveedor;
-- una reserva `confirmed` no vuelve a `pending_payment` por un evento viejo;
-- cambios destructivos requieren comparación de timestamps y estado actual;
-- cada transición debe ser atómica a nivel base de datos.
+- No generar doble confirmación ni doble notificación.
+- Una reserva tiene un pago principal aplicado a la seña.
+- Pagos adicionales quedan como excepción manual para devolución, reprogramación o conciliación.
 
-## Pago tardío
+### Pago tardío
 
-Un pago tardío ocurre cuando el proveedor acredita después de `payment_required_until` o después de que la reserva ya pasó a `expired`. Regla vigente:
+- Pago aprobado después de `payment_required_until` no confirma automáticamente.
+- Si ya está `expired`, el slot queda libre y no debe rebloquearse.
+- Debe alertarse internamente y resolverse manualmente.
 
-- un pago aprobado después de `payment_required_until` no confirma automáticamente la reserva;
-- si la reserva está `expired`, el pago debe marcarse como excepción manual aunque el slot siga libre;
-- el sistema no debe volver a bloquear el slot ni pasar la reserva a `confirmed` sin revisión operativa;
-- notificar internamente para resolver reprogramación, confirmación manual excepcional o devolución;
-- registrar todo en auditoría.
+### Pago pendiente/en revisión
 
-## Doble pago
+- Puede mapear a `payment_in_review` si llega antes del vencimiento.
+- La política de bloqueo durante revisión debe definirse explícitamente para no bloquear agenda indefinidamente.
+- Si finalmente aprueba tarde, tratar como excepción manual salvo confirmación operativa auditada.
 
-Un doble pago puede ocurrir por reintentos, duplicados o preferencias recreadas. Regla recomendada:
+### Webhooks fuera de orden
 
-- una reserva solo puede tener un pago principal aplicado a la seña;
-- pagos adicionales se registran pero quedan `requires_review` o equivalente operativo;
-- no duplicar confirmaciones ni notificaciones;
-- alertar al panel interno para devolución o conciliación manual.
-
-## Retorno desde Mercado Pago
-
-El retorno del navegador no confirma el turno. Debe usarse solo para UX:
-
-- mostrar “estamos verificando tu pago” si el webhook aún no llegó;
-- consultar el estado real al backend;
-- informar `confirmed`, `payment_in_review`, `pending_payment`, `expired` o `cancelled` según base de datos;
-- evitar prometer confirmación solo por volver desde una pantalla exitosa.
+- Eventos viejos no deben revertir `confirmed`, `cancelled`, `expired` ni `payment_exception`.
+- Transiciones críticas deben ser atómicas en base de datos.
+- Cada procesamiento debe comparar estado actual, timestamps y vencimiento.

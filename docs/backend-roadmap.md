@@ -1,5 +1,12 @@
 # Sol Mai Peluquería — roadmap backend y transición a sistema real
 
+## Dependencias de secuencia
+
+- Mercado Pago real va después de reserva real persistida: primero debe existir `reservation_id`, estado `pending_payment`, snapshot de seña, vencimiento y disponibilidad confiable.
+- CRM y clientas recurrentes van después de reservas/pagos reales: no debe construirse memoria operativa sobre datos mock o pagos no conciliados.
+- Admin catálogo/tarifas avanzado va después del núcleo operativo: antes se necesitan snapshots y auditoría para que cambios de precio/duración no rompan reservas.
+- El mock queda congelado desde Fase 0 salvo bugs críticos; nuevas reglas deben documentarse y luego implementarse en backend/API.
+
 ## Fase 0: congelar mock y documentar estado
 
 - Objetivo: detener la expansión del mock y fijar la base UX validada.
