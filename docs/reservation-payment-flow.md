@@ -18,19 +18,23 @@ Definir el flujo productivo para convertir una intención de reserva en turno co
 10. Frontend redirige a Mercado Pago en la misma ventana.
 11. Mercado Pago envía webhook al backend.
 12. Si el pago llega `approved` dentro del plazo: `pending_payment -> confirmed`.
-13. Si la clienta no paga en 10 minutos: `pending_payment -> expired` y el slot se libera.
-14. Si el pago llega tarde después de `expired`: `payment_exception` / revisión manual; no confirmar automáticamente.
-15. Confirmación por email/WhatsApp cuando la reserva pasa a `confirmed`.
-16. Recordatorio por email/WhatsApp 30 minutos antes del turno.
+13. Si Mercado Pago informa un pago pendiente/en revisión válido iniciado antes de `payment_required_until`: `pending_payment -> payment_in_review`; no confirma el turno automáticamente.
+14. Si no existe pago aprobado ni pago en revisión válido iniciado antes de `payment_required_until`: `pending_payment -> expired` y el slot se libera.
+15. Si el pago aprobado llega tarde después de que la reserva ya expiró y el slot fue liberado: `payment_exception` / revisión manual; no confirmar automáticamente.
+16. Confirmación por email/WhatsApp cuando la reserva pasa a `confirmed`.
+17. Recordatorio por email/WhatsApp 30 minutos antes del turno.
 
 ## Regla de negocio de expiración
 
 - Toda reserva `pending_payment` retiene slot solo por 10 minutos.
 - `payment_required_until = created_at + 10 minutos`.
-- Criterio: si la clienta no paga la seña en 10 minutos, no está suficientemente decidida y no debe seguir bloqueando agenda.
-- `expired` libera el slot.
+- Criterio: si la clienta no inicia un pago aprobado o un pago en revisión válido dentro de los 10 minutos, no debe seguir bloqueando agenda.
+- Si no hay pago aprobado ni pago en revisión válido iniciado antes de `payment_required_until`, la reserva pasa a `expired` y el slot se libera.
+- Si existe un pago en revisión válido iniciado antes de `payment_required_until`, la reserva pasa a `payment_in_review`, no a `expired`.
+- `payment_in_review` no confirma el turno automáticamente.
+- En `payment_in_review`, el slot puede mantenerse retenido por una ventana extendida definida operativamente o quedar sujeto a revisión manual; la política debe ser explícita para evitar bloqueos indefinidos.
 - Solo un webhook con pago `approved` antes de `payment_required_until` puede confirmar automáticamente.
-- Un pago aprobado tarde después de `expired` no debe reabrir, confirmar ni volver a bloquear el slot sin revisión operativa.
+- Un pago aprobado tarde después de que la reserva ya expiró y el slot fue liberado no debe reabrir, confirmar ni volver a bloquear el slot automáticamente; debe tratarse como `payment_exception`.
 
 ## Estados de reserva
 
@@ -38,7 +42,7 @@ Definir el flujo productivo para convertir una intención de reserva en turno co
 |---|---|---|---|---|---|
 | `draft` | Intención no persistida o prevalidación sin hold. | `draft -> pending_payment`; descarte sin estado final. | Frontend/backend durante creación. | No. | No. |
 | `pending_payment` | Reserva persistida esperando seña. | `pending_payment -> confirmed`; `pending_payment -> expired`; `pending_payment -> cancelled`; `pending_payment -> payment_in_review`; `pending_payment -> payment_exception`. | Backend al crear; webhook; job de expiración; staff autorizado. | Sí, hasta `payment_required_until`. | Puede enviar aviso de pago pendiente. |
-| `payment_in_review` | Mercado Pago informa pago pendiente/en revisión antes del vencimiento o requiere conciliación. | `payment_in_review -> confirmed`; `payment_in_review -> expired`; `payment_in_review -> payment_exception`; `payment_in_review -> cancelled`. | Webhook/backend; revisión manual. | Sí o bajo ventana operativa definida; debe ser explícito. | Aviso de revisión opcional. |
+| `payment_in_review` | Mercado Pago informa pago pendiente/en revisión válido iniciado antes del vencimiento o requiere conciliación. No confirma el turno automáticamente. | `payment_in_review -> confirmed`; `payment_in_review -> expired`; `payment_in_review -> payment_exception`; `payment_in_review -> cancelled`. | Webhook/backend; revisión manual. | Puede mantenerse retenido por ventana extendida definida o quedar sujeto a revisión manual; debe ser explícito. | Aviso de revisión opcional. |
 | `confirmed` | Pago aprobado y validado dentro del plazo, o confirmación manual auditada. | `confirmed -> cancelled`; `confirmed -> completed`; `confirmed -> no_show`. | Webhook aprobado válido; staff autorizado para casos manuales. | Sí. | Confirmación email/WhatsApp y recordatorio. |
 | `cancelled` | Reserva cancelada por clienta o staff. | Estado final salvo reapertura manual auditada creando nueva reserva. | Staff autorizado o flujo de cancelación. | No. | Aviso de cancelación. |
 | `expired` | No se pagó dentro de 10 minutos. | `expired -> payment_exception` si aparece pago tardío; no vuelve a `confirmed` automáticamente. | Job de expiración/backend. | No. | Aviso de expiración opcional. |
@@ -81,9 +85,11 @@ Procesamiento mínimo:
 4. Reconsultar server-to-server a Mercado Pago.
 5. Ubicar reserva por `external_reference`, metadata o preference persistida.
 6. Actualizar `payments` con `provider_status`, estado interno, monto, moneda y `paid_at`.
-7. Confirmar solo si reserva está `pending_payment` o estado equivalente permitido y `paid_at/approved_at <= payment_required_until`.
-8. Si la reserva está `expired` o el pago llegó tarde, pasar a `payment_exception` / revisión manual.
-9. Registrar `audit_logs` y disparar notificaciones.
+7. Confirmar automáticamente solo si la reserva está `pending_payment` o estado equivalente permitido y `paid_at/approved_at <= payment_required_until`.
+8. Si el pago está pendiente/en revisión y fue iniciado antes de `payment_required_until`, pasar la reserva a `payment_in_review`, no a `expired`; esto no confirma el turno automáticamente.
+9. Si al vencer no hay pago aprobado ni pago en revisión válido iniciado antes de `payment_required_until`, pasar a `expired` y liberar el slot.
+10. Si la reserva está `expired` o el pago aprobado llegó tarde después de que el slot fue liberado, pasar a `payment_exception` / revisión manual; no confirmar automáticamente.
+11. Registrar `audit_logs` y disparar notificaciones.
 
 ## Idempotencia, duplicados y casos borde
 
@@ -97,11 +103,14 @@ Procesamiento mínimo:
 
 - Pago aprobado después de `payment_required_until` no confirma automáticamente.
 - Si ya está `expired`, el slot queda libre y no debe rebloquearse.
+- Si el pago aprobado llega tarde después de que la reserva ya expiró y el slot fue liberado, debe tratarse como `payment_exception`, no como confirmación automática.
 - Debe alertarse internamente y resolverse manualmente.
 
 ### Pago pendiente/en revisión
 
-- Puede mapear a `payment_in_review` si llega antes del vencimiento.
+- Si Mercado Pago informa un pago pendiente/en revisión válido iniciado antes de `payment_required_until`, la reserva debe pasar a `payment_in_review`, no a `expired`.
+- `payment_in_review` no confirma el turno automáticamente.
+- El slot puede mantenerse retenido por una ventana extendida definida operativamente o quedar sujeto a revisión manual.
 - La política de bloqueo durante revisión debe definirse explícitamente para no bloquear agenda indefinidamente.
 - Si finalmente aprueba tarde, tratar como excepción manual salvo confirmación operativa auditada.
 
