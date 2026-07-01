@@ -39,7 +39,7 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
           </h2>
           <div className="mx-auto mt-4 h-px w-10 bg-champagne-deep/40" />
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Te enviamos el enlace para pagar la seña del 20%. Cuando se acredite, tu turno queda confirmado.
+            Sol Mai te enviará el enlace para pagar la seña del 20%. Cuando se acredite, tu turno queda confirmado.
           </p>
         </div>
 

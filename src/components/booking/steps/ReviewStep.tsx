@@ -18,7 +18,7 @@ export function ReviewStep({
   onConfirm: () => void;
 }) {
   return (
-    <StepShell title="Confirmá tu reserva con la seña">
+    <StepShell title="Solicitá el enlace para confirmar con seña">
       <p className="-mt-1 text-sm text-muted-foreground">
         Revisá los datos y solicitá el enlace para pagar la seña del 20%. Tu turno queda confirmado cuando se acredita.
       </p>
@@ -38,7 +38,7 @@ export function ReviewStep({
         Solicitar enlace de pago
       </button>
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        Te enviamos el enlace por WhatsApp o email. El saldo se abona en el salón.
+        Sol Mai te enviará el enlace por WhatsApp o email. El saldo se abona en el salón.
       </p>
 
     </StepShell>
