@@ -39,6 +39,7 @@ Para validar la rama real del producto se debe mirar la UI de Codex, GitHub, el 
 
 - El wizard de reserva está implementado.
 - El flujo contempla selección de servicio, personalización, extras, fecha, horario, datos de clienta y revisión final.
+- El wizard solo debe mostrar pasos que pidan una decisión real o aporten claridad a la clienta: si la categoría/servicio actual no tiene campos de personalización relevantes, se omite Detalles; si no tiene extras disponibles, se omite Extras.
 - La personalización por categoría/servicio está implementada.
 - La selección de extras está implementada.
 - El resumen final está implementado.

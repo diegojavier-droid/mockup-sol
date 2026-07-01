@@ -1,5 +1,5 @@
 import { SummaryPanel, type SummaryData } from "../SummaryPanel";
-import { BOOKING_STEP_INDEX, BOOKING_STEPS } from "./booking-steps";
+import { BOOKING_STEP_INDEX } from "./booking-steps";
 
 export function WizardNavigation({
   canNext,
@@ -8,6 +8,7 @@ export function WizardNavigation({
   onBack,
   onNext,
   step,
+  totalSteps,
   isMobileInputFocused = false,
 }: {
   canNext: boolean;
@@ -16,11 +17,12 @@ export function WizardNavigation({
   onBack: () => void;
   onNext: () => void;
   step: number;
+  totalSteps: number;
   isMobileInputFocused?: boolean;
 }) {
   const isCategoryStep = step === BOOKING_STEP_INDEX.category;
   const isServiceStep = step === BOOKING_STEP_INDEX.service;
-  const isFinalStep = step === BOOKING_STEPS.length - 1;
+  const isFinalStep = step === totalSteps - 1;
   const showNextButton = !isCategoryStep && !isServiceStep && !isFinalStep;
   const showSummary = Boolean(data.service);
   const showMobileSummary =

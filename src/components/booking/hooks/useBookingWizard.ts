@@ -9,6 +9,7 @@ import {
   formatDateLabel,
   getSlotsForDate,
   getTodayKey,
+  extras,
   personalizationFields,
   services,
   type CategoryId,
@@ -19,19 +20,61 @@ import {
 import { computeBookingOperationalTotals } from "@/lib/booking-totals";
 import type { BookingInitialSelection, BookingReturnTarget } from "../booking-navigation-types";
 import type { SummaryData } from "../SummaryPanel";
-import { BOOKING_STEP_INDEX, BOOKING_STEPS, type WizardStep } from "../wizard/booking-steps";
-
-const clampWizardStep = (value: number): WizardStep => {
-  const max = BOOKING_STEPS.length - 1;
-  const clamped = Math.min(Math.max(value, 0), max);
-  return clamped as WizardStep;
-};
+import {
+  BOOKING_STEP_LABELS,
+  BOOKING_STEP_INDEX,
+  type BookingStepKey,
+  type WizardStep,
+} from "../wizard/booking-steps";
 import type {
   CustomerErrors,
   CustomerField,
   CustomerFormState,
   CustomerTouched,
 } from "../steps/CustomerDataStep";
+
+const alwaysVisibleSteps: BookingStepKey[] = ["category", "service"];
+const checkoutSteps: BookingStepKey[] = ["dateTime", "customerData", "review"];
+
+function categoryHasPersonalization(category: CategoryId | null) {
+  return category ? personalizationFields[category].length > 0 : true;
+}
+
+function categoryHasExtras(category: CategoryId | null) {
+  return category ? extras[category].length > 0 : true;
+}
+
+function buildVisibleBookingStepKeys(category: CategoryId | null): BookingStepKey[] {
+  return [
+    ...alwaysVisibleSteps,
+    ...(categoryHasPersonalization(category) ? (["details"] as const) : []),
+    ...(categoryHasExtras(category) ? (["extras"] as const) : []),
+    ...checkoutSteps,
+  ];
+}
+
+function getStepLabels(stepKeys: BookingStepKey[]) {
+  return stepKeys.map((stepKey) => BOOKING_STEP_LABELS[stepKey]);
+}
+
+function getStepPosition(stepKeys: BookingStepKey[], stepKey: BookingStepKey): WizardStep {
+  const position = stepKeys.indexOf(stepKey);
+  return Math.max(position, 0);
+}
+
+function getStepKey(stepKeys: BookingStepKey[], step: WizardStep): BookingStepKey {
+  return stepKeys[step] ?? stepKeys[stepKeys.length - 1];
+}
+
+function getNextStepAfterService(category: CategoryId | null): WizardStep {
+  const stepKeys = buildVisibleBookingStepKeys(category);
+  return getStepPosition(stepKeys, stepKeys[BOOKING_STEP_INDEX.service + 1] ?? "dateTime");
+}
+
+function clampWizardStep(value: number, stepKeys: BookingStepKey[]): WizardStep {
+  const max = stepKeys.length - 1;
+  return Math.min(Math.max(value, 0), max);
+}
 
 const ADDITIONAL_COMMENTS_MAX_LENGTH = 500;
 
@@ -213,9 +256,7 @@ function getInitialStep(
   if (!initialSelection?.categoryId) return BOOKING_STEP_INDEX.category;
   if (!initialService) return BOOKING_STEP_INDEX.service;
 
-  return personalizationFields[initialSelection.categoryId].length > 0
-    ? BOOKING_STEP_INDEX.details
-    : BOOKING_STEP_INDEX.extras;
+  return getNextStepAfterService(initialSelection.categoryId);
 }
 
 export function useBookingWizard(
@@ -244,6 +285,10 @@ export function useBookingWizard(
   const [isCustomerRecognized, setIsCustomerRecognized] = useState(false);
   const [paymentPending, setPaymentPending] = useState(false);
   const [bookingRequestError, setBookingRequestError] = useState<string | null>(null);
+
+  const visibleStepKeys = useMemo(() => buildVisibleBookingStepKeys(category), [category]);
+  const stepKey = getStepKey(visibleStepKeys, step);
+  const stepLabels = useMemo(() => getStepLabels(visibleStepKeys), [visibleStepKeys]);
 
   const availabilityRequest = useMemo(() => {
     const totals = computeBookingOperationalTotals({
@@ -279,23 +324,23 @@ export function useBookingWizard(
     whatsapp: !customer.whatsapp.trim(),
   };
   const canRequestCustomerRequiredFeedback =
-    step === BOOKING_STEP_INDEX.customerData &&
+    stepKey === "customerData" &&
     (customerMissingRequiredFields.firstName || customerMissingRequiredFields.whatsapp);
 
   const canNext = useMemo(() => {
-    if (step === BOOKING_STEP_INDEX.category) return !!category;
-    if (step === BOOKING_STEP_INDEX.service) return !!service;
-    if (step === BOOKING_STEP_INDEX.details) {
+    if (stepKey === "category") return !!category;
+    if (stepKey === "service") return !!service;
+    if (stepKey === "details") {
       return category
         ? personalizationFields[category].every((field) => personal[field.id])
         : false;
     }
-    if (step === BOOKING_STEP_INDEX.extras) return true;
-    if (step === BOOKING_STEP_INDEX.dateTime) return !!date && !!time;
-    if (step === BOOKING_STEP_INDEX.customerData)
+    if (stepKey === "extras") return true;
+    if (stepKey === "dateTime") return !!date && !!time;
+    if (stepKey === "customerData")
       return Object.keys(customerValidationErrors).length === 0;
     return true;
-  }, [category, customerValidationErrors, date, personal, service, step, time]);
+  }, [category, customerValidationErrors, date, personal, service, stepKey, time]);
 
   const resetSelectedTurnDetails = () => {
     setService(null);
@@ -319,11 +364,7 @@ export function useBookingWizard(
   const chooseService = (selectedService: Service) => {
     setService(selectedService);
     setChosenExtras([]);
-    setStep(
-      category && personalizationFields[category].length > 0
-        ? BOOKING_STEP_INDEX.details
-        : BOOKING_STEP_INDEX.extras,
-    );
+    setStep(getNextStepAfterService(category));
   };
 
   const choosePersonalization = (fieldId: string, option: string) => {
@@ -415,9 +456,9 @@ export function useBookingWizard(
   };
 
   const next = () => {
-    if (step === BOOKING_STEP_INDEX.customerData) {
+    if (stepKey === "customerData") {
       if (Object.keys(customerValidationErrors).length === 0) {
-        setStep((currentStep) => clampWizardStep(currentStep + 1));
+        setStep((currentStep) => clampWizardStep(currentStep + 1, visibleStepKeys));
         return;
       }
 
@@ -425,7 +466,7 @@ export function useBookingWizard(
       return;
     }
 
-    setStep((currentStep) => clampWizardStep(currentStep + 1));
+    setStep((currentStep) => clampWizardStep(currentStep + 1, visibleStepKeys));
   };
   const back = () => {
     const shouldExitToReturnTarget = navigationContext && step === initialStepRef.current;
@@ -434,9 +475,9 @@ export function useBookingWizard(
       return navigationContext.onExitToTarget(navigationContext.returnTarget);
     }
 
-    if (step === BOOKING_STEP_INDEX.category) return onExit();
+    if (stepKey === "category") return onExit();
 
-    setStep((currentStep) => clampWizardStep(currentStep - 1));
+    setStep((currentStep) => clampWizardStep(currentStep - 1, visibleStepKeys));
   };
 
   return {
@@ -467,6 +508,8 @@ export function useBookingWizard(
     isCustomerRecognized,
     setTime,
     step,
+    stepKey,
+    stepLabels,
     time,
     toggleExtra,
   };
