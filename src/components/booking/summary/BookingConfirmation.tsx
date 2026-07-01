@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { computeBookingTotals } from "@/lib/booking-totals";
 import { solMaiContact } from "@/lib/sol-mai-contact";
 import type { SummaryData } from "../SummaryPanel";
 
+type LocalPaymentView = "pending" | "informed";
+
 export function BookingConfirmation({ data, onClose }: { data: SummaryData; onClose: () => void }) {
   const { depositPrice, depositAmount } = computeBookingTotals(data);
   const payLabel = depositAmount ? `Abonar seña — ${depositPrice}` : "Abonar seña";
+  const [view, setView] = useState<LocalPaymentView>("pending");
 
   const handlePayDeposit = () => {
     window.open(solMaiContact.mercadoPagoDepositUrl, "_blank", "noopener");
@@ -17,12 +21,14 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
           {/* Estado compacto */}
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-foreground/70">
             <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
-            Reserva guardada · falta la seña
+            {view === "pending"
+              ? "Reserva guardada · falta la seña"
+              : "Pago pendiente de verificación"}
           </div>
 
           {/* Resumen del turno */}
-          <div className="rounded-2xl border border-border bg-cream/40 px-4 py-3">
-            <p className="truncate font-serif text-lg leading-tight text-foreground">
+          <div className="min-w-0 rounded-2xl border border-border bg-cream/40 px-4 py-3">
+            <p className="min-w-0 truncate font-serif text-lg leading-tight text-foreground">
               {data.service?.name ?? "Tu servicio"}
             </p>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
@@ -32,35 +38,60 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
             </div>
           </div>
 
-          {/* Bloque de pago dominante */}
-          <div className="rounded-2xl border border-champagne-deep/25 bg-gradient-to-b from-champagne/55 to-cream/60 px-5 py-4 text-center">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Seña 20%
-            </p>
-            <p className="mt-1 font-serif text-3xl text-foreground">{depositPrice}</p>
-            <button
-              type="button"
-              onClick={handlePayDeposit}
-              className="mt-4 block w-full rounded-full bg-primary py-3.5 text-center font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              {payLabel}
-            </button>
-          </div>
+          {view === "pending" ? (
+            <>
+              {/* Bloque de pago dominante */}
+              <div className="rounded-2xl border border-champagne-deep/25 bg-gradient-to-b from-champagne/55 to-cream/60 px-5 py-4 text-center">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Seña 20%
+                </p>
+                <p className="mt-1 font-serif text-3xl text-foreground">{depositPrice}</p>
+                <button
+                  type="button"
+                  onClick={handlePayDeposit}
+                  className="mt-4 block w-full rounded-full bg-primary py-3.5 text-center font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  {payLabel}
+                </button>
+                <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                  Pagás en Mercado Pago. Sol Mai no ve ni guarda tus datos de tarjeta.
+                </p>
+              </div>
 
-          {/* Cómo sigue — plegable */}
-          <details className="group rounded-2xl border border-border/70 bg-cream/30 px-4 py-3">
-            <summary className="flex cursor-pointer list-none items-center justify-between text-xs text-foreground/80">
-              <span>Cómo sigue después del pago</span>
-              <span className="text-muted-foreground transition-transform group-open:rotate-180">⌄</span>
-            </summary>
-            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-              Cuando se acredite la seña, la reserva queda confirmada.
-            </p>
-          </details>
+              {/* Ya pagué — link discreto */}
+              <button
+                type="button"
+                onClick={() => setView("informed")}
+                className="block w-full py-1 text-center text-xs text-foreground/70 underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                Ya pagué
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Estado local: pago informado */}
+              <div className="rounded-2xl border border-champagne-deep/25 bg-gradient-to-b from-champagne/40 to-cream/50 px-5 py-4">
+                <p className="text-[11px] leading-relaxed text-foreground/85">
+                  Si completaste el pago, Sol Mai verificará la acreditación y te confirmará por
+                  email y WhatsApp.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setView("pending")}
+                  className="mt-4 block w-full rounded-full border border-champagne-deep/40 bg-card py-3 text-center font-serif text-sm text-foreground transition-all hover:border-champagne-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  Volver a intentar pago
+                </button>
+              </div>
+            </>
+          )}
 
           {/* Soporte discreto */}
-          <div className="px-1 text-[11px] leading-relaxed text-muted-foreground/80">
-            <p>Soporte: {solMaiContact.email} · {solMaiContact.whatsappDisplay}</p>
+          <div className="min-w-0 px-1 text-[11px] leading-relaxed text-muted-foreground/80">
+            <p className="break-words">
+              Soporte: <span className="break-all">{solMaiContact.email}</span> ·{" "}
+              {solMaiContact.whatsappDisplay}
+            </p>
           </div>
 
           {/* Volver al inicio — bajo peso */}

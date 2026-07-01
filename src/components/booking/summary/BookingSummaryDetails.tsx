@@ -49,10 +49,10 @@ export function BookingSummaryDetails({
       {customer && (
         <div className="mt-5 border-t border-border pt-5">
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Tus datos</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-2">
             <Field label="Nombre" value={customer.firstName || "—"} />
             <Field label="WhatsApp" value={customer.whatsapp || "—"} />
-            <Field label="Email" value={customer.email || "—"} />
+            <Field label="Email" value={customer.email || "—"} breakAll />
             <Field label="Mensaje" value={customer.notes || "—"} />
           </div>
         </div>
@@ -103,11 +103,25 @@ export function BookingSummaryDetails({
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({
+  label,
+  value,
+  breakAll = false,
+}: {
+  label: string;
+  value: string;
+  breakAll?: boolean;
+}) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-0.5 font-serif text-lg text-foreground">{value}</p>
+      <p
+        className={`mt-0.5 min-w-0 font-serif text-foreground ${
+          breakAll ? "break-all text-sm sm:text-base" : "text-lg break-words"
+        }`}
+      >
+        {value}
+      </p>
     </div>
   );
 }
