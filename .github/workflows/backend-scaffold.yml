@@ -1,0 +1,140 @@
+name: Backend scaffold CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "package.json"
+      - "bun.lock"
+      - "tsconfig.server.json"
+      - ".env.example"
+      - "docs/backend-env.md"
+      - ".github/workflows/backend-scaffold.yml"
+      - "src/**"
+      - "vite.config.ts"
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "package.json"
+      - "bun.lock"
+      - "tsconfig.server.json"
+      - ".github/workflows/backend-scaffold.yml"
+
+concurrency:
+  group: backend-scaffold-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate scaffold
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Placeholder-only. Real secrets never live in CI for this scaffold.
+      NODE_ENV: test
+      APP_ENV: local
+      API_BASE_URL: http://localhost:3001
+      PUBLIC_WEB_BASE_URL: http://localhost:8080
+      SUPABASE_URL: http://localhost:54321
+      SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
+      INTERNAL_AUTH_JWT_AUDIENCE: sol-mai-internal
+      INTERNAL_AUTH_ALLOWED_EMAILS: ci@sol-mai.test
+      PORT: "3001"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Reject foreign lockfiles
+        run: |
+          set -e
+          for f in package-lock.json pnpm-lock.yaml yarn.lock; do
+            if [ -f "$f" ]; then
+              echo "::error::Foreign lockfile detected: $f. Only bun.lock is allowed."
+              exit 1
+            fi
+          done
+
+      - name: Install dependencies (frozen)
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck backend
+        run: bun run typecheck:server
+
+      - name: Build frontend
+        run: bun run build
+
+      - name: Ensure routeTree.gen.ts is up-to-date
+        run: |
+          if ! git diff --exit-code -- src/routeTree.gen.ts; then
+            echo "::error::src/routeTree.gen.ts changed after build. Commit the regenerated file (do not edit manually)."
+            exit 1
+          fi
+
+      - name: Guard against VITE_-prefixed secrets
+        run: |
+          set -e
+          if command -v rg >/dev/null 2>&1; then
+            MATCHES=$(rg -n --hidden --glob '!node_modules' --glob '!bun.lock' --glob '!.git' \
+              'VITE_.*(SERVICE|SECRET|TOKEN|PASSWORD|KEY)' . || true)
+          else
+            MATCHES=$(grep -RIn --exclude-dir=node_modules --exclude-dir=.git --exclude=bun.lock \
+              -E 'VITE_.*(SERVICE|SECRET|TOKEN|PASSWORD|KEY)' . || true)
+          fi
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Found VITE_-prefixed secret-like names (these ship to the browser):"
+            echo "$MATCHES"
+            exit 1
+          fi
+
+      - name: Guard frontend against server/ imports
+        run: |
+          set -e
+          if command -v rg >/dev/null 2>&1; then
+            MATCHES=$(rg -n "from ['\"].*\\bserver/" src || true)
+          else
+            MATCHES=$(grep -RIn -E "from ['\"].*\\bserver/" src || true)
+          fi
+          if [ -n "$MATCHES" ]; then
+            echo "::error::src/ must not import from server/. Offending lines:"
+            echo "$MATCHES"
+            exit 1
+          fi
+
+      - name: Smoke test /api/v1/health
+        run: |
+          set -e
+          bun run dev:server > /tmp/server.log 2>&1 &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID 2>/dev/null || true" EXIT
+
+          # Wait up to ~30s for the port to open
+          for i in $(seq 1 30); do
+            if curl -fsS "http://localhost:${PORT}/api/v1/health" -o /tmp/health.json 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [ ! -s /tmp/health.json ]; then
+            echo "::error::Server did not respond on /api/v1/health"
+            echo "---- server log ----"
+            cat /tmp/server.log || true
+            exit 1
+          fi
+
+          echo "Response: $(cat /tmp/health.json)"
+
+          STATUS=$(bun -e 'const fs=require("fs");process.stdout.write(JSON.parse(fs.readFileSync("/tmp/health.json","utf8")).status||"")')
+          if [ "$STATUS" != "ok" ]; then
+            echo "::error::Unexpected health status: $STATUS"
+            exit 1
+          fi
