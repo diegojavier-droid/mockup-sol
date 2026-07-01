@@ -10,7 +10,7 @@ import { PersonalizationStep } from "./steps/PersonalizationStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { ServiceStep } from "./steps/ServiceStep";
 import { BookingConfirmation } from "./summary/BookingConfirmation";
-import { BOOKING_STEP_INDEX, BOOKING_STEPS } from "./wizard/booking-steps";
+import { BOOKING_STEP_INDEX } from "./wizard/booking-steps";
 import { BookingHeader } from "./wizard/BookingHeader";
 import { WizardNavigation } from "./wizard/WizardNavigation";
 import type { BookingReturnTarget } from "./booking-navigation-types";
@@ -58,7 +58,7 @@ export function BookingWizard({
       const selectedServiceId = selectedServiceIdRef.current;
 
       if (
-        wizard.step === BOOKING_STEP_INDEX.service &&
+        wizard.stepKey === "service" &&
         previousStep > BOOKING_STEP_INDEX.service &&
         selectedServiceId
       ) {
@@ -83,22 +83,26 @@ export function BookingWizard({
       <BookingHeader onBack={wizard.goBack} />
 
       <main
-        className={`mx-auto max-w-6xl px-4 ${wizard.step === BOOKING_STEP_INDEX.review ? "pb-[calc(env(safe-area-inset-bottom)+7rem)]" : "pb-[calc(env(safe-area-inset-bottom)+15rem)]"} pt-3 lg:px-8 lg:pb-28 lg:pt-4`}
+        className={`mx-auto max-w-6xl px-4 ${wizard.stepKey === "review" ? "pb-[calc(env(safe-area-inset-bottom)+7rem)]" : "pb-[calc(env(safe-area-inset-bottom)+15rem)]"} pt-3 lg:px-8 lg:pb-28 lg:pt-4`}
       >
         <div className="mb-4 lg:mb-10">
-          <Stepper current={wizard.step} labels={[...BOOKING_STEPS]} total={BOOKING_STEPS.length} />
+          <Stepper
+            current={wizard.step}
+            labels={wizard.stepLabels}
+            total={wizard.stepLabels.length}
+          />
         </div>
 
         <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8">
           <div ref={stepContentRef} className="min-w-0 scroll-mt-24 lg:scroll-mt-28">
-            {wizard.step === BOOKING_STEP_INDEX.category && (
+            {wizard.stepKey === "category" && (
               <CategoryStep
                 category={wizard.category}
                 onChooseCategory={wizard.chooseCategoryAndContinue}
               />
             )}
 
-            {wizard.step === BOOKING_STEP_INDEX.service && wizard.category && (
+            {wizard.stepKey === "service" && wizard.category && (
               <ServiceStep
                 category={wizard.category}
                 service={wizard.service}
@@ -106,7 +110,7 @@ export function BookingWizard({
               />
             )}
 
-            {wizard.step === BOOKING_STEP_INDEX.details && wizard.category && (
+            {wizard.stepKey === "details" && wizard.category && (
               <PersonalizationStep
                 additionalComments={wizard.additionalComments}
                 category={wizard.category}
@@ -116,7 +120,7 @@ export function BookingWizard({
               />
             )}
 
-            {wizard.step === BOOKING_STEP_INDEX.extras && wizard.category && (
+            {wizard.stepKey === "extras" && wizard.category && (
               <ExtrasStep
                 category={wizard.category}
                 chosenExtras={wizard.chosenExtras}
@@ -124,7 +128,7 @@ export function BookingWizard({
               />
             )}
 
-            {wizard.step === BOOKING_STEP_INDEX.dateTime && (
+            {wizard.stepKey === "dateTime" && (
               <DateTimeStep
                 date={wizard.date}
                 time={wizard.time}
@@ -134,7 +138,7 @@ export function BookingWizard({
               />
             )}
 
-            {wizard.step === BOOKING_STEP_INDEX.customerData && (
+            {wizard.stepKey === "customerData" && (
               <CustomerDataStep
                 customer={wizard.customer}
                 errors={wizard.customerErrors}
@@ -144,7 +148,7 @@ export function BookingWizard({
               />
             )}
 
-            {wizard.step === BOOKING_STEP_INDEX.review && (
+            {wizard.stepKey === "review" && (
               <ReviewStep
                 customer={wizard.customer}
                 data={wizard.data}
@@ -170,6 +174,7 @@ export function BookingWizard({
         onBack={wizard.goBack}
         onNext={wizard.goNext}
         step={wizard.step}
+        totalSteps={wizard.stepLabels.length}
         isMobileInputFocused={isMobileInputFocused}
       />
     </div>
