@@ -45,9 +45,6 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
             >
               {payLabel}
             </button>
-            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-              Se abre Mercado Pago. Tu turno se confirma al acreditarse.
-            </p>
           </div>
 
           {/* Cómo sigue — plegable */}
@@ -56,17 +53,14 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
               <span>Cómo sigue después del pago</span>
               <span className="text-muted-foreground transition-transform group-open:rotate-180">⌄</span>
             </summary>
-            <ul className="mt-2 space-y-1 text-[11px] leading-relaxed text-muted-foreground">
-              <li>Te confirmamos por email y WhatsApp cuando se acredita.</li>
-              <li>Te recordamos el turno 30 minutos antes.</li>
-            </ul>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              Cuando se acredite la seña, la reserva queda confirmada.
+            </p>
           </details>
 
           {/* Soporte discreto */}
-          <div className="space-y-0.5 px-1 text-[11px] leading-relaxed text-muted-foreground/80">
-            <p>¿Problemas con el pago?</p>
-            <p>Escribinos a {solMaiContact.email}</p>
-            <p>WhatsApp {solMaiContact.whatsappDisplay}</p>
+          <div className="px-1 text-[11px] leading-relaxed text-muted-foreground/80">
+            <p>Soporte: {solMaiContact.email} · {solMaiContact.whatsappDisplay}</p>
           </div>
 
           {/* Volver al inicio — bajo peso */}

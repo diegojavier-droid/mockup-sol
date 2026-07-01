@@ -83,7 +83,7 @@ export function BookingWizard({
       <BookingHeader onBack={wizard.goBack} />
 
       <main
-        className={`mx-auto max-w-6xl px-4 ${wizard.stepKey === "review" ? "pb-[calc(env(safe-area-inset-bottom)+7rem)]" : "pb-[calc(env(safe-area-inset-bottom)+15rem)]"} pt-3 lg:px-8 lg:pb-28 lg:pt-4`}
+        className={`mx-auto max-w-6xl px-4 ${wizard.stepKey === "review" ? "pb-[calc(env(safe-area-inset-bottom)+6rem)]" : "pb-[calc(env(safe-area-inset-bottom)+10rem)]"} pt-3 lg:px-8 lg:pb-28 lg:pt-4`}
       >
         <div className="mb-4 lg:mb-10">
           <Stepper

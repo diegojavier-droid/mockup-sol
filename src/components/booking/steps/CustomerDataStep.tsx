@@ -1,4 +1,4 @@
-import type { FocusEvent } from "react";
+import { useState, type FocusEvent } from "react";
 import { StepShell } from "../wizard/StepShell";
 
 export type CustomerField = "firstName" | "whatsapp" | "email" | "notes";
@@ -52,7 +52,7 @@ export function CustomerDataStep({
         Usaremos estos datos para enviarte la confirmación, el enlace de seña y el recordatorio del turno.
       </p>
       <div
-        className="mt-5 rounded-3xl border border-border bg-card p-5 pb-28 shadow-sm lg:p-6"
+        className="mt-5 rounded-3xl border border-border bg-card p-5 shadow-sm lg:p-6"
         onBlurCapture={handleBlurCapture}
         onFocusCapture={handleFocusCapture}
       >
@@ -96,10 +96,10 @@ export function CustomerDataStep({
           />
           <CustomerTextarea
             error={errors.notes}
-            label="¿Querés contarnos algo más?"
+            label="Agregar una nota opcional"
             maxLength={500}
             onChange={(value) => onChangeCustomerField("notes", value)}
-            placeholder="Preferencias, alergias u horarios a evitar."
+            placeholder="Algo importante para preparar tu visita."
             value={customer.notes}
           />
         </div>
@@ -163,23 +163,38 @@ function CustomerTextarea({
   placeholder: string;
   value: string;
 }) {
+  const [isOpen, setIsOpen] = useState(Boolean(value || error));
+
   return (
-    <label className="block scroll-mb-36">
-      <span className="text-sm font-medium text-foreground">{label}</span>
-      <textarea
-        className="mt-2 min-h-28 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30"
-        maxLength={maxLength}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        value={value}
-      />
-      <span className="mt-1.5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-        {error ? <span className="text-destructive">{error}</span> : <span>Opcional</span>}
-        <span>
-          {value.length}/{maxLength}
-        </span>
-      </span>
-    </label>
+    <div className="scroll-mb-32 rounded-2xl border border-border bg-background/60 px-4 py-3">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 text-left text-sm font-medium text-foreground"
+        onClick={() => setIsOpen((current) => !current)}
+        aria-expanded={isOpen}
+      >
+        <span>{label}</span>
+        <span className="text-xs text-muted-foreground">{isOpen ? "Cerrar" : "Opcional"}</span>
+      </button>
+      {isOpen && (
+        <label className="mt-3 block">
+          <span className="sr-only">Nota opcional</span>
+          <textarea
+            className="min-h-24 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30"
+            maxLength={maxLength}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder={placeholder}
+            value={value}
+          />
+          <span className="mt-1.5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+            {error ? <span className="text-destructive">{error}</span> : <span>Opcional</span>}
+            <span>
+              {value.length}/{maxLength}
+            </span>
+          </span>
+        </label>
+      )}
+    </div>
   );
 }
 
