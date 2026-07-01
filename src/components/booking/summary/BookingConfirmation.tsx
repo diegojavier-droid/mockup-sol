@@ -5,29 +5,6 @@ import type { SummaryData } from "../SummaryPanel";
 export function BookingConfirmation({ data, onClose }: { data: SummaryData; onClose: () => void }) {
   const { depositPrice, depositAmount } = computeBookingTotals(data);
 
-  const timeline = [
-    {
-      state: "done" as const,
-      title: "Solicitud enviada",
-      desc: "Recibimos tu reserva.",
-    },
-    {
-      state: "current" as const,
-      title: "Seña pendiente",
-      desc: "Confirmás el turno con la seña.",
-    },
-    {
-      state: "todo" as const,
-      title: "Confirmación",
-      desc: "Te avisamos por email y WhatsApp.",
-    },
-    {
-      state: "todo" as const,
-      title: "Recordatorio previo",
-      desc: "Te recordamos tu turno 30 min antes.",
-    },
-  ];
-
   const handlePayDeposit = () => {
     window.open(solMaiContact.mercadoPagoDepositUrl, "_blank", "noopener");
   };
@@ -35,112 +12,91 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
   const payLabel = depositAmount ? `Abonar seña — ${depositPrice}` : "Abonar seña";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-6 sm:py-12">
       <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-border bg-card shadow-[0_40px_80px_-40px_rgba(120,90,60,0.4)]">
-        <div className="bg-gradient-to-b from-cream/80 to-card px-8 pb-6 pt-10 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-champagne-deep/30 bg-champagne text-2xl text-champagne-deep">
+        {/* Header compacto */}
+        <div className="bg-gradient-to-b from-cream/80 to-card px-6 pb-4 pt-6 text-center sm:px-8 sm:pb-6 sm:pt-10">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-champagne-deep/30 bg-champagne text-lg text-champagne-deep sm:h-16 sm:w-16 sm:text-2xl">
             ✓
           </div>
-          <p className="mt-5 text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-            Solicitud recibida
-          </p>
-          <h2 className="mt-2 font-serif text-4xl leading-tight text-foreground">
+          <h2 className="mt-3 font-serif text-2xl leading-tight text-foreground sm:mt-5 sm:text-4xl">
             Solicitud registrada
           </h2>
-          <div className="mx-auto mt-4 h-px w-10 bg-champagne-deep/40" />
-          <p className="mt-4 text-sm leading-relaxed text-foreground/80">
-            Aboná la seña del 20% para confirmar tu turno.
-          </p>
-          <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-champagne-deep/30 bg-champagne/40 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-foreground/70">
+          <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-champagne-deep/30 bg-champagne/40 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-foreground/70">
             <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
             Estado: pendiente de seña
           </p>
         </div>
 
-        <div className="space-y-5 px-8 pb-8 pt-6">
-          <div className="rounded-2xl border border-border bg-cream/40 px-5 py-4">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Tu servicio</p>
-            <p className="mt-1 font-serif text-lg text-foreground">
+        <div className="space-y-4 px-6 pb-8 pt-4 sm:space-y-5 sm:px-8 sm:pt-6">
+          {/* Resumen del turno — compacto */}
+          <div className="rounded-2xl border border-border bg-cream/40 px-4 py-3">
+            <p className="truncate font-serif text-base text-foreground">
               {data.service?.name ?? "Tu servicio"}
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border/70 pt-3">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  Fecha
-                </p>
-                <p className="mt-0.5 font-serif text-base text-foreground">{data.date ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  Hora
-                </p>
-                <p className="mt-0.5 font-serif text-base text-foreground">{data.time ?? "—"}</p>
-              </div>
+            <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{data.date ?? "—"}</span>
+              <span className="text-border">·</span>
+              <span>{data.time ?? "—"}</span>
             </div>
           </div>
 
-          <ol className="space-y-3">
-            {timeline.map((step, index) => (
-              <li key={step.title} className="flex gap-3">
-                <div className="flex flex-col items-center pt-0.5">
-                  <span
-                    className={`flex h-6 w-6 flex-none items-center justify-center rounded-full font-serif text-[11px] ${
-                      step.state === "done"
-                        ? "bg-champagne-deep text-primary-foreground"
-                        : step.state === "current"
-                          ? "border border-champagne-deep bg-champagne text-foreground"
-                          : "border border-border bg-card text-muted-foreground"
-                    }`}
-                  >
-                    {step.state === "done" ? "✓" : index + 1}
-                  </span>
-                  {index < timeline.length - 1 && (
-                    <span
-                      className={`mt-1 h-6 w-px ${step.state === "done" ? "bg-champagne-deep/60" : "bg-border"}`}
-                    />
-                  )}
-                </div>
-                <div className="pb-2">
-                  <p
-                    className={`font-serif text-sm ${
-                      step.state === "todo" ? "text-muted-foreground" : "text-foreground"
-                    }`}
-                  >
-                    {step.title}
-                  </p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                    {step.desc}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
-
-          <div className="space-y-3">
+          {/* Card principal de pago */}
+          <div className="rounded-2xl border border-champagne-deep/20 bg-gradient-to-b from-champagne/50 to-cream/60 px-5 py-5 text-center">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Seña del 20%
+            </p>
+            <p className="mt-1 font-serif text-2xl text-foreground">{depositPrice}</p>
             <button
               type="button"
               onClick={handlePayDeposit}
-              className="block w-full rounded-full bg-primary py-4 text-center font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="mt-4 block w-full rounded-full bg-primary py-3.5 text-center font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {payLabel}
             </button>
-            <p className="text-center text-xs leading-relaxed text-muted-foreground">
-              Se abre Mercado Pago en una pestaña nueva. La seña confirma tu turno.
+            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+              Tu turno se confirma cuando se acredita la seña.
             </p>
           </div>
 
+          {/* Cómo sigue — mini lista compacta */}
           <div className="rounded-2xl border border-border/70 bg-cream/30 px-4 py-3">
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              ¿No pudiste pagar? Podés intentarlo nuevamente desde esta pantalla.
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Cómo sigue
             </p>
-            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/90">
-              WhatsApp {solMaiContact.whatsappDisplay}
-            </p>
-            <p className="text-[11px] leading-relaxed text-muted-foreground/90">
-              {solMaiContact.email}
-            </p>
+            <ul className="mt-2 space-y-1.5">
+              <li className="flex items-start gap-2 text-xs text-foreground/80">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-champagne-deep" />
+                Solicitud registrada
+              </li>
+              <li className="flex items-start gap-2 text-xs text-foreground/80">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-champagne-deep" />
+                Seña pendiente
+              </li>
+              <li className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-border" />
+                Confirmación · Te avisamos por email y WhatsApp
+              </li>
+              <li className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-border" />
+                Recordatorio 30 min antes
+              </li>
+            </ul>
           </div>
 
+          {/* Soporte discreto */}
+          <div className="rounded-2xl border border-border/70 bg-cream/30 px-4 py-3">
+            <p className="text-xs text-muted-foreground">¿Problemas con el pago?</p>
+            <p className="text-[11px] text-muted-foreground/80">
+              Podés intentarlo nuevamente desde esta pantalla.
+            </p>
+            <div className="mt-2 space-y-0.5 text-[11px] text-muted-foreground/80">
+              <p>WhatsApp {solMaiContact.whatsappDisplay}</p>
+              <p>{solMaiContact.email}</p>
+            </div>
+          </div>
+
+          {/* Volver al inicio */}
           <button
             type="button"
             onClick={onClose}
