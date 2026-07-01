@@ -23,8 +23,8 @@ Para validar la rama real del producto se debe mirar la UI de Codex, GitHub, el 
   - Peluquería;
   - Maquillaje;
   - Uñas.
-- La categoría de maquillaje puede aparecer con naming extendido como “Maquillaje profesional” en datos o UI, pero operativamente pertenece a la categoría pública Maquillaje.
-- Uñas está vigente como categoría pública, aunque queda pendiente definir si el naming final debe ser “Uñas”, “Manicura” o una combinación comercial.
+- La categoría pública de maquillaje debe mostrarse como “Maquillaje”. “Maquillaje profesional” puede usarse solo como texto descriptivo o comercial, no como nombre de categoría principal.
+- Uñas está vigente como categoría pública final. “Manicura” debe quedar como servicio o subfamilia dentro de Uñas, no como nombre de categoría principal.
 
 ### Exploración de servicios
 
@@ -61,6 +61,8 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - El catálogo público debe mantenerse simplificado y orientado a la clienta.
 - El catálogo técnico interno debe existir separado del catálogo público.
 - La clienta no debe ver toda la complejidad técnica de productos, fórmulas, líneas, reglas profesionales o combinaciones internas.
+- Uñas es la categoría pública final para los servicios de uñas.
+- Manicura debe usarse solo como servicio o subfamilia dentro de Uñas, no como categoría principal.
 - Los documentos maestros anteriores quedan como históricos/contextuales, no como fuente operativa vigente.
 - La fuente operativa vigente es la combinación de:
   - GitHub/repo actual;
@@ -71,7 +73,6 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 ## Pendientes
 
 - Validar catálogo real con Sol antes de convertirlo en dataset definitivo.
-- Definir naming final de Uñas/Manicura para la experiencia pública.
 - Definir flujo real para clientas recurrentes, incluyendo criterios de identificación, privacidad, recuperación de datos y eventual CRM.
 - Definir integración real de seña/pago, proveedor, confirmación, estados y conciliación operativa.
 - Crear estrategia para futuras categorías sin sobrecargar el catálogo público.
