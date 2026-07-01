@@ -127,7 +127,9 @@ export function Landing({
             </h1>
             <div className="mt-3 h-px w-14 bg-champagne-deep/40 sm:mt-6 sm:w-16" />
             <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:mt-6 sm:text-base">
-              Reservá online con seña del 20%. Saldo a abonar en el salón.
+              Reservá tu turno online.
+              <br className="sm:hidden" />
+              Seña del 20% y saldo en el salón.
             </p>
 
             <div className="mt-5 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
