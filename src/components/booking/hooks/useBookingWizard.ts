@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   bookingRequestPayloadSchema,
   customerContactSchema,
@@ -18,6 +18,12 @@ import {
   type Service,
 } from "@/lib/booking-data";
 import { computeBookingOperationalTotals } from "@/lib/booking-totals";
+import {
+  clearBookingDraft,
+  loadBookingDraft,
+  saveBookingDraft,
+  type BookingDraftState,
+} from "@/lib/booking-draft-storage";
 import type { BookingInitialSelection, BookingReturnTarget } from "../booking-navigation-types";
 import type { SummaryData } from "../SummaryPanel";
 import {
@@ -268,31 +274,92 @@ function getInitialStep(
   return getNextStepAfterService(initialSelection.categoryId);
 }
 
+function getServiceById(categoryId: CategoryId | null, serviceId: string | null): Service | null {
+  if (!categoryId || !serviceId) return null;
+
+  return (
+    services[categoryId].find((availableService) => availableService.id === serviceId) ?? null
+  );
+}
+
+function getExtrasByIds(categoryId: CategoryId | null, extraIds: string[]) {
+  if (!categoryId) return [];
+
+  return extras[categoryId].filter((extra) => extraIds.includes(extra.id));
+}
+
+function getRestoredStep(
+  stepKey: BookingStepKey,
+  categoryId: CategoryId | null,
+  selectedService: Service | null,
+): WizardStep {
+  const stepKeys = buildVisibleBookingStepKeys(categoryId);
+  if (!categoryId) return getStepPosition(stepKeys, "category");
+  if (!selectedService && BOOKING_STEP_INDEX[stepKey] > BOOKING_STEP_INDEX.service) {
+    return getStepPosition(stepKeys, "service");
+  }
+
+  const restoredStep = stepKeys.indexOf(stepKey);
+
+  if (restoredStep >= 0) return restoredStep;
+
+  return clampWizardStep(BOOKING_STEP_INDEX[stepKey] ?? BOOKING_STEP_INDEX.category, stepKeys);
+}
+
+function getInitialDraftState(initialSelection?: BookingInitialSelection) {
+  if (initialSelection?.categoryId || initialSelection?.serviceId) {
+    clearBookingDraft();
+    return null;
+  }
+
+  return loadBookingDraft()?.state ?? null;
+}
+
 export function useBookingWizard(
   onExit: () => void,
   initialSelection?: BookingInitialSelection,
   navigationContext?: BookingNavigationContext,
 ) {
+  const [restoredDraft] = useState<BookingDraftState | null>(() =>
+    getInitialDraftState(initialSelection),
+  );
   const initialService = getInitialService(initialSelection);
-  const initialStep = getInitialStep(initialSelection, initialService);
+  const restoredService = restoredDraft
+    ? getServiceById(restoredDraft.selectedCategoryId, restoredDraft.selectedServiceId)
+    : null;
+  const initialStep = restoredDraft
+    ? getRestoredStep(
+        restoredDraft.currentStepKey,
+        restoredDraft.selectedCategoryId,
+        restoredService,
+      )
+    : getInitialStep(initialSelection, initialService);
   const initialStepRef = useRef<WizardStep>(initialStep);
   const [step, setStep] = useState<WizardStep>(initialStep);
-  const [category, setCategory] = useState<CategoryId | null>(initialSelection?.categoryId ?? null);
-  const [service, setService] = useState<Service | null>(initialService);
-  const [personal, setPersonal] = useState<Personalization>({});
-  const [additionalComments, setAdditionalComments] = useState("");
-  const [chosenExtras, setChosenExtras] = useState<Extra[]>([]);
-  const [date, setDate] = useState<string | null>(null);
-  const [time, setTime] = useState<string | null>(null);
+  const [category, setCategory] = useState<CategoryId | null>(
+    restoredDraft?.selectedCategoryId ?? initialSelection?.categoryId ?? null,
+  );
+  const [service, setService] = useState<Service | null>(restoredService ?? initialService);
+  const [personal, setPersonal] = useState<Personalization>(restoredDraft?.personalization ?? {});
+  const [additionalComments, setAdditionalComments] = useState(
+    restoredDraft?.additionalComments ?? "",
+  );
+  const [chosenExtras, setChosenExtras] = useState<Extra[]>(
+    restoredDraft
+      ? getExtrasByIds(restoredDraft.selectedCategoryId, restoredDraft.selectedExtras)
+      : [],
+  );
+  const [date, setDate] = useState<string | null>(restoredDraft?.selectedDate ?? null);
+  const [time, setTime] = useState<string | null>(restoredDraft?.selectedTime ?? null);
   const [customer, setCustomer] = useState<CustomerFormState>({
-    firstName: "",
-    whatsapp: "",
-    email: "",
-    notes: "",
+    firstName: restoredDraft?.customer.firstName ?? "",
+    whatsapp: restoredDraft?.customer.whatsapp ?? "",
+    email: restoredDraft?.customer.email ?? "",
+    notes: restoredDraft?.customer.notes ?? "",
   });
   const [customerTouched, setCustomerTouched] = useState<CustomerTouched>({});
   const [isCustomerRecognized, setIsCustomerRecognized] = useState(false);
-  const [paymentPending, setPaymentPending] = useState(false);
+  const [paymentPending, setPaymentPending] = useState(restoredDraft?.paymentPending ?? false);
   const [bookingRequestError, setBookingRequestError] = useState<string | null>(null);
 
   const visibleStepKeys = useMemo(() => buildVisibleBookingStepKeys(category), [category]);
@@ -354,6 +421,51 @@ export function useBookingWizard(
     return true;
   }, [category, customerValidationErrors, date, personal, service, stepKey, time]);
 
+  useEffect(() => {
+    const hasDraftContent =
+      !!category ||
+      !!service ||
+      Object.keys(personal).length > 0 ||
+      !!additionalComments ||
+      chosenExtras.length > 0 ||
+      !!date ||
+      !!time ||
+      !!customer.firstName ||
+      !!customer.whatsapp ||
+      !!customer.email ||
+      !!customer.notes ||
+      paymentPending;
+
+    if (!hasDraftContent) {
+      clearBookingDraft();
+      return;
+    }
+
+    saveBookingDraft({
+      currentStepKey: stepKey,
+      selectedCategoryId: category,
+      selectedServiceId: service?.id ?? null,
+      personalization: personal,
+      additionalComments,
+      selectedExtras: chosenExtras.map((extra) => extra.id),
+      selectedDate: date,
+      selectedTime: time,
+      customer,
+      paymentPending,
+    });
+  }, [
+    additionalComments,
+    category,
+    chosenExtras,
+    customer,
+    date,
+    paymentPending,
+    personal,
+    service,
+    stepKey,
+    time,
+  ]);
+
   const resetSelectedTurnDetails = () => {
     setService(null);
     setPersonal({});
@@ -369,6 +481,7 @@ export function useBookingWizard(
   };
 
   const chooseCategoryAndContinue = (categoryId: CategoryId) => {
+    clearBookingDraft();
     chooseCategory(categoryId);
     setStep(BOOKING_STEP_INDEX.service);
   };
@@ -488,9 +601,17 @@ export function useBookingWizard(
       return navigationContext.onExitToTarget(navigationContext.returnTarget);
     }
 
-    if (stepKey === "category") return onExit();
+    if (stepKey === "category") {
+      clearBookingDraft();
+      return onExit();
+    }
 
     setStep((currentStep) => clampWizardStep(currentStep - 1, visibleStepKeys));
+  };
+
+  const closeAndClearDraft = () => {
+    clearBookingDraft();
+    onExit();
   };
 
   return {
@@ -499,6 +620,7 @@ export function useBookingWizard(
     canNext,
     canRequestCustomerRequiredFeedback,
     category,
+    wasDraftRestored: !!restoredDraft,
     chooseCategory,
     chooseAdditionalComments,
     chooseCategoryAndContinue,
@@ -515,6 +637,7 @@ export function useBookingWizard(
     date,
     availabilityRequest,
     goBack: back,
+    closeAndClearDraft,
     goNext: next,
     personal,
     service,
