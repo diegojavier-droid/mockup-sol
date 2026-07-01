@@ -47,8 +47,9 @@ falla si aparece un `from '.../server/...'` en `src/`.
 ## 4. Prohibición de `VITE_`
 
 - `SUPABASE_SERVICE_ROLE_KEY` **jamás** se define con prefijo `VITE_`.
-- Ninguna variable con `VITE_.*(SERVICE|SECRET|TOKEN|PASSWORD|KEY)` puede
-  existir en el repo. CI ejecuta un guard con `rg` para bloquearlo.
+- Ninguna variable pública de Vite con nombres de tipo service, secret,
+  token, password o key puede existir en el repo. CI ejecuta un guard con
+  `rg` para bloquearlo.
 - `server/src/config/publicEnv.ts` mantiene la lista blanca de lo que
   puede llegar al navegador. `SUPABASE_SERVICE_ROLE_KEY` **nunca** entra
   ahí.
