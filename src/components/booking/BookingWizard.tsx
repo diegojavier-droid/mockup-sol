@@ -76,7 +76,9 @@ export function BookingWizard({
     return () => window.cancelAnimationFrame(animationFrame);
   }, [wizard.step]);
 
-  if (wizard.paymentPending) return <BookingConfirmation data={wizard.data} onClose={onExit} />;
+  if (wizard.paymentPending) {
+    return <BookingConfirmation data={wizard.data} onClose={wizard.closeAndClearDraft} />;
+  }
 
   return (
     <div className="min-h-svh overflow-x-hidden bg-background">
@@ -86,6 +88,11 @@ export function BookingWizard({
         className={`mx-auto max-w-6xl px-4 ${wizard.stepKey === "review" ? "pb-[calc(env(safe-area-inset-bottom)+6rem)]" : "pb-[calc(env(safe-area-inset-bottom)+10rem)]"} pt-3 lg:px-8 lg:pb-28 lg:pt-4`}
       >
         <div className="mb-4 lg:mb-10">
+          {wizard.wasDraftRestored && (
+            <p className="mb-3 rounded-full border border-champagne-deep/20 bg-cream/50 px-4 py-2 text-center text-xs text-muted-foreground">
+              Retomamos tu reserva en curso.
+            </p>
+          )}
           <Stepper
             current={wizard.step}
             labels={wizard.stepLabels}
