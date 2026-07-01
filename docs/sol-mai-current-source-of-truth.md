@@ -85,6 +85,15 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
   - decisiones recientes documentadas en este archivo;
   - futuras decisiones explícitas que actualicen esta fuente de verdad.
 
+## Transición a producto real
+
+- El mock frontend queda congelado salvo bugs críticos que bloqueen la validación o dañen la experiencia pública ya aprobada.
+- Lovable queda como herramienta de UI/preview, no como fuente de arquitectura productiva ni de reglas críticas de negocio.
+- Codex/GitHub gobiernan la arquitectura real, la documentación ejecutable, los contratos técnicos y la evolución hacia backend productivo.
+- La próxima etapa es backend + base de datos + auth + reservas reales, con persistencia y disponibilidad calculada del lado servidor.
+- Mercado Pago real va después de tener reservas persistidas y estados confiables sobre los cuales crear una preferencia por reserva.
+- CRM y clientas recurrentes van después de reservas/pagos reales, para evitar construir memoria operativa sobre datos mock.
+
 ## Pendientes
 
 - Validar catálogo real con Sol antes de convertirlo en dataset definitivo.
