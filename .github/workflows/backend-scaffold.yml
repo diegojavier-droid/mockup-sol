@@ -83,10 +83,10 @@ jobs:
         run: |
           set -e
           if command -v rg >/dev/null 2>&1; then
-            MATCHES=$(rg -n --hidden --glob '!node_modules' --glob '!bun.lock' --glob '!.git' \
+            MATCHES=$(rg -n --hidden --glob '!node_modules' --glob '!bun.lock' --glob '!.git' --glob '!.github/workflows/backend-scaffold.yml' \
               'VITE_.*(SERVICE|SECRET|TOKEN|PASSWORD|KEY)' . || true)
           else
-            MATCHES=$(grep -RIn --exclude-dir=node_modules --exclude-dir=.git --exclude=bun.lock \
+            MATCHES=$(grep -RIn --exclude-dir=node_modules --exclude-dir=.git --exclude=bun.lock --exclude=.github/workflows/backend-scaffold.yml \
               -E 'VITE_.*(SERVICE|SECRET|TOKEN|PASSWORD|KEY)' . || true)
           fi
           if [ -n "$MATCHES" ]; then
