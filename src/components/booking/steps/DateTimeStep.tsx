@@ -233,7 +233,7 @@ export function DateTimeStep({
         </div>
 
         {/* Calendario mensual: sección plegable liviana, sin bottom sheet */}
-        <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+        <CollapsibleContent className="overflow-hidden">
           <div className="mt-4 rounded-3xl border border-border/70 bg-card/60 p-3 sm:p-4">
             <div className="mb-2 flex items-center justify-between">
               <p className="font-serif text-base text-foreground">{getMonthLabel(visibleMonth)}</p>
