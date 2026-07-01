@@ -10,8 +10,14 @@ import {
 } from "@/lib/booking-data";
 import type { AvailabilityRequest } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { TimeSlotButton } from "../cards/TimeSlotButton";
 import { StepShell } from "../wizard/StepShell";
+
 
 const weekdayLabels = ["D", "L", "M", "M", "J", "V", "S"];
 const shortWeekdays = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
