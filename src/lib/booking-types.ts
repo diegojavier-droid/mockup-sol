@@ -1,4 +1,4 @@
-export type CategoryId = "peluqueria" | "maquillaje" | "unas";
+export type CategoryId = "peluqueria" | "maquillaje" | "unas" | "depilacion";
 
 export type AreaId = CategoryId;
 

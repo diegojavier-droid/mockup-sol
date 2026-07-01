@@ -308,12 +308,14 @@ const categoryAccent: Record<CategoryId, string> = {
   peluqueria: "bg-cream/80",
   maquillaje: "bg-sand/60",
   unas: "bg-blonde/50",
+  depilacion: "bg-cream/70",
 };
 
 const categoryIntro: Record<CategoryId, string> = {
   peluqueria: "Cortes, color, peinados y tratamientos.",
   maquillaje: "Looks de novia, evento y producción.",
   unas: "Uñas cuidadas, semipermanente y diseño.",
+  depilacion: "Depilación facial, cejas y bozo.",
 };
 
 type ServiceGroup = {

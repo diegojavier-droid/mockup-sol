@@ -307,7 +307,7 @@ Servicios públicos sugeridos:
 - Maquillaje;
 - Depilación.
 
-Depilación queda contemplada como línea/categoría pública futura, pero no debe habilitarse como servicio reservable hasta validar con Sol Mai duración, capacidad operativa, agenda, buffers y preguntas previas necesarias.
+Depilación queda contemplada como línea/categoría pública vigente y reservable en MVP, con servicios faciales simples, capacidad operativa 1, sin buffer y sin preguntas previas obligatorias según la fuente de verdad actual.
 
 Ejemplo público para tratamiento:
 

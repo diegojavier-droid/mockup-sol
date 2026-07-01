@@ -60,6 +60,7 @@ const personalizationStepTitleByCategory: Record<CategoryId, string> = {
   peluqueria: "Conozcamos tu cabello",
   maquillaje: "Preparemos tu maquillaje",
   unas: "Preparemos tus uñas",
+  depilacion: "Preparemos tu depilación",
 };
 
 function bucketFields(fields: PersonalizationField[]) {

@@ -15,7 +15,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Peluquería en Santa Fe Capital. Reservá tu turno de peluquería, maquillaje o uñas en minutos.",
+          "Peluquería en Santa Fe Capital. Reservá tu turno de peluquería, maquillaje, uñas o depilación en minutos.",
       },
       { property: "og:title", content: "Sol Mai Peluquería · Reservá tu turno" },
       {

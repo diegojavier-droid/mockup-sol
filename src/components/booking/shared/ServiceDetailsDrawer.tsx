@@ -48,12 +48,17 @@ const recommendedForByServiceId: Record<string, string> = {
   softgel: "Si buscás más resistencia y largo sin descuidar lo natural.",
   nailart: "Sumar diseño y personalidad a tu manicura.",
   mani: "Una manicura clásica: cuidado, prolijidad y terminación.",
+  "depi-rostro-completo": "Si querés una depilación facial completa en un solo turno.",
+  "depi-cejas": "Mantener tus cejas prolijas y definidas.",
+  "depi-bigote": "Resolver la zona del bozo de forma rápida.",
+  "depi-bozo-menton": "Si querés depilar bozo y mentón en una misma visita.",
 };
 
 const recommendedForByCategory: Record<CategoryId, string> = {
   peluqueria: "Cabello cuidado con productos profesionales Itely Hairfashion.",
   maquillaje: "Maquillaje profesional para que te sientas cómoda y luminosa.",
   unas: "Uñas cuidadas con terminación prolija y productos de calidad.",
+  depilacion: "Depilación facial simple, rápida y prolija.",
 };
 
 export function ServiceDetailsDrawer({
