@@ -1,3 +1,4 @@
+import { solMaiContact } from "@/lib/sol-mai-contact";
 import type { SummaryData } from "../SummaryPanel";
 
 export function BookingConfirmation({ data, onClose }: { data: SummaryData; onClose: () => void }) {
@@ -9,18 +10,18 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
     },
     {
       state: "current" as const,
-      title: "Enlace de pago en camino",
-      desc: "Te llega por WhatsApp o email en los próximos minutos.",
+      title: "Seña del 20%",
+      desc: "La seña queda pendiente hasta que Mercado Pago acredite el pago.",
     },
     {
       state: "todo" as const,
-      title: "Seña acreditada",
-      desc: "Pagás el 20% y queda registrado.",
+      title: "Confirmación por email y WhatsApp",
+      desc: "Cuando se acredite la seña, te llegará la confirmación por ambos canales.",
     },
     {
       state: "todo" as const,
-      title: "Turno confirmado",
-      desc: "Te avisamos y ya está reservado.",
+      title: "Recordatorio 30 minutos antes",
+      desc: "Te enviaremos un recordatorio por email y WhatsApp antes del turno.",
     },
   ];
 
@@ -39,7 +40,7 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
           </h2>
           <div className="mx-auto mt-4 h-px w-10 bg-champagne-deep/40" />
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Sol Mai te enviará el enlace para pagar la seña del 20%. Cuando se acredite, tu turno queda confirmado.
+            Recibimos tu solicitud. La reserva queda pendiente hasta que se acredite la seña del 20%; después recibirás la confirmación por email y WhatsApp.
           </p>
         </div>
 
@@ -103,13 +104,22 @@ export function BookingConfirmation({ data, onClose }: { data: SummaryData; onCl
           </ol>
 
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Si no recibís el enlace en un rato, escribinos y lo resolvemos. El saldo restante se abona en el salón.
+            La reserva se confirma cuando se acredita la seña. El saldo restante se abona en el salón.
           </p>
+
+          <a
+            href={solMaiContact.mercadoPagoDepositUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="block w-full rounded-full bg-primary py-4 text-center font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Abonar seña
+          </a>
 
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-full bg-primary py-4 font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="w-full rounded-full border border-border bg-card py-4 font-serif text-base text-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Volver al inicio
           </button>

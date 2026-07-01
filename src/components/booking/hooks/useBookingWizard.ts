@@ -98,8 +98,8 @@ export function buildCustomerIdentity(
     firstName: customer.firstName,
     contact: {
       whatsapp: customer.whatsapp,
-      email: customer.email.trim() ? customer.email : undefined,
-      preferredContactChannel: "whatsapp",
+      email: customer.email,
+      preferredContactChannel: "email",
       acceptsTransactionalMessages: true,
       acceptsMarketingMessages: false,
     },
@@ -156,6 +156,15 @@ export function buildBookingRequestPayload({
       depositRate: totals.depositRate,
       operationalBufferMinutes: totals.operationalBufferMinutes,
       blockedDurationMinutes: totals.blockedDurationMinutes,
+    },
+    notificationChannels: {
+      email: true,
+      whatsapp: true,
+    },
+    reminder: {
+      enabled: true,
+      offsetMinutes: 30,
+      channels: ["email", "whatsapp"],
     },
     status: "pending_payment",
   };
@@ -322,10 +331,13 @@ export function useBookingWizard(
   const customerMissingRequiredFields = {
     firstName: !customer.firstName.trim(),
     whatsapp: !customer.whatsapp.trim(),
+    email: !customer.email.trim(),
   };
   const canRequestCustomerRequiredFeedback =
     stepKey === "customerData" &&
-    (customerMissingRequiredFields.firstName || customerMissingRequiredFields.whatsapp);
+    (customerMissingRequiredFields.firstName ||
+      customerMissingRequiredFields.whatsapp ||
+      customerMissingRequiredFields.email);
 
   const canNext = useMemo(() => {
     if (stepKey === "category") return !!category;
@@ -423,6 +435,7 @@ export function useBookingWizard(
       ...current,
       ...(customerMissingRequiredFields.firstName ? { firstName: true } : {}),
       ...(customerMissingRequiredFields.whatsapp ? { whatsapp: true } : {}),
+      ...(customerMissingRequiredFields.email ? { email: true } : {}),
     }));
   };
 
