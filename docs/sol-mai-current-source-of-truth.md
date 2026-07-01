@@ -1,0 +1,86 @@
+# Sol Mai Peluquería — fuente de verdad vigente
+
+> Estado operativo vigente del proyecto a partir de la auditoría del repo `diegojavier-droid/mockup-sol` en la rama real seleccionada para este trabajo `lovable/navigation-ux-playground`.
+
+Este documento es la fuente de verdad vigente para alinear producto, diseño y desarrollo de Sol Mai Peluquería. Los documentos maestros anteriores se conservan como material histórico o contextual, pero no reemplazan esta lectura operativa del estado actual del repositorio y de las decisiones recientes.
+
+## Nota sobre Codex y la rama work
+
+En la ejecución local de Codex puede aparecer una rama llamada `work` al consultar comandos como `git branch --show-current`. Esa rama es una sandbox temporal de Codex y no debe interpretarse como la rama real del producto.
+
+La rama real seleccionada para este trabajo en la interfaz de Codex es `lovable/navigation-ux-playground` dentro del repo `diegojavier-droid/mockup-sol`.
+
+Para validar la rama real del producto se debe mirar la UI de Codex, GitHub, el PR asociado o el commit base de trabajo. No alcanza con mirar únicamente `git branch --show-current` dentro de la sandbox local.
+
+## Estado vigente del producto
+
+### Experiencia pública
+
+- La landing pública está implementada como entrada principal para que la clienta explore el salón y pueda iniciar una reserva.
+- La experiencia está planteada como mobile-first, con hero, navegación y tarjetas adaptadas a pantallas chicas antes que a escritorio.
+- El catálogo público por categorías está implementado.
+- Las categorías públicas actuales son:
+  - Peluquería;
+  - Maquillaje;
+  - Uñas.
+- La categoría de maquillaje puede aparecer con naming extendido como “Maquillaje profesional” en datos o UI, pero operativamente pertenece a la categoría pública Maquillaje.
+- Uñas está vigente como categoría pública, aunque queda pendiente definir si el naming final debe ser “Uñas”, “Manicura” o una combinación comercial.
+
+### Exploración de servicios
+
+- La clienta puede seleccionar una categoría y ver servicios asociados.
+- El precio público se comunica como precio orientativo de entrada usando el criterio “Desde”.
+- Existe drawer/ficha de servicio implementado para ampliar información antes de iniciar la reserva.
+- La UI pública evita exponer complejidad técnica interna y prioriza intención, claridad y confianza.
+
+### Reserva
+
+- El wizard de reserva está implementado.
+- El flujo contempla selección de servicio, personalización, extras, fecha, horario, datos de clienta y revisión final.
+- La personalización por categoría/servicio está implementada.
+- La selección de extras está implementada.
+- El resumen final está implementado.
+- El cálculo vigente mantiene seña del 20% sobre el total estimado.
+- El estado final actual del flujo es pendiente de seña/pago: la solicitud queda en estado `pending_payment` y el turno solo debe considerarse confirmado cuando se acredita la seña.
+
+## Qué es mock/local hoy
+
+Los siguientes elementos existen para simular o validar la experiencia, pero no deben interpretarse como integración productiva real:
+
+- Clientas recurrentes por WhatsApp/email: hay reconocimiento local/mock para probar el comportamiento, no un CRM real.
+- Payload de reserva: se construye y valida localmente como contrato funcional, pero no se envía a un backend real.
+- Estado `pending_payment`: representa el estado esperado del flujo, pero hoy no confirma pagos reales ni persistencia productiva.
+- Datos de catálogo: servicios, categorías, extras, reglas y precios son datos locales/mock hasta validación definitiva con Sol.
+- Disponibilidad: agenda, horarios, bloqueos y turnos existentes son mock/locales.
+- No hay CRM real integrado.
+- No hay backend real integrado.
+- No hay pago real integrado para cobrar o acreditar la seña.
+
+## Decisiones vigentes
+
+- El catálogo público debe mantenerse simplificado y orientado a la clienta.
+- El catálogo técnico interno debe existir separado del catálogo público.
+- La clienta no debe ver toda la complejidad técnica de productos, fórmulas, líneas, reglas profesionales o combinaciones internas.
+- Los documentos maestros anteriores quedan como históricos/contextuales, no como fuente operativa vigente.
+- La fuente operativa vigente es la combinación de:
+  - GitHub/repo actual;
+  - rama real seleccionada para este trabajo `lovable/navigation-ux-playground`;
+  - decisiones recientes documentadas en este archivo;
+  - futuras decisiones explícitas que actualicen esta fuente de verdad.
+
+## Pendientes
+
+- Validar catálogo real con Sol antes de convertirlo en dataset definitivo.
+- Definir naming final de Uñas/Manicura para la experiencia pública.
+- Definir flujo real para clientas recurrentes, incluyendo criterios de identificación, privacidad, recuperación de datos y eventual CRM.
+- Definir integración real de seña/pago, proveedor, confirmación, estados y conciliación operativa.
+- Crear estrategia para futuras categorías sin sobrecargar el catálogo público.
+- Separar formalmente catálogo público, catálogo técnico y catálogo operativo.
+
+## Alcance de este documento
+
+Este documento no modifica componentes, hooks, schemas, estilos ni lógica. Su objetivo es ordenar el estado vigente del producto y evitar que documentación histórica, mocks o particularidades de la sandbox de Codex sean confundidas con la fuente operativa actual.
+
+## Regla de mantenimiento
+
+Este documento debe actualizarse cuando un PR cambie decisiones de producto, alcance funcional, estado de mocks, flujo de reserva, catálogo, pagos, CRM o categorías.
