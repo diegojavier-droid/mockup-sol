@@ -13,10 +13,14 @@ quedar bajo cuentas controladas por el propietario del proyecto.
 - `wrangler.jsonc` define el Worker `sol-mai-peluqueria`.
 - `package.json` incluye `deploy` y `cf-typegen`.
 - `.dev.vars*` y `.env*` reales están ignorados por Git.
-- `Platform independence CI` debe fallar si vuelve a aparecer una dependencia
-  activa `@lovable.dev` o si el paquete Cloudflare no puede construirse.
+- `Platform independence CI` falla si reaparece una dependencia activa
+  `@lovable.dev` o si el paquete Cloudflare no puede construirse.
 - `Database clean-room CI` reconstruye PostgreSQL/Supabase desde las migraciones
   del repo y prueba bootstrap, RLS, constraints y endpoints.
+- `Deploy Supabase schema` permite aplicar manualmente las migraciones
+  canónicas sobre un proyecto Supabase propio.
+- `Verify owned Supabase` levanta Hono contra ese proyecto remoto y verifica el
+  contrato público del catálogo + no exposición de `staff_members`.
 - El frontend no contiene la integración Supabase/Auth autogenerada por
   Lovable; el backend bajo `server/` sigue siendo el trust boundary.
 
@@ -28,26 +32,40 @@ Crear un proyecto nuevo, vacío, destinado inicialmente a desarrollo de Sol Mai.
 No crear tablas manualmente desde el Dashboard: el schema canónico está en
 `supabase/migrations/`.
 
-Datos no secretos que necesitaremos después:
+Datos no secretos que necesitaremos en GitHub:
 
 - Project ref/ID.
 - Project API URL.
+- `SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_*`).
 
 Credenciales que NO deben copiarse en chats, documentos ni commits:
 
-- `SUPABASE_SECRET_KEY` (`sb_secret_*`).
-- contraseña de base de datos.
+- contraseña de base de datos;
+- personal access token de Supabase (`sbp_*`);
+- `SUPABASE_SECRET_KEY` (`sb_secret_*`) cuando una futura fase realmente la
+  necesite.
 
-La `SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_*`) es pública por diseño, pero
-en la arquitectura actual igualmente se configura como variable server-side.
+La `SUPABASE_PUBLISHABLE_KEY` es pública por diseño, pero en la arquitectura
+actual sigue configurada como variable server-side porque el navegador consume
+nuestra API en lugar de consultar Supabase directamente.
 
-Flujo técnico previsto una vez creado el proyecto:
+El backend read-only actual **no necesita `SUPABASE_SECRET_KEY`**. Se añadirá al
+hosting únicamente cuando reservas/admin/webhooks introduzcan operaciones
+privilegiadas.
+
+El flujo automatizado de GitHub para el schema usa:
+
+- variable `SUPABASE_PROJECT_ID`;
+- secret `SUPABASE_ACCESS_TOKEN`;
+- secret `SUPABASE_DB_PASSWORD`.
+
+y ejecuta el equivalente a:
 
 ```bash
-supabase login
 supabase link --project-ref <PROJECT_REF>
 supabase db push --dry-run
 supabase db push
+supabase migration list
 ```
 
 No ejecutar `supabase db pull` sobre el proyecto nuevo si está vacío; no debe
@@ -60,7 +78,7 @@ Crear/usar una cuenta Cloudflare controlada por el propietario y habilitar
 Workers. El repo ya contiene la configuración de Workers; todavía no se hace
 ningún deploy automático.
 
-Para CI/CD hacen falta dos secretos de GitHub:
+Para el workflow manual de CI/CD hacen falta dos secretos de GitHub:
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
@@ -72,9 +90,13 @@ El workflow `.github/workflows/cloudflare-deploy.yml` es manual
 (`workflow_dispatch`) hasta completar la configuración y comprobar el primer
 despliegue.
 
-## Variables del backend en hosting
+También puede usarse la integración Git de Cloudflare Workers con este mismo
+repositorio para tener builds de producción y previews de ramas sin gastar
+créditos de un builder visual.
 
-El contrato esperado para un proyecto Supabase propio es:
+## Variables del backend en el estado actual
+
+Para verificar el catálogo read-only contra un Supabase propio alcanza con:
 
 ```text
 NODE_ENV=production
@@ -83,9 +105,14 @@ API_BASE_URL=<URL pública final>
 PUBLIC_WEB_BASE_URL=<URL pública final>
 SUPABASE_URL=<Project API URL>
 SUPABASE_PUBLISHABLE_KEY=<sb_publishable_*>
-SUPABASE_SECRET_KEY=<sb_secret_*>
 INTERNAL_AUTH_JWT_AUDIENCE=sol-mai-internal
 INTERNAL_AUTH_ALLOWED_EMAILS=<email owner autorizado>
+```
+
+Más adelante, cuando exista una operación backend privilegiada:
+
+```text
+SUPABASE_SECRET_KEY=<sb_secret_*>
 ```
 
 Las credenciales Mercado Pago, email y WhatsApp siguen sin configurarse porque
@@ -93,14 +120,19 @@ esas funcionalidades aún no están implementadas.
 
 ## Orden de migración
 
-1. Merge de la rama de independencia cuando todos los CI estén verdes.
-2. Crear proyecto Supabase propio y vacío.
-3. Vincular el repo y aplicar migraciones canónicas.
-4. Verificar conteos/RLS/endpoints contra el proyecto propio.
-5. Crear cuenta/token Cloudflare y guardar secretos en GitHub.
-6. Ejecutar manualmente `Deploy Cloudflare Worker`.
-7. Verificar landing, catálogo y wizard desde la URL Cloudflare.
-8. Sólo después, dejar Lovable como histórico y cancelar/reducir el plan.
+1. Crear proyecto Supabase propio y vacío.
+2. Configurar en GitHub las variables/secrets requeridas por `Deploy Supabase schema`.
+3. Ejecutar manualmente `Deploy Supabase schema`.
+4. Configurar `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY` como variables de GitHub.
+5. Ejecutar manualmente `Verify owned Supabase`.
+6. Crear/conectar cuenta Cloudflare con GitHub o configurar los secretos del
+   workflow manual de deploy.
+7. Desplegar la app TanStack en Cloudflare.
+8. Verificar landing, catálogo mock actual y wizard desde la URL Cloudflare.
+9. Antes de integrar el frontend con datos reales, finalizar el hosting del
+   backend Hono o adaptarlo explícitamente a Workers.
+10. Sólo después de verificar la infraestructura propia, dejar Lovable como
+   histórico y cancelar/reducir el plan.
 
 ## Criterio de salida definitiva
 
@@ -109,8 +141,8 @@ Lovable se considera removido cuando se cumplan simultáneamente:
 - CI compila sin paquetes `@lovable.dev`.
 - `wrangler deploy --dry-run` funciona.
 - Supabase propio contiene el schema/bootstrap esperado.
-- Backend consulta el Supabase propio.
-- aplicación desplegada en Cloudflare funciona desde una URL independiente.
+- `Verify owned Supabase` pasa contra el proyecto propio.
+- aplicación TanStack desplegada en Cloudflare funciona desde una URL independiente.
 - ningún secreto productivo depende de Lovable.
 
 Hasta entonces no borrar el proyecto histórico de Lovable; simplemente no
