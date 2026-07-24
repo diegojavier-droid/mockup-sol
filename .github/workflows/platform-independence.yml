@@ -6,10 +6,13 @@ on:
     paths:
       - "package.json"
       - "bun.lock"
+      - "bunfig.toml"
       - "vite.config.ts"
       - "wrangler.jsonc"
       - "src/**"
       - "server/**"
+      - "scripts/**"
+      - "supabase/migrations/20260724170535_catalog_bootstrap.sql"
       - ".github/workflows/platform-independence.yml"
       - ".github/workflows/cloudflare-deploy.yml"
       - ".github/workflows/supabase-schema-deploy.yml"
@@ -19,10 +22,13 @@ on:
     paths:
       - "package.json"
       - "bun.lock"
+      - "bunfig.toml"
       - "vite.config.ts"
       - "wrangler.jsonc"
       - "src/**"
       - "server/**"
+      - "scripts/**"
+      - "supabase/migrations/20260724170535_catalog_bootstrap.sql"
       - ".github/workflows/platform-independence.yml"
       - ".github/workflows/cloudflare-deploy.yml"
       - ".github/workflows/supabase-schema-deploy.yml"
@@ -46,18 +52,39 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Reject Lovable build dependencies
+      - name: Reject Lovable lock-in and active runtime residue
         run: |
           set -euo pipefail
-          MATCHES=$(git grep -n -E '@lovable\.dev' -- package.json vite.config.ts src server || true)
-          if [ -n "$MATCHES" ]; then
+
+          LOCK_MATCHES=$(git grep -n -E 'lovable-core-prod|sandbox-npm-cache|npm\.pkg\.dev/.?lovable' -- bun.lock || true)
+          if [ -n "$LOCK_MATCHES" ]; then
+            echo "::error::bun.lock still references Lovable infrastructure"
+            echo "$LOCK_MATCHES"
+            exit 1
+          fi
+
+          ACTIVE_MATCHES=$(git grep -n -E '@lovable\.dev|__lovable|reportLovableError' -- \
+            package.json bunfig.toml vite.config.ts wrangler.jsonc 'tsconfig*.json' src server scripts 2>/dev/null || true)
+          if [ -n "$ACTIVE_MATCHES" ]; then
             echo "::error::Active code/config still depends on Lovable"
-            echo "$MATCHES"
+            echo "$ACTIVE_MATCHES"
+            exit 1
+          fi
+
+          if git ls-files '.lovable/**' | grep -q .; then
+            echo "::error::.lovable/ tooling is tracked again"
+            git ls-files '.lovable/**'
             exit 1
           fi
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Verify catalog bootstrap generator is in sync
+        run: |
+          set -euo pipefail
+          bun run db:generate-seed
+          git diff --exit-code -- supabase/migrations/20260724170535_catalog_bootstrap.sql
 
       - name: Typecheck backend
         run: bun run typecheck:server
