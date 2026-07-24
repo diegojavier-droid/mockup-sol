@@ -94,6 +94,7 @@ jobs:
             ':(exclude,glob)*.md' \
             ':(exclude)bun.lock' \
             ':(exclude).github/workflows/backend-scaffold.yml' \
+            ':(exclude).github/workflows/database-clean-room.yml' \
             | grep -Ev 'VITE_SUPABASE_(PUBLISHABLE|ANON)_KEY' || true)
           if [ -n "$MATCHES" ]; then
             echo "::error::Found VITE_-prefixed secret-like names (these ship to the browser):"
