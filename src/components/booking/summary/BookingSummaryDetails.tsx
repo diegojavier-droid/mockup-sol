@@ -1,16 +1,23 @@
 import { categories, personalizationFields, type Personalization } from "@/lib/booking-data";
 import { computeTotals } from "@/lib/booking-totals";
+import type { CustomerFormState } from "../steps/CustomerDataStep";
 import type { SummaryData } from "../SummaryPanel";
 
+const visibleFieldLabels: Record<string, string> = {
+  quimicos: "Tratamientos previos",
+};
+
 export function BookingSummaryDetails({
+  customer,
   data,
   personal,
 }: {
+  customer?: CustomerFormState;
   data: SummaryData;
   personal: Personalization;
 }) {
   const category = categories.find((currentCategory) => currentCategory.id === data.category);
-  const { dur, price } = computeTotals(data);
+  const { dur, price, depositPrice, remainingPrice } = computeTotals(data);
   const fields = data.category ? personalizationFields[data.category] : [];
 
   return (
@@ -21,8 +28,35 @@ export function BookingSummaryDetails({
         <Field label="Fecha" value={data.date ?? "—"} />
         <Field label="Hora" value={data.time ?? "—"} />
         <Field label="Duración estimada" value={dur} />
-        <Field label="Precio estimado" value={price} />
+        <Field label="Total estimado del turno" value={price} />
       </div>
+
+      <div className="mt-5 rounded-2xl border border-champagne-deep/30 bg-cream/60 p-5">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          Seña para confirmar: 20%
+        </p>
+        <p className="mt-1 font-serif text-3xl leading-tight text-foreground sm:text-4xl">
+          {depositPrice}
+        </p>
+        <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-champagne-deep/20 pt-3">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Saldo a abonar en el salón
+          </span>
+          <span className="font-serif text-base text-foreground">{remainingPrice}</span>
+        </div>
+      </div>
+
+      {customer && (
+        <div className="mt-5 border-t border-border pt-5">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Tus datos</p>
+          <div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-2">
+            <Field label="Nombre" value={customer.firstName || "—"} />
+            <Field label="WhatsApp" value={customer.whatsapp || "—"} />
+            <Field label="Email" value={customer.email || "—"} breakAll />
+            <Field label="Mensaje" value={customer.notes || "—"} />
+          </div>
+        </div>
+      )}
 
       {data.extras.length > 0 && (
         <div className="mt-5 border-t border-border pt-5">
@@ -45,22 +79,49 @@ export function BookingSummaryDetails({
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {fields.map((field) => (
               <div key={field.id}>
-                <p className="text-[11px] text-muted-foreground">{field.label}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {visibleFieldLabels[field.id] ?? field.label}
+                </p>
                 <p className="text-sm text-foreground/90">{personal[field.id] ?? "—"}</p>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {data.additionalComments.trim() && (
+        <div className="mt-5 border-t border-border pt-5">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Comentarios adicionales
+          </p>
+          <p className="mt-2 whitespace-pre-wrap rounded-2xl bg-cream/50 px-4 py-3 text-sm leading-relaxed text-foreground/90">
+            {data.additionalComments.trim()}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({
+  label,
+  value,
+  breakAll = false,
+}: {
+  label: string;
+  value: string;
+  breakAll?: boolean;
+}) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-0.5 font-serif text-lg text-foreground">{value}</p>
+      <p
+        className={`mt-0.5 min-w-0 font-serif text-foreground ${
+          breakAll ? "break-all text-sm sm:text-base" : "text-lg break-words"
+        }`}
+      >
+        {value}
+      </p>
     </div>
   );
 }

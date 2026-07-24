@@ -1,4 +1,6 @@
-export type CategoryId = "peluqueria" | "maquillaje" | "unas";
+export type CategoryId = "peluqueria" | "maquillaje" | "unas" | "depilacion";
+
+export type AreaId = CategoryId;
 
 export type Tag = "popular" | "combinado" | "tratamiento" | "color" | "evento";
 
@@ -14,14 +16,20 @@ export interface Service {
   name: string;
   desc: string;
   duration: string;
+  durationMinutes: number;
   price: string;
+  priceAmount: number;
   tag?: Tag;
+  imageUrl?: string;
+  visual?: string;
 }
 
 export interface Extra {
   id: string;
   name: string;
+  durationMinutes: number;
   price: string;
+  priceAmount: number;
 }
 
 export interface PersonalizationField {
@@ -37,4 +45,146 @@ export interface MockDate {
   day: string;
 }
 
+export interface BusinessHours {
+  weekday: number;
+  opensAt: string;
+  closesAt: string;
+  active: boolean;
+}
+
+export interface ClosedDay {
+  date: string;
+  reason: string;
+  fullDay: boolean;
+  startsAt?: string;
+  endsAt?: string;
+  active: boolean;
+}
+
+export interface ScheduleBlock {
+  date: string;
+  startsAt: string;
+  endsAt: string;
+  reason: string;
+  active: boolean;
+}
+
+export interface AppointmentMock {
+  date: string;
+  startsAt: string;
+  active: boolean;
+  areaId?: AreaId;
+  capacityUnits?: number;
+  serviceName?: string;
+  serviceDurationMinutes?: number;
+  preparationMinutes?: number;
+  blockedDurationMinutes?: number;
+}
+
+export interface AvailabilityRequest {
+  durationMinutes: number;
+  operationalBufferMinutes?: number;
+  areaId?: AreaId;
+  capacityUnits?: number;
+}
+
+export interface AvailableSlot {
+  date: string;
+  times: string[];
+}
+
+export interface OperationalBufferSettings {
+  defaultBufferMinutes: number;
+  byCategory: Partial<Record<CategoryId, number>>;
+  byServiceId: Record<string, number>;
+  active: boolean;
+}
+
+export type DayAvailabilityStatus = "available" | "past" | "closed" | "unavailable";
+
 export type Personalization = Record<string, string>;
+
+export type ContactChannel = "whatsapp" | "email" | "phone";
+
+export type CustomerType = "new" | "returning" | "unknown";
+
+export interface CustomerContact {
+  whatsapp: string;
+  email: string;
+  phone?: string | null;
+  preferredContactChannel: ContactChannel;
+  acceptsTransactionalMessages: boolean;
+  acceptsMarketingMessages: boolean;
+}
+
+export interface CustomerIdentity {
+  type: CustomerType;
+  firstName: string;
+  lastName?: string | null;
+  contact: CustomerContact;
+}
+
+export interface ReturningCustomerLookup {
+  whatsapp?: string;
+  email?: string | null;
+}
+
+export type BookingStatus = "pending_payment";
+
+export interface BookingSelection {
+  categoryId: CategoryId;
+  serviceId: string;
+  extraIds?: string[];
+  personalization?: Personalization;
+  dateId: string;
+  time: string;
+  notes?: string;
+}
+
+export interface BookingTotals {
+  durationMinutes: number;
+  priceAmount: number | null;
+  priceIsEstimated: boolean;
+  depositAmount: number | null;
+  remainingAmount: number | null;
+  depositRate: number;
+  operationalBufferMinutes?: number;
+  blockedDurationMinutes?: number;
+}
+
+export type RecurringBookingFrequency = "daily" | "weekly" | "biweekly" | "monthly";
+
+export interface RecurringBookingPreference {
+  frequency: RecurringBookingFrequency;
+  preferredWeekdays?: number[];
+  preferredTime?: string | null;
+  notes?: string | null;
+}
+
+export interface BookingNotificationChannels {
+  email: boolean;
+  whatsapp: boolean;
+}
+
+export interface BookingReminder {
+  enabled: boolean;
+  offsetMinutes: number;
+  channels: Array<Extract<ContactChannel, "email" | "whatsapp">>;
+}
+
+export interface BookingRequestPayload {
+  customer: CustomerIdentity;
+  selection: BookingSelection;
+  totals: BookingTotals;
+  recurringPreference?: RecurringBookingPreference | null;
+  notificationChannels: BookingNotificationChannels;
+  reminder: BookingReminder;
+  status: BookingStatus;
+}
+
+export interface BookingRequestResult {
+  ok: boolean;
+  status: BookingStatus;
+  requestId?: string | null;
+  message?: string | null;
+}

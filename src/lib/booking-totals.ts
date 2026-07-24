@@ -1,22 +1,15 @@
-import type { Extra, Service } from "@/lib/booking-data";
+import type { CategoryId, Extra, Personalization, Service } from "@/lib/booking-data";
+import {
+  getOperationalBufferMinutes,
+  getBlockedDurationMinutes,
+} from "@/lib/booking-operational-buffer";
+import { getPersonalizationModifierTotals } from "@/lib/booking-rules";
 
 export interface BookingTotalsData {
+  category: CategoryId | null;
   service: Service | null;
   extras: Extra[];
-}
-
-function totalDurationMin(service: Service | null) {
-  if (!service) return 0;
-
-  const hours = service.duration.match(/(\d+)\s*h/);
-  const minutes = service.duration.match(/(\d+)\s*min/);
-  const hasHalfHour = /h\s*30/.test(service.duration);
-
-  return (
-    (hours ? Number(hours[1]) * 60 : 0) +
-    (hasHalfHour ? 30 : 0) +
-    (minutes ? Number(minutes[1]) : 0)
-  );
+  personalization?: Personalization;
 }
 
 function fmtDuration(min: number) {
@@ -30,19 +23,76 @@ function fmtDuration(min: number) {
   return `${m} min`;
 }
 
-function parsePrice(price: string) {
-  return Number(price.replace(/[^\d]/g, "")) || 0;
-}
+export const BOOKING_DEPOSIT_RATE = 0.2;
 
-function fmtPrice(price: number) {
+export function fmtPrice(price: number) {
   return "$" + price.toLocaleString("es-AR");
 }
 
-export function computeTotals(data: BookingTotalsData) {
-  const dur = totalDurationMin(data.service) + data.extras.length * 15;
-  const price =
-    parsePrice(data.service?.price ?? "") +
-    data.extras.reduce((acc, extra) => acc + parsePrice(extra.price), 0);
+function computeDepositAmounts(priceAmount: number | null) {
+  if (!priceAmount) return { depositAmount: null, remainingAmount: null };
 
-  return { dur: fmtDuration(dur), price: price ? fmtPrice(price) : "—" };
+  const depositAmount = priceAmount * BOOKING_DEPOSIT_RATE;
+
+  return {
+    depositAmount,
+    remainingAmount: priceAmount - depositAmount,
+  };
 }
+
+export function computeBookingTotals({
+  category,
+  service,
+  extras,
+  personalization,
+}: BookingTotalsData) {
+  const extrasDurationMinutes = extras.reduce((acc, extra) => acc + extra.durationMinutes, 0);
+  const extrasPriceAmount = extras.reduce((acc, extra) => acc + extra.priceAmount, 0);
+  const personalizationModifier = getPersonalizationModifierTotals({
+    category,
+    service,
+    personalization,
+  });
+  const durationMinutes =
+    (service?.durationMinutes ?? 0) +
+    personalizationModifier.durationMinutes +
+    extrasDurationMinutes;
+  const rawPriceAmount =
+    (service?.priceAmount ?? 0) + personalizationModifier.priceAmount + extrasPriceAmount;
+  const priceAmount = rawPriceAmount > 0 ? rawPriceAmount : null;
+  const { depositAmount, remainingAmount } = computeDepositAmounts(priceAmount);
+
+  return {
+    dur: fmtDuration(durationMinutes),
+    durationMinutes,
+    price: priceAmount ? fmtPrice(priceAmount) : "—",
+    priceAmount,
+    depositAmount,
+    depositPrice: depositAmount ? fmtPrice(depositAmount) : "—",
+    remainingAmount,
+    remainingPrice: remainingAmount ? fmtPrice(remainingAmount) : "—",
+    depositRate: BOOKING_DEPOSIT_RATE,
+    priceIsEstimated: true,
+  };
+}
+
+export function computeBookingOperationalTotals(data: BookingTotalsData) {
+  const totals = computeBookingTotals(data);
+  const operationalBufferMinutes = getOperationalBufferMinutes({
+    category: data.category,
+    service: data.service,
+  });
+  const blockedDurationMinutes = getBlockedDurationMinutes({
+    visibleDurationMinutes: totals.durationMinutes,
+    operationalBufferMinutes,
+  });
+
+  return {
+    ...totals,
+    operationalBufferMinutes,
+    blockedDurationMinutes,
+    blockedDur: fmtDuration(blockedDurationMinutes),
+  };
+}
+
+export const computeTotals = computeBookingTotals;

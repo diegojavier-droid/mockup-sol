@@ -1,4 +1,4 @@
-import type { CategoryId, Extra, Service } from "@/lib/booking-data";
+import type { CategoryId, Extra, Personalization, Service } from "@/lib/booking-data";
 import { categories } from "@/lib/booking-data";
 import { computeTotals } from "@/lib/booking-totals";
 
@@ -6,6 +6,8 @@ export interface SummaryData {
   category: CategoryId | null;
   service: Service | null;
   extras: Extra[];
+  personalization: Personalization;
+  additionalComments: string;
   date: string | null;
   time: string | null;
 }
@@ -18,28 +20,24 @@ export function SummaryPanel({
   variant?: "side" | "bottom";
 }) {
   const cat = categories.find((category) => category.id === data.category);
-  const { dur, price } = computeTotals(data);
+  const { dur, price, depositPrice, remainingPrice } = computeTotals(data);
   const isEmpty = !data.category && !data.service;
 
   if (variant === "bottom") {
     return (
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 rounded-2xl bg-cream/35 px-3 py-2">
         <div className="min-w-0 flex-1">
-          <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Tu reserva</p>
-          <p className="mt-0.5 truncate font-serif text-[15px] leading-tight text-foreground">
+          <p className="truncate font-serif text-[15px] leading-tight text-foreground">
             {data.service?.name ?? cat?.name ?? "Sin elegir"}
           </p>
-          <p className="truncate text-[10px] leading-tight text-muted-foreground">
-            {dur} ·{" "}
+          <p className="mt-0.5 truncate text-[10px] leading-tight text-muted-foreground">
+            {dur}
             {data.extras.length > 0
-              ? `${data.extras.length} extra${data.extras.length > 1 ? "s" : ""}`
-              : "sin extras"}
+              ? ` · ${data.extras.length} extra${data.extras.length > 1 ? "s" : ""}`
+              : ""}
           </p>
         </div>
-        <div className="shrink-0 text-right">
-          <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Estimado</p>
-          <p className="font-serif text-lg leading-tight text-foreground">{price}</p>
-        </div>
+        <p className="shrink-0 font-serif text-lg leading-tight text-foreground">{price}</p>
       </div>
     );
   }
@@ -48,8 +46,7 @@ export function SummaryPanel({
     <aside className="sticky top-28 overflow-hidden rounded-3xl border border-border bg-card shadow-[0_1px_0_0_rgba(0,0,0,0.02),0_30px_50px_-35px_rgba(120,90,60,0.25)]">
       <div className="border-b border-border/70 bg-gradient-to-b from-cream/70 to-card px-6 pb-5 pt-6">
         <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Tu reserva</p>
-        <h3 className="mt-1 font-serif text-2xl text-foreground">Sol Mai</h3>
-        <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-foreground/60">
+        <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-foreground/60">
           <span className="h-1 w-1 rounded-full bg-champagne-deep" /> Santa Fe Capital
         </div>
       </div>
@@ -57,10 +54,7 @@ export function SummaryPanel({
       <div className="space-y-4 px-6 py-5 text-sm">
         {isEmpty ? (
           <div className="rounded-2xl border border-dashed border-border bg-cream/40 p-5 text-center">
-            <p className="font-serif text-base text-foreground">Empezá tu reserva</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              A medida que elijas, tu resumen se completa acá.
-            </p>
+            <p className="text-xs text-muted-foreground">Tu resumen se arma a medida que elegís.</p>
           </div>
         ) : (
           <>
@@ -87,12 +81,26 @@ export function SummaryPanel({
         </div>
         <div className="flex items-baseline justify-between">
           <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-            Precio estimado
+            Total estimado
           </span>
           <span className="font-serif text-2xl text-foreground">{price}</span>
         </div>
+        <div className="space-y-1 border-t border-border/70 pt-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Seña 20%
+            </span>
+            <span className="font-serif text-base text-foreground">{depositPrice}</span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Saldo salón
+            </span>
+            <span className="font-serif text-base text-foreground">{remainingPrice}</span>
+          </div>
+        </div>
         <p className="pt-2 text-[11px] leading-relaxed text-muted-foreground">
-          Valores orientativos. El salón confirma el turno por WhatsApp.
+          Valores orientativos. Tu turno queda reservado cuando se acredita la seña.
         </p>
       </div>
     </aside>

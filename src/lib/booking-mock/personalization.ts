@@ -46,7 +46,6 @@ export const personalizationFields: Record<CategoryId, PersonalizationField[]> =
       label: "Tipo de terminación",
       options: ["Brillante", "Mate", "Francesa", "Color liso"],
     },
-    { id: "retiro", label: "¿Necesita retiro previo?", options: ["Sí", "No"] },
-    { id: "nailart", label: "¿Desea nail art?", options: ["Sí", "No"] },
   ],
+  depilacion: [],
 };
