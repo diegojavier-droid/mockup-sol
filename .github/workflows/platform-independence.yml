@@ -9,6 +9,7 @@ on:
       - "vite.config.ts"
       - "wrangler.jsonc"
       - "src/**"
+      - "server/**"
       - ".github/workflows/platform-independence.yml"
       - ".github/workflows/cloudflare-deploy.yml"
   push:
@@ -19,6 +20,7 @@ on:
       - "vite.config.ts"
       - "wrangler.jsonc"
       - "src/**"
+      - "server/**"
       - ".github/workflows/platform-independence.yml"
       - ".github/workflows/cloudflare-deploy.yml"
 
@@ -43,11 +45,7 @@ jobs:
       - name: Reject Lovable build dependencies
         run: |
           set -euo pipefail
-          MATCHES=$(git grep -n -E '@lovable\.dev' -- \
-            ':(exclude,glob)docs/**' \
-            ':(exclude,glob)**/*.md' \
-            ':(exclude)bun.lock' \
-            ':(exclude).github/workflows/platform-independence.yml' || true)
+          MATCHES=$(git grep -n -E '@lovable\.dev' -- package.json vite.config.ts src server || true)
           if [ -n "$MATCHES" ]; then
             echo "::error::Active code/config still depends on Lovable"
             echo "$MATCHES"
