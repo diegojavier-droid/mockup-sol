@@ -22,7 +22,7 @@ here — the frontend under `src/` must never read them.
 | `API_BASE_URL`                 | Public URL of this API                      |
 | `PUBLIC_WEB_BASE_URL`          | Public URL of the web frontend              |
 | `SUPABASE_URL`                 | Supabase project URL                        |
-| `SUPABASE_ANON_KEY`            | Supabase anon key (server-side use only)    |
+| `SUPABASE_PUBLISHABLE_KEY`     | Supabase publishable key (new-format, opaque) |
 | `SUPABASE_SERVICE_ROLE_KEY`    | Hard secret. Never sent to the browser.     |
 | `INTERNAL_AUTH_JWT_AUDIENCE`   | Expected `aud` claim for internal JWTs      |
 | `INTERNAL_AUTH_ALLOWED_EMAILS` | CSV allow-list of staff/owner emails        |

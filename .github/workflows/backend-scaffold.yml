@@ -38,7 +38,7 @@ jobs:
       API_BASE_URL: http://localhost:3001
       PUBLIC_WEB_BASE_URL: http://localhost:8080
       SUPABASE_URL: http://localhost:54321
-      SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
       SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
       INTERNAL_AUTH_JWT_AUDIENCE: sol-mai-internal
       INTERNAL_AUTH_ALLOWED_EMAILS: ci@sol-mai.test
@@ -84,17 +84,21 @@ jobs:
           set -e
           # Scan only tracked, non-documentation files. This avoids false positives
           # from generated build output and docs that intentionally describe forbidden names.
+          # Publishable/anon keys are safe in the browser by design, so they are
+          # explicitly excluded from the match.
           MATCHES=$(git grep -n -E 'VITE_.*(SERVICE|SECRET|TOKEN|PASSWORD|KEY)' -- . \
             ':(exclude,glob)docs/**' \
             ':(exclude,glob)**/*.md' \
             ':(exclude,glob)*.md' \
             ':(exclude)bun.lock' \
-            ':(exclude).github/workflows/backend-scaffold.yml' || true)
+            ':(exclude).github/workflows/backend-scaffold.yml' \
+            | grep -Ev 'VITE_SUPABASE_(PUBLISHABLE|ANON)_KEY' || true)
           if [ -n "$MATCHES" ]; then
             echo "::error::Found VITE_-prefixed secret-like names (these ship to the browser):"
             echo "$MATCHES"
             exit 1
           fi
+
 
       - name: Guard frontend against server/ imports
         run: |

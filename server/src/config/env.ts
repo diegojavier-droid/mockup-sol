@@ -35,8 +35,10 @@ const serverEnvSchema = z.object({
   PUBLIC_WEB_BASE_URL: z.string().url(),
 
   // Supabase — server-only. SERVICE_ROLE_KEY is a hard secret.
+  // Naming aligns with Lovable Cloud, which injects SUPABASE_PUBLISHABLE_KEY
+  // (the new-format opaque publishable key, `sb_publishable_*`). No aliases.
   SUPABASE_URL: z.string().url(),
-  SUPABASE_ANON_KEY: nonEmpty,
+  SUPABASE_PUBLISHABLE_KEY: nonEmpty,
   SUPABASE_SERVICE_ROLE_KEY: nonEmpty,
 
   // Internal auth (staff/owner console access via JWT)

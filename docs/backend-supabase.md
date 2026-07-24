@@ -19,11 +19,12 @@ Ninguno instancia clientes al importarse — cada helper es una factory
 (`createSupabaseAdminClient(env)`, `createSupabaseAnonClient(env, opts)`)
 que recibe `ServerEnv` ya validado por `server/src/config/env.ts`.
 
-## 2. Diferencia entre `anon` y `service_role`
+## 2. Diferencia entre `publishable` y `service_role`
 
-- **`SUPABASE_ANON_KEY`** — clave pública de lectura pensada para clientes
-  no autenticados. Respeta RLS. Es la que hoy vive únicamente en backend
-  para preparar validación de JWT interna (staff/owner) en fases futuras.
+- **`SUPABASE_PUBLISHABLE_KEY`** — clave pública (nuevo formato opaco
+  `sb_publishable_*`) provista por Lovable Cloud. Respeta RLS. Vive
+  únicamente en backend para lecturas del catálogo "como anon" y para
+  preparar validación de JWT interna (staff/owner) en fases futuras.
 - **`SUPABASE_SERVICE_ROLE_KEY`** — clave de administración. **Bypass total
   de RLS.** Es un secreto duro: nunca sale del backend, nunca se loguea,
   nunca se devuelve en una respuesta HTTP.
