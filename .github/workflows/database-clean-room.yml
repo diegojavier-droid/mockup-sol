@@ -1,0 +1,390 @@
+name: Database clean-room CI
+
+on:
+  pull_request:
+    branches: [main, mvp/sol-mai-v2]
+    paths:
+      - "supabase/**"
+      - "server/**"
+      - "src/integrations/supabase/**"
+      - "package.json"
+      - "bun.lock"
+      - "tsconfig.server.json"
+      - ".env.example"
+      - ".gitignore"
+      - ".github/workflows/database-clean-room.yml"
+      - ".github/workflows/backend-scaffold.yml"
+  push:
+    branches: [main, mvp/sol-mai-v2]
+    paths:
+      - "supabase/**"
+      - "server/**"
+      - "src/integrations/supabase/**"
+      - "package.json"
+      - "bun.lock"
+      - "tsconfig.server.json"
+      - ".env.example"
+      - ".gitignore"
+      - ".github/workflows/database-clean-room.yml"
+      - ".github/workflows/backend-scaffold.yml"
+
+concurrency:
+  group: database-clean-room-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clean-room:
+    name: Rebuild Supabase from zero
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      NODE_ENV: test
+      APP_ENV: local
+      API_BASE_URL: http://localhost:3001
+      PUBLIC_WEB_BASE_URL: http://localhost:8080
+      INTERNAL_AUTH_JWT_AUDIENCE: sol-mai-internal
+      INTERNAL_AUTH_ALLOWED_EMAILS: ci@sol-mai.test
+      PORT: "3001"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Reject foreign lockfiles
+        run: |
+          set -euo pipefail
+          for f in package-lock.json pnpm-lock.yaml yarn.lock; do
+            if [ -f "$f" ]; then
+              echo "::error::Foreign lockfile detected: $f. Only bun.lock is allowed."
+              exit 1
+            fi
+          done
+
+      - name: Install dependencies (frozen)
+        run: bun install --frozen-lockfile
+
+      - name: Start isolated local Supabase
+        run: |
+          set -euo pipefail
+          supabase start
+          supabase db reset
+
+          supabase status -o env > /tmp/supabase.env
+          set -a
+          source /tmp/supabase.env
+          set +a
+
+          echo "SUPABASE_LOCAL_API_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "SUPABASE_LOCAL_DB_URL=$DB_URL" >> "$GITHUB_ENV"
+          echo "SUPABASE_LOCAL_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "SUPABASE_LOCAL_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+
+      - name: Verify local migration ledger matches repository
+        run: |
+          set -euo pipefail
+
+          find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' \
+            | sed -E 's/^([0-9]+)_.*/\1/' \
+            | sort > /tmp/local-migrations.txt
+
+          psql "$SUPABASE_LOCAL_DB_URL" -Atc \
+            "select version from supabase_migrations.schema_migrations order by version" \
+            > /tmp/db-migrations.txt
+
+          echo "Local migration versions:"
+          cat /tmp/local-migrations.txt
+          echo "Applied migration versions:"
+          cat /tmp/db-migrations.txt
+
+          diff -u /tmp/local-migrations.txt /tmp/db-migrations.txt
+
+      - name: Capture bootstrap baseline counts
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -At -F '=' -c "
+            select table_name, row_count
+            from (
+              select 'business_hours' as table_name, count(*)::int as row_count from public.business_hours
+              union all select 'categories', count(*)::int from public.categories
+              union all select 'extras', count(*)::int from public.extras
+              union all select 'personalization_fields', count(*)::int from public.personalization_fields
+              union all select 'personalization_options', count(*)::int from public.personalization_options
+              union all select 'service_personalization_option_modifiers', count(*)::int from public.service_personalization_option_modifiers
+              union all select 'service_personalization_rules', count(*)::int from public.service_personalization_rules
+              union all select 'services', count(*)::int from public.services
+            ) q
+            order by table_name;
+          " > /tmp/counts-before.txt
+
+          cat > /tmp/counts-expected.txt <<'EOF'
+          business_hours=6
+          categories=4
+          extras=13
+          personalization_fields=12
+          personalization_options=43
+          service_personalization_option_modifiers=304
+          service_personalization_rules=200
+          services=43
+          EOF
+
+          echo "Counts after clean rebuild:"
+          cat /tmp/counts-before.txt
+          diff -u /tmp/counts-expected.txt /tmp/counts-before.txt
+
+      - name: Execute bootstrap a second time and prove idempotency
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/20260724170535_catalog_bootstrap.sql
+
+          psql "$SUPABASE_LOCAL_DB_URL" -At -F '=' -c "
+            select table_name, row_count
+            from (
+              select 'business_hours' as table_name, count(*)::int as row_count from public.business_hours
+              union all select 'categories', count(*)::int from public.categories
+              union all select 'extras', count(*)::int from public.extras
+              union all select 'personalization_fields', count(*)::int from public.personalization_fields
+              union all select 'personalization_options', count(*)::int from public.personalization_options
+              union all select 'service_personalization_option_modifiers', count(*)::int from public.service_personalization_option_modifiers
+              union all select 'service_personalization_rules', count(*)::int from public.service_personalization_rules
+              union all select 'services', count(*)::int from public.services
+            ) q
+            order by table_name;
+          " > /tmp/counts-after.txt
+
+          echo "Counts after bootstrap #2:"
+          cat /tmp/counts-after.txt
+          diff -u /tmp/counts-before.txt /tmp/counts-after.txt
+
+      - name: Verify RLS and public/internal visibility
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          set local role anon;
+
+          do $$
+          declare
+            n integer;
+          begin
+            select count(*) into n from public.categories;
+            if n <> 4 then raise exception 'anon categories expected 4, got %', n; end if;
+
+            select count(*) into n from public.services;
+            if n <> 43 then raise exception 'anon services expected 43, got %', n; end if;
+
+            select count(*) into n from public.extras;
+            if n <> 13 then raise exception 'anon extras expected 13, got %', n; end if;
+
+            select count(*) into n from public.business_hours;
+            if n <> 6 then raise exception 'anon business_hours expected 6, got %', n; end if;
+          end
+          $$;
+
+          rollback;
+          SQL
+
+          STAFF_SELECT=$(psql "$SUPABASE_LOCAL_DB_URL" -Atc \
+            "select has_table_privilege('anon','public.staff_members','SELECT')")
+          if [ "$STAFF_SELECT" != "f" ]; then
+            echo "::error::anon unexpectedly has SELECT on staff_members"
+            exit 1
+          fi
+
+          if psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 >/tmp/anon-write.log 2>&1 <<'SQL'
+          set role anon;
+          insert into public.categories(slug, name) values ('ci-anon-write-must-fail', 'CI invalid');
+          SQL
+          then
+            echo "::error::anon write unexpectedly succeeded"
+            cat /tmp/anon-write.log
+            exit 1
+          else
+            echo "anon write correctly rejected"
+          fi
+
+      - name: Verify relational RLS hides children of hidden categories
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          update public.categories set is_public = false where slug = 'peluqueria';
+          set local role anon;
+
+          do $$
+          declare
+            n integer;
+          begin
+            select count(*) into n from public.services;
+            if n <> 15 then
+              raise exception 'expected 15 visible services after hiding peluqueria, got %', n;
+            end if;
+          end
+          $$;
+
+          rollback;
+          SQL
+
+      - name: Verify field-option composite FK
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_service uuid;
+            v_field uuid;
+            v_wrong_option uuid;
+          begin
+            select r.service_id, r.field_id
+              into v_service, v_field
+            from public.service_personalization_rules r
+            limit 1;
+
+            select o.id
+              into v_wrong_option
+            from public.personalization_options o
+            where o.field_id <> v_field
+            limit 1;
+
+            begin
+              insert into public.service_personalization_option_modifiers
+                (service_id, field_id, option_id)
+              values
+                (v_service, v_field, v_wrong_option);
+
+              raise exception 'composite field/option FK accepted an invalid pair';
+            exception
+              when foreign_key_violation then
+                null;
+            end;
+          end
+          $$;
+          SQL
+
+      - name: Typecheck backend
+        run: bun run typecheck:server
+
+      - name: Build frontend
+        run: bun run build
+
+      - name: Ensure routeTree.gen.ts is up-to-date
+        run: |
+          set -euo pipefail
+          if ! git diff --exit-code -- src/routeTree.gen.ts; then
+            echo "::error::src/routeTree.gen.ts changed after build. Commit the regenerated file."
+            exit 1
+          fi
+
+      - name: Run repository guards
+        run: |
+          set -euo pipefail
+
+          MATCHES=$(git grep -n -E 'VITE_.*(SERVICE|SECRET|TOKEN|PASSWORD|KEY)' -- . \
+            ':(exclude,glob)docs/**' \
+            ':(exclude,glob)**/*.md' \
+            ':(exclude,glob)*.md' \
+            ':(exclude)bun.lock' \
+            ':(exclude).github/workflows/backend-scaffold.yml' \
+            ':(exclude).github/workflows/database-clean-room.yml' \
+            | grep -Ev 'VITE_SUPABASE_(PUBLISHABLE|ANON)_KEY' || true)
+
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Found VITE_-prefixed secret-like names:"
+            echo "$MATCHES"
+            exit 1
+          fi
+
+          if command -v rg >/dev/null 2>&1; then
+            SERVER_IMPORTS=$(rg -n "from ['\"].*\\bserver/" src || true)
+          else
+            SERVER_IMPORTS=$(grep -RIn -E "from ['\"].*\\bserver/" src || true)
+          fi
+
+          if [ -n "$SERVER_IMPORTS" ]; then
+            echo "::error::src/ must not import from server/:"
+            echo "$SERVER_IMPORTS"
+            exit 1
+          fi
+
+          if git ls-files | grep -Eq '(^|/)\.env($|\.)' \
+            && git ls-files | grep -Ev '(^|/)\.env\.example$' | grep -Eq '(^|/)\.env($|\.)'; then
+            echo "::error::A real .env file is tracked"
+            git ls-files | grep -E '(^|/)\.env($|\.)' || true
+            exit 1
+          fi
+
+      - name: Exercise Hono catalog endpoints against clean-room DB
+        run: |
+          set -euo pipefail
+
+          export SUPABASE_URL="$SUPABASE_LOCAL_API_URL"
+          export SUPABASE_PUBLISHABLE_KEY="$SUPABASE_LOCAL_ANON_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_LOCAL_SERVICE_ROLE_KEY"
+
+          bunx tsx server/src/index.ts > /tmp/hono.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -fsS "http://localhost:${PORT}/api/v1/health" >/tmp/health.json 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [ ! -s /tmp/health.json ]; then
+            echo "::error::Hono server did not become healthy"
+            cat /tmp/hono.log || true
+            exit 1
+          fi
+
+          curl -fsS "http://localhost:${PORT}/api/v1/catalog/categories" > /tmp/categories.json
+          curl -fsS "http://localhost:${PORT}/api/v1/catalog/services?category=peluqueria" > /tmp/services.json
+          curl -fsS "http://localhost:${PORT}/api/v1/catalog/services/corte-fem" > /tmp/service-detail.json
+          curl -fsS "http://localhost:${PORT}/api/v1/catalog/extras" > /tmp/extras.json
+          curl -fsS "http://localhost:${PORT}/api/v1/catalog/personalization?category=peluqueria" > /tmp/personalization.json
+
+          bun -e '
+            const checks = [
+              ["/tmp/categories.json", 4],
+              ["/tmp/services.json", 28],
+              ["/tmp/extras.json", 13],
+              ["/tmp/personalization.json", 6],
+            ];
+            for (const [path, expected] of checks) {
+              const payload = JSON.parse(await Bun.file(path).text());
+              if (!Array.isArray(payload.data) || payload.data.length !== expected) {
+                throw new Error(`${path}: expected ${expected} rows, got ${payload.data?.length}`);
+              }
+            }
+            const detail = JSON.parse(await Bun.file("/tmp/service-detail.json").text());
+            if (detail.data?.slug !== "corte-fem") throw new Error("service detail contract failed");
+          '
+
+          STATUS_404=$(curl -sS -o /dev/null -w '%{http_code}' \
+            "http://localhost:${PORT}/api/v1/catalog/services/no-existe")
+          STATUS_400=$(curl -sS -o /dev/null -w '%{http_code}' \
+            "http://localhost:${PORT}/api/v1/catalog/services?category=Not_Valid")
+
+          test "$STATUS_404" = "404"
+          test "$STATUS_400" = "400"
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup || true
