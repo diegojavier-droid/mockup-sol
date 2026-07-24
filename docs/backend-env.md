@@ -6,37 +6,50 @@ here — the frontend under `src/` must never read them.
 ## Golden rules
 
 - **No `VITE_` prefix for anything sensitive.** Any variable prefixed with
-  `VITE_` is inlined into the browser bundle. Never use `VITE_` for keys,
-  tokens, service-role credentials, or webhook secrets.
-- **Frontend must not import from `server/`.** Enforced by convention and
-  audited via `rg "from ['\"].*server/" src`.
+  `VITE_` is inlined into the browser bundle. Never use `VITE_` for secret
+  keys, tokens, passwords, webhook secrets or administration credentials.
+- **Frontend must not import from `server/`.** Enforced by convention and CI.
 - **Strict validation only runs at backend startup** (`server/src/index.ts`
   → `loadServerEnv()`), not during the Vite frontend build.
+- Real values belong in the hosting platform/GitHub secret store, never in the
+  repository.
 
 ## Required to boot the backend
 
-| Variable                       | Purpose                                     |
-| ------------------------------ | ------------------------------------------- |
-| `NODE_ENV`                     | `development` \| `test` \| `production`     |
-| `APP_ENV`                      | `local` \| `staging` \| `production`        |
-| `API_BASE_URL`                 | Public URL of this API                      |
-| `PUBLIC_WEB_BASE_URL`          | Public URL of the web frontend              |
-| `SUPABASE_URL`                 | Supabase project URL                        |
-| `SUPABASE_PUBLISHABLE_KEY`     | Supabase publishable key (new-format, opaque) |
-| `SUPABASE_SERVICE_ROLE_KEY`    | Hard secret. Never sent to the browser.     |
-| `INTERNAL_AUTH_JWT_AUDIENCE`   | Expected `aud` claim for internal JWTs      |
-| `INTERNAL_AUTH_ALLOWED_EMAILS` | CSV allow-list of staff/owner emails        |
+| Variable                       | Purpose |
+| ------------------------------ | ------- |
+| `NODE_ENV`                     | `development` \| `test` \| `production` |
+| `APP_ENV`                      | `local` \| `staging` \| `production` |
+| `API_BASE_URL`                 | Public URL of this API |
+| `PUBLIC_WEB_BASE_URL`          | Public URL of the web frontend |
+| `SUPABASE_URL`                 | Supabase project API URL |
+| `SUPABASE_PUBLISHABLE_KEY`     | Current Supabase publishable key (`sb_publishable_*`). Respects RLS. |
+| `SUPABASE_SECRET_KEY`          | Current Supabase secret/admin key (`sb_secret_*`). Hard secret; server-only. |
+| `INTERNAL_AUTH_JWT_AUDIENCE`   | Expected `aud` claim for internal JWTs |
+| `INTERNAL_AUTH_ALLOWED_EMAILS` | CSV allow-list of staff/owner emails |
+
+### Local Supabase compatibility
+
+The Supabase local CLI currently exposes a legacy `SERVICE_ROLE_KEY`. The
+backend accepts `SUPABASE_SERVICE_ROLE_KEY` only as a compatibility alias when
+`SUPABASE_SECRET_KEY` is absent, so clean-room/local testing stays
+reproducible. New owned cloud projects must configure `SUPABASE_SECRET_KEY`.
 
 ## Public-safe subset
 
 Only these fields may be surfaced to the browser (via a future
-`/api/v1/public-config` endpoint, not implemented in Phase 1):
+`/api/v1/public-config` endpoint):
 
 - `APP_ENV`
 - `API_BASE_URL`
 - `PUBLIC_WEB_BASE_URL`
 
 See `server/src/config/publicEnv.ts`.
+
+`SUPABASE_PUBLISHABLE_KEY` is technically public by design, but the current Sol
+Mai architecture intentionally keeps all real catalog access behind our own
+backend API. Do not add it to the public config unless a future architecture
+change explicitly requires browser-to-Supabase access.
 
 ## Reserved for future phases (optional today)
 
@@ -61,12 +74,11 @@ until the feature ships.
 
 ## `/api/v1/health` contract
 
-```
-GET /api/v1/health → 200
+```json
 {
   "status": "ok",
   "service": "sol-mai-api",
-  "environment": "local" | "staging" | "production",
+  "environment": "local",
   "version": "0.1.0",
   "time": "2026-07-01T12:34:56.789Z"
 }
