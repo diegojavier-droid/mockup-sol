@@ -2,7 +2,7 @@ name: Backend scaffold CI
 
 on:
   pull_request:
-    branches: [main, lovable/navigation-ux-playground]
+    branches: [main, mvp/sol-mai-v2]
     paths:
       - "server/**"
       - "package.json"
@@ -14,7 +14,7 @@ on:
       - "src/**"
       - "vite.config.ts"
   push:
-    branches: [main, lovable/navigation-ux-playground]
+    branches: [main, mvp/sol-mai-v2]
     paths:
       - "server/**"
       - "package.json"
@@ -82,11 +82,13 @@ jobs:
       - name: Guard against VITE_-prefixed secrets
         run: |
           set -e
+          # Documentation intentionally explains forbidden VITE_ secret naming,
+          # so scan executable/config sources while excluding docs to avoid false positives.
           if command -v rg >/dev/null 2>&1; then
-            MATCHES=$(rg -n --hidden --glob '!node_modules' --glob '!bun.lock' --glob '!.git' --glob '!.github/workflows/backend-scaffold.yml' \
+            MATCHES=$(rg -n --hidden --glob '!node_modules' --glob '!bun.lock' --glob '!.git' --glob '!docs/**' --glob '!.github/workflows/backend-scaffold.yml' \
               'VITE_.*(SERVICE|SECRET|TOKEN|PASSWORD|KEY)' . || true)
           else
-            MATCHES=$(grep -RIn --exclude-dir=node_modules --exclude-dir=.git --exclude=bun.lock --exclude=.github/workflows/backend-scaffold.yml \
+            MATCHES=$(grep -RIn --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=docs --exclude=bun.lock --exclude=.github/workflows/backend-scaffold.yml \
               -E 'VITE_.*(SERVICE|SECRET|TOKEN|PASSWORD|KEY)' . || true)
           fi
           if [ -n "$MATCHES" ]; then
