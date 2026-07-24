@@ -91,13 +91,25 @@ jobs:
       - name: Verify staff is not exposed to publishable role
         run: |
           set -euo pipefail
-          RESPONSE=$(curl -fsS \
+          HTTP_CODE=$(curl -sS -o /tmp/staff-response.json -w '%{http_code}' \
             -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" \
             "${SUPABASE_URL}/rest/v1/staff_members?select=id")
-          test "$RESPONSE" = "[]" || {
-            echo "::error::staff_members unexpectedly exposed through publishable key"
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            RESPONSE=$(cat /tmp/staff-response.json)
+            test "$RESPONSE" = "[]" || {
+              echo "::error::staff_members unexpectedly exposed through publishable key"
+              cat /tmp/staff-response.json
+              exit 1
+            }
+            echo "staff_members protected by RLS (200 with empty result)"
+          elif [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
+            echo "staff_members protected by table privileges (HTTP ${HTTP_CODE})"
+          else
+            echo "::error::Unexpected staff_members response status: ${HTTP_CODE}"
+            cat /tmp/staff-response.json || true
             exit 1
-          }
+          fi
 
       - name: Stop Hono
         if: always()
