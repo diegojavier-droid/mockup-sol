@@ -34,12 +34,12 @@ const serverEnvSchema = z.object({
   API_BASE_URL: z.string().url(),
   PUBLIC_WEB_BASE_URL: z.string().url(),
 
-  // Supabase — server-only. SUPABASE_SECRET_KEY is a hard secret.
-  // SUPABASE_PUBLISHABLE_KEY is public by design but remains backend-only in
-  // the current architecture because browser data access goes through our API.
+  // Supabase — publishable access is enough for the current read-only catalog
+  // API. The secret/admin key remains optional until a trusted write/admin
+  // capability actually needs it.
   SUPABASE_URL: z.string().url(),
   SUPABASE_PUBLISHABLE_KEY: nonEmpty,
-  SUPABASE_SECRET_KEY: nonEmpty,
+  SUPABASE_SECRET_KEY: nonEmpty.optional(),
 
   // Internal auth (staff/owner console access via JWT)
   INTERNAL_AUTH_JWT_AUDIENCE: nonEmpty,
@@ -68,8 +68,8 @@ export function loadServerEnv(source: NodeJS.ProcessEnv = process.env): ServerEn
   if (cached) return cached;
 
   // Supabase local tooling still emits the legacy SERVICE_ROLE_KEY variable.
-  // Accept it only as a compatibility alias so clean-room/local development
-  // remains reproducible while owned cloud projects use SUPABASE_SECRET_KEY.
+  // Accept it only as a compatibility alias. Owned cloud projects should use
+  // SUPABASE_SECRET_KEY once privileged backend writes are introduced.
   const normalizedSource: NodeJS.ProcessEnv = {
     ...source,
     SUPABASE_SECRET_KEY: source.SUPABASE_SECRET_KEY ?? source.SUPABASE_SERVICE_ROLE_KEY,
