@@ -24,10 +24,9 @@ del Bloque 3 original:
    un tag editorial nuevo no requiere migración.
 6. **`staff_*` restrictivas.** Sin grants ni policies para `anon` ni
    `authenticated` (staff es interno; en Bloque 4 se abrirá con auth).
-7. **Migraciones canónicas en `db/migrations/`.** El editor de Lovable
-   bloquea escrituras directas a `supabase/migrations/` hasta que se
-   active Lovable Cloud; al activarse, se copian 1:1 con los mismos
-   nombres.
+7. **Migraciones canónicas en `supabase/migrations/`.** Única ruta
+   versionada; no hay copia paralela en `db/`. Al conectar Lovable Cloud
+   se aplican con `supabase db reset` sin pasos manuales de copia.
 8. **Bootstrap idempotente y transaccional.** El archivo `..._bootstrap.sql`
    corre dentro de `BEGIN/COMMIT`; un error deja la DB intacta.
 
@@ -39,9 +38,9 @@ src/lib/booking-mock/*   +   src/lib/booking-rules.ts
                      └── bun run db:generate-seed
                               │
                               ▼
-              db/migrations/20260724120100_catalog_bootstrap.sql
+       supabase/migrations/20260724120100_catalog_bootstrap.sql
                               │
-db/migrations/20260724120000_catalog_schema.sql
+supabase/migrations/20260724120000_catalog_schema.sql
                               │
                               ▼
                     Postgres / Supabase
@@ -93,8 +92,8 @@ resolución maliciosa de schema.
 
 ## 4. Reglas de personalización
 
-La matriz TypeScript `bookingServiceRuleMatrix` (44 servicios × N
-fields) se materializa en dos tablas:
+La matriz TypeScript `bookingServiceRuleMatrix` (una fila por servicio ×
+N fields) se materializa en dos tablas:
 
 * **`service_personalization_rules`**: una fila por (service, field)
   con `decision ∈ {operational, contextual, not_applicable}`.
@@ -110,8 +109,11 @@ default de la categoría (`bookingRules[cat].personalizationModifiers`).
 Esto hace el estado auditable directamente en DB sin conocer defaults
 del código.
 
-Bootstrap actual: **200 rules · 304 option modifiers · 13 extras · 44
-services · 6 business_hours**.
+Bootstrap inicial actual: **200 rules · 304 option modifiers · 13
+extras · 43 servicios (28 Peluquería · 5 Maquillaje · 6 Uñas · 4
+Depilación) · 6 business_hours**. Estas cantidades reflejan el estado
+inicial del catálogo; el modelo no impone constraints sobre el número
+de servicios y admite altas/bajas/modificaciones sin cambios de schema.
 
 ## 5. Bootstrap (idempotente + transaccional)
 
@@ -171,7 +173,6 @@ Requisitos:
 ### Opción A · Supabase CLI (al conectar Lovable Cloud)
 
 ```bash
-cp db/migrations/*.sql supabase/migrations/
 supabase db reset
 ```
 

@@ -2,14 +2,9 @@
 -- Sol Mai · Fase 1 · Bloque 3.1
 -- Catálogo público read-only (schema).
 --
--- Ruta canónica: db/migrations/. El editor de Lovable bloquea escrituras
--- directas a supabase/migrations/ hasta que se active Lovable Cloud y
--- se use el tool de migraciones oficial. Cuando se conecte Supabase,
--- copiar este archivo a supabase/migrations/ CON EL MISMO nombre y
--- aplicar con `supabase db reset` o `supabase migration up`. Mantener
--- la copia versionada en db/migrations/ mientras esa activación no
--- ocurra (fuente única aquí; la copia a supabase/ es sincronización
--- one-shot al conectar el entorno, no una estrategia permanente).
+-- Ruta canónica única: supabase/migrations/. No existe copia paralela en
+-- db/. Al conectar Lovable Cloud se aplica con `supabase db reset` o
+-- `supabase migration up`; no requiere pasos manuales de copia.
 --
 -- Requisitos de entorno:
 --   * PostgreSQL >= 14.
