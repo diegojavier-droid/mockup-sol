@@ -282,18 +282,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "service_personalization_option_modifiers_option_id_fkey"
-            columns: ["option_id"]
-            isOneToOne: false
-            referencedRelation: "personalization_options"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "service_personalization_option_modifiers_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "services"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spom_field_option_fk"
+            columns: ["field_id", "option_id"]
+            isOneToOne: false
+            referencedRelation: "personalization_options"
+            referencedColumns: ["field_id", "id"]
           },
           {
             foreignKeyName: "spom_rule_fk"
