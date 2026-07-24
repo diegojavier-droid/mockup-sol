@@ -12,6 +12,7 @@ on:
       - "server/**"
       - ".github/workflows/platform-independence.yml"
       - ".github/workflows/cloudflare-deploy.yml"
+      - ".github/workflows/supabase-schema-deploy.yml"
   push:
     branches: [main, mvp/sol-mai-v2]
     paths:
@@ -23,6 +24,7 @@ on:
       - "server/**"
       - ".github/workflows/platform-independence.yml"
       - ".github/workflows/cloudflare-deploy.yml"
+      - ".github/workflows/supabase-schema-deploy.yml"
 
 concurrency:
   group: platform-independence-${{ github.ref }}
