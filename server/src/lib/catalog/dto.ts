@@ -30,6 +30,16 @@ export interface ServiceSummaryDTO {
 }
 
 export interface ExtraDTO {
+  /**
+   * Código de negocio corto (equivalente al `id` que usa el wizard hoy:
+   * "ampolla", "pestanas", "refuerzo"). Único DENTRO de una categoría.
+   * Es lo que viaja en el draft, comparaciones y totales del frontend.
+   */
+  id: string;
+  /**
+   * Slug globalmente único ({category}-{code}). Útil para rutas o
+   * referencias cross-categoría; NO es lo que el wizard usa como key.
+   */
   slug: string;
   categorySlug: string;
   name: string;
@@ -37,6 +47,7 @@ export interface ExtraDTO {
   priceAmount: number;
   currency: string;
 }
+
 
 export interface PersonalizationOptionDTO {
   slug: string;

@@ -1,203 +1,179 @@
-# Sol Mai — modelo de datos backend (Fase 1 · Bloque 3)
+# Sol Mai — modelo de datos backend (Fase 1 · Bloque 3.1)
 
-Este documento describe la primera capa productiva del catálogo de Sol Mai:
-schema PostgreSQL reproducible, seed determinista del catálogo actual y
-API backend read-only.
+Segunda iteración del catálogo. Corrige los hallazgos de la auditoría
+del Bloque 3 original:
 
-Nada de esto reemplaza todavía a los mocks del frontend — coexisten a
-propósito para poder auditar la base antes de conectar el wizard.
+1. **RLS relacional real.** Las policies públicas verifican la cadena
+   completa de padres vía funciones `SECURITY DEFINER`
+   (`catalog_*_visible`), no solo la fila propia. Ocultar una categoría
+   ya oculta todos sus servicios, extras, fields, opciones,
+   personalization rules y modifiers.
+2. **Identidad triple de `extras`.** `id` (uuid interno), `code` (id de
+   negocio compatible con el wizard: `ampolla`, `pestanas`, `refuerzo`)
+   y `slug` (`{category}-{code}`, único global). La API expone `code`
+   como `id` en `ExtraDTO.id`, para que el frontend pueda migrar del
+   mock sin renombrar keys.
+3. **Personalization normalizada.** `bookingServiceRuleMatrix` se
+   materializa en tablas: `service_personalization_rules` (aplicabilidad
+   por servicio+field) y `service_personalization_option_modifiers`
+   (impactos de duración/precio por opción, con soporte para monto fijo
+   y porcentaje).
+4. **`business_hours` flexible.** Admite múltiples franjas por weekday,
+   con constraint `EXCLUDE USING gist` que impide solapamientos.
+5. **`services.tag` abierto.** Se retiró el `CHECK` cerrado — agregar
+   un tag editorial nuevo no requiere migración.
+6. **`staff_*` restrictivas.** Sin grants ni policies para `anon` ni
+   `authenticated` (staff es interno; en Bloque 4 se abrirá con auth).
+7. **Migraciones canónicas en `db/migrations/`.** El editor de Lovable
+   bloquea escrituras directas a `supabase/migrations/` hasta que se
+   active Lovable Cloud; al activarse, se copian 1:1 con los mismos
+   nombres.
+8. **Bootstrap idempotente y transaccional.** El archivo `..._bootstrap.sql`
+   corre dentro de `BEGIN/COMMIT`; un error deja la DB intacta.
 
 ## 1. Arquitectura
 
 ```
-src/lib/booking-mock/*     ── (sigue vivo, frontend actual sin cambios)
-        │
-        └── scripts/generate-catalog-seed.ts
-                │
-                ▼
-        db/migrations/20260724120100_catalog_seed.sql
-                │
+src/lib/booking-mock/*   +   src/lib/booking-rules.ts
+                     │
+                     └── bun run db:generate-seed
+                              │
+                              ▼
+              db/migrations/20260724120100_catalog_bootstrap.sql
+                              │
 db/migrations/20260724120000_catalog_schema.sql
-                │
-                ▼
-        Postgres / Supabase (RLS anon read-only + service_role bypass)
-                │
-                ▼
-        server/src/lib/catalog/repository.ts   (anon client, RLS aplica)
-                │
-                ▼
-        server/src/http/routes/catalog.ts      → /api/v1/catalog/*
+                              │
+                              ▼
+                    Postgres / Supabase
+              (RLS relacional, anon SELECT solo)
+                              │
+                              ▼
+    server/src/lib/catalog/repository.ts   (anon client)
+                              │
+                              ▼
+    server/src/http/routes/catalog.ts      → /api/v1/catalog/*
 ```
 
 ## 2. Tablas
 
 | Tabla | Función |
 | --- | --- |
-| `categories` | 4 categorías públicas (Peluquería, Maquillaje, Uñas, Depilación). |
-| `services` | Servicios reservables con `duration_minutes`, `price_amount`, `tag`. |
-| `extras` | Adicionales opcionales; hoy scoped por categoría. |
-| `service_extras` | Join m:m para overrides por servicio. Vacía en Bloque 3. |
-| `personalization_fields` | Preguntas de personalización por categoría. |
-| `personalization_options` | Opciones de cada campo (single/multi/text). |
-| `staff_members` | Profesionales. Vacía; usada desde Bloque 4. |
-| `staff_specialties` | Mapeo staff ↔ categoría/servicio. Vacía. |
-| `business_hours` | Horario comercial (weekday, opens_at, closes_at). Semilla desde el mock. |
+| `categories` | 4 categorías raíz. |
+| `services` | Servicios reservables. |
+| `extras` | Adicionales por categoría. Identidad triple (`id`, `code`, `slug`). |
+| `personalization_fields` | Preguntas por categoría. |
+| `personalization_options` | Opciones por field. |
+| `service_personalization_rules` | Aplicabilidad por (service, field): `operational` / `contextual` / `not_applicable`. |
+| `service_personalization_option_modifiers` | Modificadores concretos por (service, field, option): `duration_delta_minutes`, `price_fixed_amount`, `price_percentage`. |
+| `staff_members` | Interno; sin grants `anon`/`authenticated`. |
+| `staff_specialties` | Interno; sin grants `anon`/`authenticated`. |
+| `business_hours` | Franjas horarias por weekday; múltiples franjas admitidas; no-solapamiento por `EXCLUDE gist`. |
 
-Todas las tablas usan:
-- PK `uuid` con `gen_random_uuid()`.
-- `slug` `text UNIQUE` como identificador estable expuesto por la API.
-- `is_public` (visibilidad en API pública) y `is_active` (soft-disable).
-- `deleted_at timestamptz` para soft delete.
-- `created_at` / `updated_at` con trigger `tg_set_updated_at()`.
+`service_extras` fue **eliminada** respecto del Bloque 3: no aportaba
+semántica y no hay caso de uso vigente. Se reintroducirá cuando exista
+una política clara (override vs allow-list).
 
-### Constraints principales
+## 3. RLS efectiva
 
-- `slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'` en todas las tablas con slug.
-- `services.duration_minutes > 0`, `price_amount >= 0`, `currency ~ '^[A-Z]{3}$'`.
-- `services.tag ∈ {popular, combinado, tratamiento, color, evento}` o `NULL`.
-- `personalization_fields.field_type ∈ {single_choice, multi_choice, text}`.
-- `staff_specialties`: al menos uno de `category_id` / `service_id`.
-- `business_hours`: `closes_at > opens_at`, `weekday ∈ [0..6]`, unique por weekday.
+| Tabla | Regla efectiva (anon SELECT) |
+| --- | --- |
+| `categories` | Fila publicada. |
+| `services` | Fila publicada Y `catalog_category_visible(category_id)`. |
+| `extras` | Idem. |
+| `personalization_fields` | Idem. |
+| `personalization_options` | `is_active` Y `catalog_field_visible(field_id)` (cadena completa hasta categoría). |
+| `service_personalization_rules` | `catalog_service_visible` Y `catalog_field_visible`. |
+| `service_personalization_option_modifiers` | Idem. |
+| `business_hours` | `is_active`. |
+| `staff_*` | Sin policies públicas ni `authenticated`. |
 
-### Índices
+Las funciones `catalog_*_visible` son `SECURITY DEFINER` con
+`search_path = public` fijo, para evitar recursión de policies y
+resolución maliciosa de schema.
 
-- `services (category_id)` para joins.
-- Índice parcial `services (category_id, sort_order) WHERE is_public AND is_active AND deleted_at IS NULL` — es la consulta pública dominante.
-- `extras (category_id)`.
-- `personalization_fields (category_id, sort_order)`, `personalization_options (field_id, sort_order)`.
-- `service_extras (extra_id)` para lookups inversos.
-- `staff_specialties (staff_id | category_id | service_id)`.
+## 4. Reglas de personalización
 
-## 3. RLS
+La matriz TypeScript `bookingServiceRuleMatrix` (44 servicios × N
+fields) se materializa en dos tablas:
 
-Principio: solo `SELECT` público, y solo de filas realmente publicadas.
+* **`service_personalization_rules`**: una fila por (service, field)
+  con `decision ∈ {operational, contextual, not_applicable}`.
+* **`service_personalization_option_modifiers`**: solo para decisiones
+  `operational`; una fila por (service, field, option) con:
+  - `duration_delta_minutes` (>= 0)
+  - `price_fixed_amount` (>= 0)  · monto ARS extra fijo
+  - `price_percentage` (`numeric(5,2)`, 0..100) · % sobre precio base
 
-| Tabla | anon SELECT | authenticated | service_role |
-| --- | --- | --- | --- |
-| `categories` | `is_public AND is_active AND deleted_at IS NULL` | idem | ALL |
-| `services` | idem | idem | ALL |
-| `extras` | idem | idem | ALL |
-| `service_extras` | `is_active` | idem | ALL |
-| `personalization_fields` | idem que servicios | idem | ALL |
-| `personalization_options` | `is_active` | idem | ALL |
-| `business_hours` | `is_active` | idem | ALL |
-| `staff_members` | ❌ sin grant anon | select/insert/update | ALL |
-| `staff_specialties` | ❌ sin grant anon | select/insert/update | ALL |
+El generador emite explícitamente una fila por cada (service, field)
+declarado en el mock — cuando un servicio no está en la matriz cae al
+default de la categoría (`bookingRules[cat].personalizationModifiers`).
+Esto hace el estado auditable directamente en DB sin conocer defaults
+del código.
 
-Nada tiene policies de INSERT/UPDATE/DELETE para anon. Escrituras solo
-vía `service_role` desde backend (o vía `authenticated` con policies
-específicas cuando llegue Bloque 4).
+Bootstrap actual: **200 rules · 304 option modifiers · 13 extras · 44
+services · 6 business_hours**.
 
-## 4. Estrategia de IDs y slugs
+## 5. Bootstrap (idempotente + transaccional)
 
-- Categorías y servicios preservan el `id` textual del mock actual como
-  `slug` (`peluqueria`, `corte-fem`, `balayage`, …), de modo que el
-  frontend puede migrar sin renombrar identificadores.
-- Extras usan slug compuesto `{categoria}-{id-original}` (p.ej.
-  `peluqueria-ampolla`) porque el mock permite el mismo id en distintas
-  categorías (`nailart` vs `nailart-extra`). La API devuelve además
-  `categorySlug` para reconstruir el mapping.
-- Personalization fields conservan su id original (`largo`, `estilo`,
-  …) porque son únicos por categoría — el UNIQUE es
-  `(category_id, slug)`.
-- Personalization options generan slug desde el label sin acentos
-  (`Media melena` → `media-melena`). Se persisten `label` y `value`
-  originales.
-
-Mapping documentado en el propio seed (`db/migrations/...seed.sql`) — es
-el archivo canónico.
-
-## 5. Seed
-
-Determinista e idempotente:
-
-- Se genera desde el mock con `bun run db:generate-seed`.
-- Cada `INSERT` es `ON CONFLICT (slug) DO UPDATE` (o
-  `(category_id, slug)` para fields, `(field_id, slug)` para options,
-  `(weekday)` para business_hours).
-- `deleted_at` se limpia si vuelve a aparecer una fila en el mock — es
-  intencional: seed = fuente de verdad reflejada.
-- Reaplicar el seed 2 veces produce el mismo estado (verificado por
-  construcción).
-
-Datos migrados desde `src/lib/booking-mock/*`:
-
-- 4 categorías (`categories.ts`).
-- 44 servicios (`services.ts`): 28 peluquería + 5 maquillaje + 6 uñas + 4 depilación.
-- 13 extras (`extras.ts`): 7 peluquería + 3 maquillaje + 3 uñas + 0 depilación.
-- 12 personalization_fields con sus options (`personalization.ts`).
-- 6 business_hours (`availability.ts`, lun–sáb).
-
-Nada inventado: precios, duraciones y tags son exactamente los del mock.
+- Generado por `bun run db:generate-seed` desde el mock + reglas.
+- Envuelto en `BEGIN`/`COMMIT`: fallo intermedio → DB sin cambios.
+- Cada `INSERT` usa `ON CONFLICT DO UPDATE` sobre la clave estable
+  correspondiente (`slug`, `(category_id, slug)`, `(field_id, slug)`,
+  `(service_id, field_id)`, `(service_id, field_id, option_id)`).
+- `business_hours` usa `DELETE + INSERT` por triple exacta antes de
+  insertar, delegando en el `EXCLUDE gist` la validación anti-solape.
+- **Renombres**: `slug`/`code` son la clave estable. Cambiar `name` en
+  el mock reescribe la fila. Cambiar `slug`/`code` inserta una nueva y
+  NO borra la anterior. Reconciliación con delete queda para el panel
+  interno (Bloque 4). El bootstrap **nunca** hace `DELETE` implícito de
+  filas.
+- **Bootstrap ≠ fuente de verdad permanente.** Es solo el semillado
+  inicial reproducible desde el mock. La fuente de verdad definitiva
+  del catálogo es Postgres administrado por el backend/panel interno.
 
 ## 6. Endpoints
 
-Todos bajo `/api/v1/catalog`. Respuesta: `{ "data": ... }`; errores usan
-el envelope compartido `{ "error": { message, status } }`.
+Bajo `/api/v1/catalog`. Envelope: `{ data: ... }` / `{ error: { message, status } }`.
 
 | Método | Path | Query | Descripción |
 | --- | --- | --- | --- |
-| GET | `/categories` | — | Categorías públicas ordenadas por `sort_order`. |
-| GET | `/services` | `?category=<slug>` opcional | Servicios públicos, filtrables por categoría. |
-| GET | `/services/:slug` | — | Detalle: servicio + extras aplicables + personalization. |
-| GET | `/extras` | `?category=<slug>` opcional | Extras publicados. |
-| GET | `/personalization` | `?category=<slug>` opcional | Campos + opciones. |
+| GET | `/categories` | — | Categorías públicas. |
+| GET | `/services` | `?category=<slug>` | Servicios públicos. |
+| GET | `/services/:slug` | — | Detalle + extras + personalization. |
+| GET | `/extras` | `?category=<slug>` | Extras publicados. |
+| GET | `/personalization` | `?category=<slug>` | Fields + opciones. |
 
-Ejemplos de respuestas:
+Contrato `ExtraDTO`:
 
-```json
-GET /api/v1/catalog/categories
+```ts
 {
-  "data": [
-    { "slug": "peluqueria", "name": "Peluquería", "tagline": "Corte, color y tratamientos", "emoji": "✂" },
-    ...
-  ]
+  id: string;          // = code (compat wizard: "ampolla")
+  slug: string;        // = "peluqueria-ampolla" (único global)
+  categorySlug: string;
+  name: string;
+  durationDeltaMinutes: number;
+  priceAmount: number;
+  currency: string;
 }
 ```
 
-```json
-GET /api/v1/catalog/services/balayage
-{
-  "data": {
-    "slug": "balayage",
-    "categorySlug": "peluqueria",
-    "name": "Balayage",
-    "description": "Degradé natural pintado a mano.",
-    "durationMinutes": 180,
-    "priceAmount": 58000,
-    "currency": "ARS",
-    "tag": "popular",
-    "extras": [ ... ],
-    "personalization": [ ... ]
-  }
-}
-```
-
-Validación con Zod: `category` y `:slug` deben matchear
-`^[a-z0-9]+(-[a-z0-9]+)*$`. Errores devuelven 400. Servicio inexistente
-devuelve 404. Errores DB → 500 vía `errorHandler` compartido.
-
-El route usa **anon client** — RLS es la barrera de seguridad; no se
-usa service_role para lecturas públicas.
+El repository consume el **anon client** — RLS es la barrera de
+seguridad; no se usa `service_role` para lecturas públicas.
 
 ## 7. Cómo recrear la DB local
 
-Este bloque **no** asume Supabase local instalado. Las migraciones son
-SQL puro y aplicables con `psql` o con Supabase CLI.
+Requisitos:
+- PostgreSQL >= 14.
+- Extensiones `pgcrypto` y `btree_gist` (Supabase las trae listas).
+- Roles `anon`, `authenticated`, `service_role` (Supabase los provee;
+  en Postgres vanilla créalos manualmente antes de aplicar el schema).
 
-### Opción A · Supabase CLI
+### Opción A · Supabase CLI (al conectar Lovable Cloud)
 
 ```bash
-# Requiere `supabase` CLI + Docker.
-mkdir -p supabase/migrations
 cp db/migrations/*.sql supabase/migrations/
-supabase start           # levanta stack local
-supabase db reset        # aplica migraciones + seed en orden por timestamp
+supabase db reset
 ```
-
-> Los archivos viven en `db/migrations/` en el repo porque
-> `supabase/migrations/` está gestionado por tooling propio del entorno
-> de edición. La copia es 1:1.
 
 ### Opción B · psql directo
 
@@ -206,23 +182,17 @@ export DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres
 bun run db:apply
 ```
 
-Aplica schema y seed en orden. Reaplica sin duplicar (idempotente).
-
-### Regenerar seed desde los mocks
+### Regenerar el bootstrap
 
 ```bash
 bun run db:generate-seed
 ```
 
-Reescribe `db/migrations/20260724120100_catalog_seed.sql` con lo que
-haya hoy en `src/lib/booking-mock/*`.
+## 8. Fuera de scope (Bloque 4+)
 
-## 8. Qué queda fuera de este bloque
-
+- Auth productiva (staff, roles, RLS para authenticated).
 - Reservations, holds, payments, Mercado Pago, webhooks.
-- Notifications reales, WhatsApp, email.
-- Login interno / roles productivos (Bloque 4).
-- Disponibilidad productiva, algoritmo de slots, jobs de expiración.
-- Migración del wizard público para consumir esta API (Bloque siguiente).
-- Panel operativo, CRM, client_history.
-- Datos de staff reales.
+- Migración del wizard para consumir la API.
+- Panel operativo / CRM / client_history.
+- Datos reales de staff.
+- Reconciliación de bajas / renombres desde el mock.

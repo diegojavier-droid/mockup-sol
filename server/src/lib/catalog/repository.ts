@@ -42,6 +42,7 @@ type ServiceRow = {
 };
 
 type ExtraRow = {
+  code: string;
   slug: string;
   name: string;
   duration_delta_minutes: number;
@@ -49,6 +50,7 @@ type ExtraRow = {
   currency: string;
   categories: { slug: string } | null;
 };
+
 
 type OptionRow = {
   slug: string;
@@ -91,6 +93,7 @@ function toServiceDTO(row: ServiceRow): ServiceSummaryDTO {
 
 function toExtraDTO(row: ExtraRow): ExtraDTO {
   return {
+    id: row.code,
     slug: row.slug,
     categorySlug: row.categories?.slug ?? "",
     name: row.name,
@@ -99,6 +102,7 @@ function toExtraDTO(row: ExtraRow): ExtraDTO {
     currency: row.currency,
   };
 }
+
 
 function toFieldDTO(row: FieldRow): PersonalizationFieldDTO {
   const options: PersonalizationOptionDTO[] = (row.personalization_options ?? [])
@@ -161,7 +165,7 @@ export function createCatalogRepository(
       let q = client
         .from("extras")
         .select(
-          "slug, name, duration_delta_minutes, price_amount, currency, sort_order, categories!inner(slug)",
+          "code, slug, name, duration_delta_minutes, price_amount, currency, sort_order, categories!inner(slug)",
         )
         .eq("is_public", true)
         .eq("is_active", true)
@@ -172,6 +176,7 @@ export function createCatalogRepository(
       if (error) throw error;
       return (data ?? []).map((r) => toExtraDTO(r as unknown as ExtraRow));
     },
+
 
     async listPersonalizationFields({ categorySlug } = {}) {
       let q = client
