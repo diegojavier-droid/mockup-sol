@@ -24,10 +24,9 @@ del Bloque 3 original:
    un tag editorial nuevo no requiere migración.
 6. **`staff_*` restrictivas.** Sin grants ni policies para `anon` ni
    `authenticated` (staff es interno; en Bloque 4 se abrirá con auth).
-7. **Migraciones canónicas en `db/migrations/`.** El editor de Lovable
-   bloquea escrituras directas a `supabase/migrations/` hasta que se
-   active Lovable Cloud; al activarse, se copian 1:1 con los mismos
-   nombres.
+7. **Migraciones canónicas en `supabase/migrations/`.** Única ruta
+   versionada; no hay copia paralela en `db/`. Al conectar Lovable Cloud
+   se aplican con `supabase db reset` sin pasos manuales de copia.
 8. **Bootstrap idempotente y transaccional.** El archivo `..._bootstrap.sql`
    corre dentro de `BEGIN/COMMIT`; un error deja la DB intacta.
 
