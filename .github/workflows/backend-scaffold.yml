@@ -5,6 +5,7 @@ on:
     branches: [main, mvp/sol-mai-v2]
     paths:
       - "server/**"
+      - "supabase/**"
       - "package.json"
       - "bun.lock"
       - "tsconfig.server.json"
@@ -17,6 +18,7 @@ on:
     branches: [main, mvp/sol-mai-v2]
     paths:
       - "server/**"
+      - "supabase/**"
       - "package.json"
       - "bun.lock"
       - "tsconfig.server.json"
@@ -98,7 +100,6 @@ jobs:
             echo "$MATCHES"
             exit 1
           fi
-
 
       - name: Guard frontend against server/ imports
         run: |
