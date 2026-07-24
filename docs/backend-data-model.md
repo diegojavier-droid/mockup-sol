@@ -38,9 +38,9 @@ src/lib/booking-mock/*   +   src/lib/booking-rules.ts
                      └── bun run db:generate-seed
                               │
                               ▼
-              db/migrations/20260724120100_catalog_bootstrap.sql
+       supabase/migrations/20260724120100_catalog_bootstrap.sql
                               │
-db/migrations/20260724120000_catalog_schema.sql
+supabase/migrations/20260724120000_catalog_schema.sql
                               │
                               ▼
                     Postgres / Supabase
