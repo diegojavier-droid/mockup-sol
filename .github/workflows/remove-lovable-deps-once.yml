@@ -1,0 +1,48 @@
+name: Remove Lovable deps once
+
+on:
+  push:
+    branches: [migration/remove-lovable]
+    paths:
+      - ".github/workflows/remove-lovable-deps-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout migration branch
+        uses: actions/checkout@v4
+        with:
+          ref: migration/remove-lovable
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install current dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Replace Lovable build dependency with Cloudflare tooling
+        run: |
+          set -euo pipefail
+          bun remove @lovable.dev/vite-tanstack-config
+          bun add --dev @cloudflare/vite-plugin wrangler
+
+      - name: Commit package and lockfile
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json bun.lock
+          if git diff --cached --quiet; then
+            echo "No dependency changes to commit"
+            exit 0
+          fi
+          git commit -m "Replace Lovable build dependency"
+          git push origin HEAD:migration/remove-lovable
