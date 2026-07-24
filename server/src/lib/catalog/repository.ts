@@ -182,7 +182,7 @@ export function createCatalogRepository(
       let q = client
         .from("personalization_fields")
         .select(
-          "slug, label, field_type, is_required, sort_order, categories!inner(slug), personalization_options(slug, label, value, sort_order)",
+          "slug, label, field_type, is_required, sort_order, categories!inner(slug), personalization_options!personalization_options_field_id_fkey(slug, label, value, sort_order)",
         )
         .eq("is_public", true)
         .eq("is_active", true)
