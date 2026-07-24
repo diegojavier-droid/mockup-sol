@@ -109,8 +109,11 @@ default de la categoría (`bookingRules[cat].personalizationModifiers`).
 Esto hace el estado auditable directamente en DB sin conocer defaults
 del código.
 
-Bootstrap actual: **200 rules · 304 option modifiers · 13 extras · 44
-services · 6 business_hours**.
+Bootstrap inicial actual: **200 rules · 304 option modifiers · 13
+extras · 43 servicios (28 Peluquería · 5 Maquillaje · 6 Uñas · 4
+Depilación) · 6 business_hours**. Estas cantidades reflejan el estado
+inicial del catálogo; el modelo no impone constraints sobre el número
+de servicios y admite altas/bajas/modificaciones sin cambios de schema.
 
 ## 5. Bootstrap (idempotente + transaccional)
 
