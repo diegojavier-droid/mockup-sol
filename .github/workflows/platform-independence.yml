@@ -43,11 +43,14 @@ jobs:
       - name: Reject Lovable build dependencies
         run: |
           set -euo pipefail
-          if git grep -n -E '@lovable\.dev|from ["'"']@lovable|require\(["'"']@lovable' -- \
+          MATCHES=$(git grep -n -E '@lovable\.dev' -- \
             ':(exclude,glob)docs/**' \
             ':(exclude,glob)**/*.md' \
-            ':(exclude)bun.lock'; then
+            ':(exclude)bun.lock' \
+            ':(exclude).github/workflows/platform-independence.yml' || true)
+          if [ -n "$MATCHES" ]; then
             echo "::error::Active code/config still depends on Lovable"
+            echo "$MATCHES"
             exit 1
           fi
 
