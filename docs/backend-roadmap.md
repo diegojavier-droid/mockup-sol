@@ -4,8 +4,10 @@
 
 - Mercado Pago real va después de reserva real persistida: primero debe existir `reservation_id`, estado `pending_payment`, snapshot de seña, vencimiento y disponibilidad confiable.
 - CRM y clientas recurrentes van después de reservas/pagos reales: no debe construirse memoria operativa sobre datos mock o pagos no conciliados.
-- Admin catálogo/tarifas avanzado va después del núcleo operativo: antes se necesitan snapshots y auditoría para que cambios de precio/duración no rompan reservas.
-- El mock queda congelado desde Fase 0 salvo bugs críticos; nuevas reglas deben documentarse y luego implementarse en backend/API.
+- El catálogo dinámico es un requisito estructural desde Fase 1: precio, duración, visibilidad, setup/buffer, variantes y reglas no deben quedar hardcodeados como verdad permanente.
+- El panel Admin avanzado puede llegar después del núcleo operativo, pero el modelo de datos y los contratos deben quedar preparados desde ahora para edición sin código y para snapshots históricos.
+- El mock queda congelado desde Fase 0 salvo bugs críticos; nuevas reglas deben documentarse, validarse con Sol y luego implementarse en backend/API.
+- Los precios, duraciones, buffers y modificadores actuales son provisionales hasta cerrar la validación comercial con Sol.
 
 ## Fase 0: congelar mock y documentar estado
 
@@ -16,23 +18,31 @@
 - Validaciones: revisión de stakeholders, lectura cruzada con auditoría y aprobación de alcance.
 - Definición de terminado: documentación aprobada y backlog técnico priorizado sin cambios de UI ni backend.
 
-## Fase 1: backend/base de datos/auth mínimos
+## Fase 1: backend/base de datos/auth mínimos + catálogo preparado para administración
 
-- Objetivo: crear la base técnica real para persistencia y panel protegido.
-- Entregables: proyecto Supabase/PostgreSQL, esquema inicial, backend/API base, auth interna, roles mínimos, health checks.
-- Módulos afectados: backend, base de datos, auth, configuración de environments.
-- Riesgos: sobre-diseñar el panel antes de reservas; exponer secretos; omitir auditoría temprana.
-- Validaciones: conexión segura, migraciones revisadas, login interno, permisos básicos y separación staging/production.
-- Definición de terminado: backend desplegado en staging, DB accesible solo por canales seguros y auth interna funcional.
+- Objetivo: crear la base técnica real para persistencia, seguridad y configuración comercial futura sin hardcodeo.
+- Entregables: proyecto Supabase/PostgreSQL de desarrollo, esquema inicial, backend/API base, auth interna, roles mínimos, health checks y modelo capaz de representar catálogo dinámico.
+- Capacidades de catálogo que el modelo debe soportar desde esta fase: alta/edición/activación/visibilidad de servicios; precio base y variantes; duración; setup/buffer; extras; personalización; profesionales elegibles; vigencia temporal; reglas/modificadores sin migración por cada cambio comercial.
+- Módulos afectados: backend, base de datos, auth, configuración de environments, catálogo y contratos API.
+- Riesgos: sobre-diseñar un motor de reglas genérico; fijar el Excel como verdad sin validación; exponer secretos; omitir auditoría temprana.
+- Validaciones: conexión segura, migraciones ejecutadas sobre DB real, bootstrap idempotente, RLS probado realmente, endpoints de catálogo contra DB real, login interno y permisos básicos.
+- Definición de terminado: backend validado en runtime sobre Supabase de desarrollo, DB accesible solo por canales seguros, auth mínima funcional y catálogo técnicamente administrable aunque los valores comerciales finales sigan pendientes de Sol.
+
+## Gate comercial paralelo: Catálogo Maestro Sol Mai v1
+
+- Objetivo: transformar Excel + operación histórica + validación de Sol en una fuente comercial/operativa confiable.
+- Debe cerrar: significado de tarifas, vigencia, definición de largos, duraciones, setup/buffers, reglas de combinación, clienta habitual/semanal/no habitual, servicios públicos, Maquillaje, Uñas y clasificación de productos.
+- Resultado: Catálogo Maestro v1 + matriz de precios/tiempos + reglas de negocio v1.
+- Regla: ningún valor no validado debe promoverse a verdad productiva solo porque hoy exista en mock, seed o Excel.
 
 ## Fase 2: reservas reales + disponibilidad real
 
 - Objetivo: reemplazar disponibilidad mock por reservas persistidas y slots reales.
-- Entregables: endpoints de catálogo, disponibilidad, creación de reserva, bloqueo temporal de 10 minutos con `payment_required_until = created_at + 10 minutos`, expiración de impagas y consulta de estado.
+- Entregables: endpoints de catálogo, disponibilidad, creación de reserva, snapshot comercial/operativo de servicio, bloqueo temporal de 10 minutos con `payment_required_until = created_at + 10 minutos`, expiración de impagas y consulta de estado.
 - Módulos afectados: wizard como consumidor API, backend reservas, PostgreSQL, jobs programados.
-- Riesgos: dobles reservas, holds demasiado largos, cálculos inconsistentes de duración/precio, mala UX ante expiración.
-- Validaciones: pruebas de concurrencia básica, creación de reservas `pending_payment`, retención del slot por 10 minutos, expiración automática a `expired`, liberación de slot y no solapamiento.
-- Definición de terminado: una clienta puede crear una reserva persistida con slot retenido y estado consultable.
+- Riesgos: dobles reservas, holds demasiado largos, cálculos inconsistentes de duración/precio, cambios de tarifa que alteren reservas ya creadas, mala UX ante expiración.
+- Validaciones: pruebas de concurrencia básica, creación de reservas `pending_payment`, retención del slot por 10 minutos, expiración automática a `expired`, liberación de slot, no solapamiento y persistencia correcta del snapshot.
+- Definición de terminado: una clienta puede crear una reserva persistida con slot retenido, snapshot inmutable y estado consultable.
 
 ## Fase 3: Mercado Pago real + webhooks
 
@@ -55,11 +65,11 @@
 ## Fase 5: panel interno mínimo
 
 - Objetivo: dar operación básica al salón sin depender de base de datos manual.
-- Entregables: login, vista de agenda, detalle de reserva, cambio de estado, bloqueo de horarios, revisión de pagos problemáticos.
-- Módulos afectados: frontend interno, backend interno, auth, audit_logs.
-- Riesgos: permisos insuficientes, acciones sin auditoría, panel demasiado amplio para MVP.
+- Entregables: login, vista de agenda, detalle de reserva, cambio de estado, bloqueo de horarios, revisión de pagos problemáticos y acceso mínimo al catálogo administrable para cambios seguros de precio/duración/visibilidad cuando corresponda.
+- Módulos afectados: frontend interno, backend interno, auth, audit_logs, catálogo.
+- Riesgos: permisos insuficientes, acciones sin auditoría, panel demasiado amplio para MVP, cambios accidentales de tarifa.
 - Validaciones: owner/manager/staff con permisos diferenciados, auditoría de cambios y flujos manuales críticos.
-- Definición de terminado: el salón puede operar agenda diaria y resolver casos de pago/reserva desde el panel.
+- Definición de terminado: el salón puede operar agenda diaria, resolver casos de pago/reserva y hacer ajustes comerciales básicos autorizados sin tocar código.
 
 ## Fase 6: CRM y clientas recurrentes
 
@@ -72,9 +82,9 @@
 
 ## Fase 7: admin catálogo/tarifas avanzado
 
-- Objetivo: permitir gestión autónoma de catálogo, precios, duración y visibilidad.
-- Entregables: CRUD de categorías, servicios, extras, personalización, reglas de disponibilidad y vigencias de precio.
+- Objetivo: completar la gestión autónoma avanzada del catálogo sobre el modelo dinámico preparado desde Fase 1.
+- Entregables: CRUD completo de categorías, servicios, extras, personalización, reglas de disponibilidad, vigencias de precio, profesionales elegibles, vista previa y herramientas de auditoría.
 - Módulos afectados: panel admin, catálogo, disponibilidad, reservas, audit_logs.
-- Riesgos: cambios que rompan reservas futuras, falta de vigencia temporal, edición accidental de servicios públicos.
-- Validaciones: snapshots en reservas, vista previa de catálogo, auditoría, permisos owner/manager y pruebas de cambios de precio.
-- Definición de terminado: Sol puede ajustar tarifas y catálogo sin despliegue, sin alterar historial ni reservas existentes.
+- Riesgos: cambios que rompan reservas futuras, falta de vigencia temporal, edición accidental de servicios públicos, reglas demasiado complejas o imposibles de explicar.
+- Validaciones: snapshots en reservas, vista previa de catálogo, auditoría, permisos owner/manager y pruebas de cambios de precio/duración/reglas.
+- Definición de terminado: Sol puede ajustar tarifas, catálogo y configuración operativa avanzada sin despliegue, sin alterar historial ni reservas existentes.
