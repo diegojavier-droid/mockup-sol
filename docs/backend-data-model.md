@@ -92,8 +92,8 @@ resolución maliciosa de schema.
 
 ## 4. Reglas de personalización
 
-La matriz TypeScript `bookingServiceRuleMatrix` (44 servicios × N
-fields) se materializa en dos tablas:
+La matriz TypeScript `bookingServiceRuleMatrix` (una fila por servicio ×
+N fields) se materializa en dos tablas:
 
 * **`service_personalization_rules`**: una fila por (service, field)
   con `decision ∈ {operational, contextual, not_applicable}`.
