@@ -173,7 +173,6 @@ Requisitos:
 ### Opción A · Supabase CLI (al conectar Lovable Cloud)
 
 ```bash
-cp db/migrations/*.sql supabase/migrations/
 supabase db reset
 ```
 
