@@ -11,7 +11,7 @@ en backend** (`server/`) en Sol Mai Peluquería.
 
 | Archivo | Uso |
 | --- | --- |
-| `server/src/lib/supabase/adminClient.ts` | Cliente con **SERVICE_ROLE**. Bypass total de RLS. |
+| `server/src/lib/supabase/adminClient.ts` | Cliente con **SECRET_KEY**. Bypass total de RLS. |
 | `server/src/lib/supabase/serverClient.ts` | Cliente con **PUBLISHABLE_KEY** desde backend para consultas que respetan RLS y futura validación de JWT. |
 | `server/src/lib/supabase/index.ts` | Barrel controlado de exports. Sólo backend. |
 
@@ -19,15 +19,18 @@ Ninguno instancia clientes al importarse — cada helper es una factory
 (`createSupabaseAdminClient(env)`, `createSupabaseAnonClient(env, opts)`)
 que recibe `ServerEnv` ya validado por `server/src/config/env.ts`.
 
-## 2. Diferencia entre `publishable` y `service_role`
+## 2. Diferencia entre `publishable` y `secret`
 
 - **`SUPABASE_PUBLISHABLE_KEY`** — clave pública de Supabase. Respeta RLS.
   Vive únicamente en backend en el estado actual del producto para lecturas del
   catálogo "como anon" y para preparar validación de JWT interna (staff/owner)
   en fases futuras.
-- **`SUPABASE_SERVICE_ROLE_KEY`** — clave de administración. **Bypass total
-  de RLS.** Es un secreto duro: nunca sale del backend, nunca se loguea,
-  nunca se devuelve en una respuesta HTTP.
+- **`SUPABASE_SECRET_KEY`** — clave administrativa server-side de Supabase.
+  **Puede saltarse RLS según el rol asociado y debe tratarse como secreto de
+  máximo privilegio.** Nunca sale del backend, nunca se loguea y nunca se
+  devuelve en una respuesta HTTP.
+- Para el stack local de Supabase, `SUPABASE_SERVICE_ROLE_KEY` se acepta sólo
+  como alias de compatibilidad cuando no existe `SUPABASE_SECRET_KEY`.
 
 ## 3. Quién puede importar `createSupabaseAdminClient`
 
@@ -47,13 +50,12 @@ falla si aparece un `from '.../server/...'` en `src/`.
 
 ## 4. Prohibición de `VITE_`
 
-- `SUPABASE_SERVICE_ROLE_KEY` **jamás** se define con prefijo `VITE_`.
+- `SUPABASE_SECRET_KEY` **jamás** se define con prefijo `VITE_`.
 - Ninguna variable pública de Vite con nombres de tipo service, secret,
   token, password o key puede existir en el repo salvo claves explícitamente
   públicas/publishable permitidas por el guard de CI.
 - `server/src/config/publicEnv.ts` mantiene la lista blanca de lo que
-  puede llegar al navegador. `SUPABASE_SERVICE_ROLE_KEY` **nunca** entra
-  ahí.
+  puede llegar al navegador. `SUPABASE_SECRET_KEY` **nunca** entra ahí.
 
 ## 5. Sin side effects al importar
 
@@ -87,7 +89,8 @@ GitHub y re-ejecutar el bootstrap sin modificar los conteos esperados.
 
 ## 8. Checklist de seguridad
 
-- [x] `SUPABASE_SERVICE_ROLE_KEY` sólo referenciado en `server/`.
+- [x] `SUPABASE_SECRET_KEY` sólo referenciado en `server/` y configuración server-only.
+- [x] Alias legacy `SUPABASE_SERVICE_ROLE_KEY` limitado a compatibilidad local.
 - [x] Sin variables `VITE_` sensibles.
 - [x] Sin instanciación en top-level.
 - [x] `publicEnv.ts` sin secretos.
