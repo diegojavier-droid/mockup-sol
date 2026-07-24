@@ -1,0 +1,119 @@
+name: Verify owned Supabase
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Smoke test owner-controlled Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NODE_ENV: test
+      APP_ENV: staging
+      API_BASE_URL: http://localhost:3001
+      PUBLIC_WEB_BASE_URL: http://localhost:8080
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      INTERNAL_AUTH_JWT_AUDIENCE: sol-mai-internal
+      INTERNAL_AUTH_ALLOWED_EMAILS: ci@sol-mai.test
+      PORT: "3001"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Require owner configuration
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::Missing SUPABASE_URL repository variable"; exit 1; }
+          test -n "$SUPABASE_PUBLISHABLE_KEY" || { echo "::error::Missing SUPABASE_PUBLISHABLE_KEY repository variable"; exit 1; }
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck backend
+        run: bun run typecheck:server
+
+      - name: Start Hono against owned Supabase
+        run: |
+          set -euo pipefail
+          bunx tsx server/src/index.ts > /tmp/hono-owned.log 2>&1 &
+          echo $! > /tmp/hono-owned.pid
+
+          for i in $(seq 1 30); do
+            if curl -fsS "http://localhost:${PORT}/api/v1/health" > /tmp/health.json 2>/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "::error::Hono server did not become healthy"
+          cat /tmp/hono-owned.log || true
+          exit 1
+
+      - name: Verify public catalog endpoints
+        run: |
+          set -euo pipefail
+          curl -fsS "http://localhost:${PORT}/api/v1/catalog/categories" > /tmp/categories.json
+          curl -fsS "http://localhost:${PORT}/api/v1/catalog/services?category=peluqueria" > /tmp/services.json
+          curl -fsS "http://localhost:${PORT}/api/v1/catalog/services/corte-fem" > /tmp/detail.json
+          curl -fsS "http://localhost:${PORT}/api/v1/catalog/extras" > /tmp/extras.json
+          curl -fsS "http://localhost:${PORT}/api/v1/catalog/personalization?category=peluqueria" > /tmp/personalization.json
+
+          bun -e '
+            const checks = [
+              ["/tmp/categories.json", 4],
+              ["/tmp/services.json", 28],
+              ["/tmp/extras.json", 13],
+              ["/tmp/personalization.json", 6],
+            ];
+            for (const [path, expected] of checks) {
+              const payload = JSON.parse(await Bun.file(path).text());
+              if (!Array.isArray(payload.data) || payload.data.length !== expected) {
+                throw new Error(`${path}: expected ${expected} rows, got ${payload.data?.length}`);
+              }
+            }
+            const detail = JSON.parse(await Bun.file("/tmp/detail.json").text());
+            if (detail.data?.slug !== "corte-fem") throw new Error("service detail contract failed");
+          '
+
+          test "$(curl -sS -o /dev/null -w '%{http_code}' "http://localhost:${PORT}/api/v1/catalog/services/no-existe")" = "404"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' "http://localhost:${PORT}/api/v1/catalog/services?category=Not_Valid")" = "400"
+
+      - name: Verify staff is not exposed to publishable role
+        run: |
+          set -euo pipefail
+          HTTP_CODE=$(curl -sS -o /tmp/staff-response.json -w '%{http_code}' \
+            -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" \
+            "${SUPABASE_URL}/rest/v1/staff_members?select=id")
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            RESPONSE=$(cat /tmp/staff-response.json)
+            test "$RESPONSE" = "[]" || {
+              echo "::error::staff_members unexpectedly exposed through publishable key"
+              cat /tmp/staff-response.json
+              exit 1
+            }
+            echo "staff_members protected by RLS (200 with empty result)"
+          elif [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
+            echo "staff_members protected by table privileges (HTTP ${HTTP_CODE})"
+          else
+            echo "::error::Unexpected staff_members response status: ${HTTP_CODE}"
+            cat /tmp/staff-response.json || true
+            exit 1
+          fi
+
+      - name: Stop Hono
+        if: always()
+        run: |
+          if [ -f /tmp/hono-owned.pid ]; then
+            kill "$(cat /tmp/hono-owned.pid)" 2>/dev/null || true
+          fi
