@@ -14,7 +14,7 @@ here — the frontend under `src/` must never read them.
 - Real values belong in the hosting platform/GitHub secret store, never in the
   repository.
 
-## Required to boot the backend
+## Required to boot the current backend
 
 | Variable                       | Purpose |
 | ------------------------------ | ------- |
@@ -23,17 +23,28 @@ here — the frontend under `src/` must never read them.
 | `API_BASE_URL`                 | Public URL of this API |
 | `PUBLIC_WEB_BASE_URL`          | Public URL of the web frontend |
 | `SUPABASE_URL`                 | Supabase project API URL |
-| `SUPABASE_PUBLISHABLE_KEY`     | Current Supabase publishable key (`sb_publishable_*`). Respects RLS. |
-| `SUPABASE_SECRET_KEY`          | Current Supabase secret/admin key (`sb_secret_*`). Hard secret; server-only. |
-| `INTERNAL_AUTH_JWT_AUDIENCE`   | Expected `aud` claim for internal JWTs |
-| `INTERNAL_AUTH_ALLOWED_EMAILS` | CSV allow-list of staff/owner emails |
+| `SUPABASE_PUBLISHABLE_KEY`     | Supabase publishable key (`sb_publishable_*`). Respects RLS. |
+| `INTERNAL_AUTH_JWT_AUDIENCE`   | Expected `aud` claim for future internal JWTs |
+| `INTERNAL_AUTH_ALLOWED_EMAILS` | CSV allow-list reserved for future staff/owner auth |
+
+The current Hono application exposes only health and read-only public catalog
+routes. Those catalog reads use the publishable/RLS path, so an administrative
+Supabase secret is deliberately **not required just to boot the app**.
+
+## Privileged Supabase access — optional today
+
+`SUPABASE_SECRET_KEY` (`sb_secret_*`) is a hard server-only secret. Configure it
+only when a block actually introduces privileged database work such as trusted
+writes, admin actions, webhooks or maintenance jobs. `createSupabaseAdminClient`
+throws if it is invoked without that key.
 
 ### Local Supabase compatibility
 
 The Supabase local CLI currently exposes a legacy `SERVICE_ROLE_KEY`. The
 backend accepts `SUPABASE_SERVICE_ROLE_KEY` only as a compatibility alias when
 `SUPABASE_SECRET_KEY` is absent, so clean-room/local testing stays
-reproducible. New owned cloud projects must configure `SUPABASE_SECRET_KEY`.
+reproducible. Owned cloud projects should use `SUPABASE_SECRET_KEY` once
+privileged operations are implemented.
 
 ## Public-safe subset
 
@@ -55,21 +66,22 @@ change explicitly requires browser-to-Supabase access.
 
 These are validated as optional. The backend still boots without them:
 
+- `SUPABASE_SECRET_KEY` — privileged Supabase writes/admin operations
 - `MERCADO_PAGO_ACCESS_TOKEN` — Phase: payments
 - `MERCADO_PAGO_WEBHOOK_SECRET` — Phase: payments
 - `EMAIL_PROVIDER_API_KEY` — Phase: notifications
 - `WHATSAPP_PROVIDER_TOKEN` — Phase: notifications
 - `INTERNAL_SIGNING_SECRET` — Phase: internal signed URLs
 
-Do **not** set these to placeholder strings in production — leave them unset
-until the feature ships.
+Do **not** set optional secrets to placeholder strings in production — leave
+them unset until the feature ships.
 
 ## Environments
 
-- **local** — copy `.env.example` to `.env`, fill placeholders, run
+- **local** — copy `.env.example` to `.env`, fill required placeholders, run
   `bun run dev:server`.
-- **staging** — set the same variables in the hosting platform's secret
-  manager. `APP_ENV=staging`.
+- **staging** — set the same required variables in the hosting platform's
+  configuration. `APP_ENV=staging`.
 - **production** — same, with `APP_ENV=production` and real credentials.
 
 ## `/api/v1/health` contract
