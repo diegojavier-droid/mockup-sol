@@ -13,7 +13,7 @@
     "dev:server": "tsx watch server/src/index.ts",
     "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
     "db:generate-seed": "bun run scripts/generate-catalog-seed.ts",
-    "db:apply": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/migrations/20260724120000_catalog_schema.sql -f db/migrations/20260724120100_catalog_bootstrap.sql"
+    "db:apply": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f supabase/migrations/20260724120000_catalog_schema.sql -f supabase/migrations/20260724120100_catalog_bootstrap.sql"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
