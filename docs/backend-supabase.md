@@ -5,29 +5,32 @@ en backend** (`server/`) en Sol Mai Peluquería.
 
 > Regla dura: el frontend (`src/`) **no** importa Supabase server-only bajo
 > ninguna circunstancia. Toda interacción del navegador con datos reales
-> pasará, en fases futuras, por endpoints HTTP del backend (`/api/v1/...`).
+> pasa por endpoints HTTP del backend (`/api/v1/...`).
 
 ## 1. Archivos
 
 | Archivo | Uso |
 | --- | --- |
-| `server/src/lib/supabase/adminClient.ts` | Cliente con **SERVICE_ROLE**. Bypass total de RLS. |
-| `server/src/lib/supabase/serverClient.ts` | Cliente con **ANON_KEY** desde backend (validación futura de JWT / consultas "como el caller"). |
+| `server/src/lib/supabase/adminClient.ts` | Cliente con **SECRET_KEY**. Bypass total de RLS. |
+| `server/src/lib/supabase/serverClient.ts` | Cliente con **PUBLISHABLE_KEY** desde backend para consultas que respetan RLS y futura validación de JWT. |
 | `server/src/lib/supabase/index.ts` | Barrel controlado de exports. Sólo backend. |
 
 Ninguno instancia clientes al importarse — cada helper es una factory
 (`createSupabaseAdminClient(env)`, `createSupabaseAnonClient(env, opts)`)
 que recibe `ServerEnv` ya validado por `server/src/config/env.ts`.
 
-## 2. Diferencia entre `publishable` y `service_role`
+## 2. Diferencia entre `publishable` y `secret`
 
-- **`SUPABASE_PUBLISHABLE_KEY`** — clave pública (nuevo formato opaco
-  `sb_publishable_*`) provista por Lovable Cloud. Respeta RLS. Vive
-  únicamente en backend para lecturas del catálogo "como anon" y para
-  preparar validación de JWT interna (staff/owner) en fases futuras.
-- **`SUPABASE_SERVICE_ROLE_KEY`** — clave de administración. **Bypass total
-  de RLS.** Es un secreto duro: nunca sale del backend, nunca se loguea,
-  nunca se devuelve en una respuesta HTTP.
+- **`SUPABASE_PUBLISHABLE_KEY`** — clave pública de Supabase. Respeta RLS.
+  Vive únicamente en backend en el estado actual del producto para lecturas del
+  catálogo "como anon" y para preparar validación de JWT interna (staff/owner)
+  en fases futuras.
+- **`SUPABASE_SECRET_KEY`** — clave administrativa server-side de Supabase.
+  **Puede saltarse RLS según el rol asociado y debe tratarse como secreto de
+  máximo privilegio.** Nunca sale del backend, nunca se loguea y nunca se
+  devuelve en una respuesta HTTP.
+- Para el stack local de Supabase, `SUPABASE_SERVICE_ROLE_KEY` se acepta sólo
+  como alias de compatibilidad cuando no existe `SUPABASE_SECRET_KEY`.
 
 ## 3. Quién puede importar `createSupabaseAdminClient`
 
@@ -47,13 +50,12 @@ falla si aparece un `from '.../server/...'` en `src/`.
 
 ## 4. Prohibición de `VITE_`
 
-- `SUPABASE_SERVICE_ROLE_KEY` **jamás** se define con prefijo `VITE_`.
+- `SUPABASE_SECRET_KEY` **jamás** se define con prefijo `VITE_`.
 - Ninguna variable pública de Vite con nombres de tipo service, secret,
-  token, password o key puede existir en el repo. CI ejecuta un guard con
-  `rg` para bloquearlo.
+  token, password o key puede existir en el repo salvo claves explícitamente
+  públicas/publishable permitidas por el guard de CI.
 - `server/src/config/publicEnv.ts` mantiene la lista blanca de lo que
-  puede llegar al navegador. `SUPABASE_SERVICE_ROLE_KEY` **nunca** entra
-  ahí.
+  puede llegar al navegador. `SUPABASE_SECRET_KEY` **nunca** entra ahí.
 
 ## 5. Sin side effects al importar
 
@@ -64,26 +66,34 @@ igualmente romperá el build para no depender de esa suerte.
 
 ## 6. Relación con fases futuras
 
-Este bloque **no** implementa ninguna feature. Sólo habilita la
-infraestructura para:
+Este bloque habilita infraestructura para:
 
-- **Catálogo read-only** (fase próxima): endpoint backend que use
-  `adminClient` para leer tablas públicas y devolver JSON al frontend, sin
-  exponer Supabase directamente al navegador.
+- **Catálogo read-only**: endpoints backend contra PostgreSQL/Supabase real.
 - **Auth interna staff/owner**: validación de JWT usando
-  `createSupabaseAnonClient(env, { accessToken })`.
+  `createSupabaseAnonClient(env, { accessToken })` cuando se implemente el
+  flujo real de autenticación.
 - **Reservas reales**: escrituras transaccionales vía `adminClient`
   detrás de endpoints con validación Zod y reglas de negocio.
 - **Webhooks (Mercado Pago, notificaciones)**: verificación de firma +
   `adminClient` para persistir estado.
 
-Ninguno de esos casos se implementa en este bloque.
+Auth, reservas, pagos y notificaciones siguen fuera de este bloque.
 
-## 7. Checklist de seguridad
+## 7. Portabilidad
 
-- [x] `SUPABASE_SERVICE_ROLE_KEY` sólo referenciado en `server/`.
+La infraestructura de Supabase debe funcionar con un proyecto Supabase creado
+y administrado directamente por Sol Mai, sin depender de Lovable Cloud.
+`supabase/migrations/` es la fuente canónica del schema y el workflow
+`Database clean-room CI` prueba que una base vacía puede reconstruirse desde
+GitHub y re-ejecutar el bootstrap sin modificar los conteos esperados.
+
+## 8. Checklist de seguridad
+
+- [x] `SUPABASE_SECRET_KEY` sólo referenciado en `server/` y configuración server-only.
+- [x] Alias legacy `SUPABASE_SERVICE_ROLE_KEY` limitado a compatibilidad local.
 - [x] Sin variables `VITE_` sensibles.
 - [x] Sin instanciación en top-level.
 - [x] `publicEnv.ts` sin secretos.
 - [x] Guard CI: `src/` no importa `server/`.
-- [x] Guard CI: sin variables Vite públicas con nombres sensibles.
+- [x] Guard CI: sin variables Vite públicas sensibles.
+- [x] Schema reproducible desde cero mediante clean-room CI.

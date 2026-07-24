@@ -1,0 +1,70 @@
+name: Platform independence CI
+
+on:
+  pull_request:
+    branches: [main, mvp/sol-mai-v2]
+    paths:
+      - "package.json"
+      - "bun.lock"
+      - "vite.config.ts"
+      - "wrangler.jsonc"
+      - "src/**"
+      - "server/**"
+      - ".github/workflows/platform-independence.yml"
+      - ".github/workflows/cloudflare-deploy.yml"
+      - ".github/workflows/supabase-schema-deploy.yml"
+  push:
+    branches: [main, mvp/sol-mai-v2]
+    paths:
+      - "package.json"
+      - "bun.lock"
+      - "vite.config.ts"
+      - "wrangler.jsonc"
+      - "src/**"
+      - "server/**"
+      - ".github/workflows/platform-independence.yml"
+      - ".github/workflows/cloudflare-deploy.yml"
+      - ".github/workflows/supabase-schema-deploy.yml"
+
+concurrency:
+  group: platform-independence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Build without Lovable and dry-run Cloudflare
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Reject Lovable build dependencies
+        run: |
+          set -euo pipefail
+          MATCHES=$(git grep -n -E '@lovable\.dev' -- package.json vite.config.ts src server || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Active code/config still depends on Lovable"
+            echo "$MATCHES"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck backend
+        run: bun run typecheck:server
+
+      - name: Build TanStack Start
+        run: bun run build
+
+      - name: Ensure generated route tree is committed
+        run: git diff --exit-code -- src/routeTree.gen.ts
+
+      - name: Validate Cloudflare deploy package without credentials
+        run: bunx wrangler deploy --dry-run

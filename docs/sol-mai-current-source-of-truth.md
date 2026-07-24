@@ -8,11 +8,12 @@ Este documento es la fuente de verdad vigente para alinear producto, diseño y d
 
 - `main` es el baseline estable y punto de recuperación.
 - `mvp/sol-mai-v2` es la rama viva de desarrollo.
-- Las ramas `edit/edt-*` de Lovable y `work` de Codex son sandboxes/ramas temporales de herramienta y no deben confundirse con la rama real del producto.
-- Lovable construye e integra bloques funcionales completos y mantiene el preview del producto.
+- Las ramas `edit/edt-*` de Lovable y `work` de Codex son sandboxes/ramas históricas o temporales de herramienta y no deben confundirse con la rama real del producto.
+- Lovable queda fuera del flujo activo de construcción. No debe ser requisito de build, runtime, base de datos, preview ni despliegue.
 - GitHub es la fuente de verdad de código, versionado, ramas, PRs y CI.
-- Codex audita arquitectura, seguridad, RLS, modelo de datos, concurrencia, regresiones y consistencia técnica después de los bloques implementados por Lovable.
-- Flujo de trabajo vigente: `Lovable construye → GitHub versiona/CI → Codex audita → Lovable remedia → Codex revalida`.
+- La implementación puede hacerse directamente sobre GitHub o mediante un agente de código conectado al repo, sin convertir ninguna herramienta de IA en infraestructura del producto.
+- Codex/segunda revisión técnica se reserva para auditoría de arquitectura, seguridad, RLS, modelo de datos, concurrencia, regresiones y consistencia técnica en cambios de riesgo alto.
+- Flujo objetivo vigente: `requisito/producto → implementación sobre rama → GitHub PR + CI → auditoría técnica → merge → deploy independiente`.
 
 ## Estado vigente del producto
 
@@ -73,6 +74,16 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - Mercado Pago se muestra con un link ficticio temporal centralizado en configuración; el link real se reemplazará cuando Sol Mai lo tenga.
 - No hay API real de email, WhatsApp ni Mercado Pago: esas integraciones quedan como evolución backend futura.
 
+## Infraestructura ya validada
+
+- Existe backend Hono con endpoints de catálogo contra PostgreSQL/Supabase real de desarrollo.
+- `supabase/migrations/` es la fuente canónica del schema.
+- El migration ledger fue reconciliado con las versiones canónicas del repo.
+- RLS pública e integridad relacional del catálogo fueron verificadas contra PostgreSQL real.
+- El bootstrap fue probado dos veces en un entorno Supabase local limpio y mantuvo los conteos esperados.
+- `Database clean-room CI` reconstruye Supabase desde cero, valida ledger, bootstrap, RLS, FK compuesta, typecheck, build, routeTree, guards y endpoints Hono.
+- El frontend no conserva la integración Supabase/Auth autogenerada por Lovable; Auth interna sigue fuera de alcance hasta su bloque específico.
+
 ## Decisiones vigentes
 
 - El catálogo público debe mantenerse simplificado y orientado a la clienta.
@@ -92,6 +103,8 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - Las reservas `pending_payment` deben usar una ventana estricta de 10 minutos, con `payment_required_until = created_at + 10 minutos`; al vencer sin pago aprobado pasan a `expired` y liberan el slot.
 - Los pagos tardíos recibidos después de `expired` son excepciones manuales de operación/soporte y no deben confirmar automáticamente la reserva.
 - Los documentos maestros anteriores quedan como históricos/contextuales, no como fuente operativa vigente.
+- La aplicación debe poder compilar, testearse y desplegarse sin acceso a Lovable.
+- La base de datos productiva/de desarrollo debe quedar bajo una cuenta Supabase administrada directamente por Sol Mai/propietario del proyecto, no por una integración de un builder.
 - La fuente operativa vigente es la combinación de:
   - GitHub/repo actual;
   - `main` como baseline estable;
@@ -103,9 +116,10 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 
 - El frontend actual queda como base UX validada para la capa pública.
 - El mock frontend queda congelado salvo bugs críticos que bloqueen la validación o dañen la experiencia pública ya aprobada.
-- Lovable puede construir bloques full-stack e iterar UI/UX; no debe inventar reglas comerciales no validadas ni convertirse en fuente de verdad fuera de GitHub.
-- GitHub gobierna el código versionado y CI; Codex realiza auditoría técnica hostil/senior sobre los bloques implementados.
-- La próxima etapa es validar runtime real de backend + base de datos, seguida por auth, reservas reales y persistencia confiable.
+- GitHub gobierna el código versionado y CI.
+- La plataforma de build/hosting objetivo es independiente de Lovable; Cloudflare Workers queda preparada como destino de despliegue para TanStack Start, sujeto a crear/configurar la cuenta del propietario.
+- Supabase debe migrarse a un proyecto propio del propietario usando las migraciones canónicas ya validadas por clean-room CI.
+- La próxima etapa funcional, después de cerrar independencia de plataforma y propiedad de infraestructura, es auth interna mínima, seguida por reservas reales y persistencia confiable.
 - Una reserva `pending_payment` retiene el slot 10 minutos con `payment_required_until = created_at + 10 minutos`.
 - Una reserva `expired` libera el slot y no debe volver a bloquearlo sin decisión manual auditada.
 - Mercado Pago producción será Checkout Pro, con una preference por reserva creada desde backend y confirmación por webhook.
@@ -117,7 +131,8 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 
 - Validar catálogo real con Sol antes de convertirlo en dataset definitivo.
 - Validar significado de las dos columnas/tarifas, vigencia, largos, duraciones, setup/buffers, combinaciones, segmentos de clienta y taxonomía real de Maquillaje/Uñas.
-- Ejecutar las migraciones existentes en una base Supabase/PostgreSQL real de desarrollo y validar bootstrap, RLS y endpoints.
+- Crear proyecto Supabase propio bajo la cuenta del propietario y aplicar allí las migraciones canónicas.
+- Crear/configurar cuenta Cloudflare del propietario y cargar secretos de deploy en GitHub.
 - Implementar auth interna mínima y permisos owner/admin.
 - Implementar por etapas la administración de precios, duraciones, visibilidad, variantes y reglas sin requerir despliegue.
 - Definir flujo real para clientas recurrentes, incluyendo criterios de identificación, privacidad, recuperación de datos y eventual CRM.

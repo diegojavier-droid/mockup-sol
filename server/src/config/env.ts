@@ -34,12 +34,12 @@ const serverEnvSchema = z.object({
   API_BASE_URL: z.string().url(),
   PUBLIC_WEB_BASE_URL: z.string().url(),
 
-  // Supabase — server-only. SERVICE_ROLE_KEY is a hard secret.
-  // Naming aligns with Lovable Cloud, which injects SUPABASE_PUBLISHABLE_KEY
-  // (the new-format opaque publishable key, `sb_publishable_*`). No aliases.
+  // Supabase — server-only. SUPABASE_SECRET_KEY is a hard secret.
+  // SUPABASE_PUBLISHABLE_KEY is public by design but remains backend-only in
+  // the current architecture because browser data access goes through our API.
   SUPABASE_URL: z.string().url(),
   SUPABASE_PUBLISHABLE_KEY: nonEmpty,
-  SUPABASE_SERVICE_ROLE_KEY: nonEmpty,
+  SUPABASE_SECRET_KEY: nonEmpty,
 
   // Internal auth (staff/owner console access via JWT)
   INTERNAL_AUTH_JWT_AUDIENCE: nonEmpty,
@@ -66,7 +66,16 @@ let cached: ServerEnv | null = null;
 
 export function loadServerEnv(source: NodeJS.ProcessEnv = process.env): ServerEnv {
   if (cached) return cached;
-  const parsed = serverEnvSchema.safeParse(source);
+
+  // Supabase local tooling still emits the legacy SERVICE_ROLE_KEY variable.
+  // Accept it only as a compatibility alias so clean-room/local development
+  // remains reproducible while owned cloud projects use SUPABASE_SECRET_KEY.
+  const normalizedSource: NodeJS.ProcessEnv = {
+    ...source,
+    SUPABASE_SECRET_KEY: source.SUPABASE_SECRET_KEY ?? source.SUPABASE_SERVICE_ROLE_KEY,
+  };
+
+  const parsed = serverEnvSchema.safeParse(normalizedSource);
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((i) => `  - ${i.path.join(".") || "(root)"}: ${i.message}`)
