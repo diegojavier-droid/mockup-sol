@@ -414,16 +414,28 @@ jobs:
             v_service uuid;
             v_field uuid;
             v_wrong_option uuid;
+            v_tier_field uuid;
+            v_tier_service uuid;
+            v_any_option uuid;
+            v_accepted boolean := false;
           begin
+            -- El campo tiene que ser modificable: un tier_selector (el largo)
+            -- lo rechaza antes su propio trigger, y entonces esta prueba
+            -- dejaría de mirar la FK compuesta. Orden explícito para que el
+            -- caso bajo prueba no dependa del plan de ejecución.
             select r.service_id, r.field_id
               into v_service, v_field
             from public.service_personalization_rules r
+            join public.personalization_fields f on f.id = r.field_id
+            where f.field_role <> 'tier_selector'
+            order by r.service_id, r.field_id
             limit 1;
 
             select o.id
               into v_wrong_option
             from public.personalization_options o
             where o.field_id <> v_field
+            order by o.id
             limit 1;
 
             begin
@@ -437,6 +449,42 @@ jobs:
               when foreign_key_violation then
                 null;
             end;
+
+            -- Gate A1 en su forma directa: el largo no admite modificadores
+            -- ni siquiera con un par (campo, opción) perfectamente válido.
+            select r.service_id, r.field_id
+              into v_tier_service, v_tier_field
+            from public.service_personalization_rules r
+            join public.personalization_fields f on f.id = r.field_id
+            where f.field_role = 'tier_selector'
+            order by r.service_id, r.field_id
+            limit 1;
+
+            if v_tier_field is null then
+              raise exception 'no tier_selector field found: gate A1 would be untested';
+            end if;
+
+            select o.id into v_any_option
+            from public.personalization_options o
+            where o.field_id = v_tier_field
+            order by o.id
+            limit 1;
+
+            begin
+              insert into public.service_personalization_option_modifiers
+                (service_id, field_id, option_id)
+              values
+                (v_tier_service, v_tier_field, v_any_option);
+
+              v_accepted := true;
+            exception
+              when raise_exception then
+                if position('tier_selector' in sqlerrm) = 0 then raise; end if;
+            end;
+
+            if v_accepted then
+              raise exception 'gate A1 broken: the length field accepted a price modifier';
+            end if;
           end
           $$;
           SQL
