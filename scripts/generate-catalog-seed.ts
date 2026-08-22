@@ -36,7 +36,7 @@ import {
 } from "@/lib/booking-rules";
 import type { CategoryId } from "@/lib/booking-types";
 
-const OUTPUT_PATH = "supabase/migrations/20260724120100_catalog_bootstrap.sql";
+const OUTPUT_PATH = "supabase/migrations/20260724170535_catalog_bootstrap.sql";
 
 function q(s: string | null | undefined) {
   if (s == null) return "null";

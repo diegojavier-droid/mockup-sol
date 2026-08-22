@@ -1,8 +1,7 @@
 /**
  * Supabase ANON / publishable client — SERVER-ONLY variant.
  *
- * Uses SUPABASE_PUBLISHABLE_KEY (the new-format opaque key that Lovable
- * Cloud provides). RLS is enforced. Intended for:
+ * Uses SUPABASE_PUBLISHABLE_KEY (new-format opaque key). RLS is enforced. Intended for:
  *   - Executing catalog reads "as anon" from the backend.
  *   - Validating a user-provided JWT server-side by forwarding the
  *     caller's Bearer token via `accessToken` (future auth phase).
@@ -60,4 +59,3 @@ export function createSupabaseAnonClient(
     global: { headers },
   });
 }
-

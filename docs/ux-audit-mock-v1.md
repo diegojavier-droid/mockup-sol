@@ -1,3 +1,5 @@
+> Documento histórico movido desde `.lovable/plan.md` durante el bloque R1 de independencia de plataforma. Se conserva por su valor de auditoría UX; no participa en build, runtime ni tooling activo.
+
 # Auditoría UX — Sol Mai Peluquería (mock actual, mobile-first)
 
 Rol: UX Strategist + Product Designer + Service Designer. Sin cambios de código.
