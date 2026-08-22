@@ -6,6 +6,7 @@ import { createCatalogRoute } from "./http/routes/catalog";
 import { createQuoteRoute } from "./http/routes/quote";
 import { createAvailabilityRoute } from "./http/routes/availability";
 import { createBookingsRoute } from "./http/routes/bookings";
+import { createPaymentsRoute } from "./http/routes/payments";
 
 export function createApp(env: ServerEnv) {
   const app = new Hono();
@@ -16,6 +17,7 @@ export function createApp(env: ServerEnv) {
   v1.route("/quote", createQuoteRoute(env));
   v1.route("/availability", createAvailabilityRoute(env));
   v1.route("/bookings", createBookingsRoute(env));
+  v1.route("/payments", createPaymentsRoute(env));
 
   app.route("/api/v1", v1);
 
