@@ -13,6 +13,7 @@ on:
       - "server/**"
       - "scripts/**"
       - "supabase/migrations/20260724170535_catalog_bootstrap.sql"
+      - "supabase/migrations/20260822181000_operational_baseline_seed.sql"
       - ".github/workflows/platform-independence.yml"
       - ".github/workflows/cloudflare-deploy.yml"
       - ".github/workflows/supabase-schema-deploy.yml"
@@ -29,6 +30,7 @@ on:
       - "server/**"
       - "scripts/**"
       - "supabase/migrations/20260724170535_catalog_bootstrap.sql"
+      - "supabase/migrations/20260822181000_operational_baseline_seed.sql"
       - ".github/workflows/platform-independence.yml"
       - ".github/workflows/cloudflare-deploy.yml"
       - ".github/workflows/supabase-schema-deploy.yml"
@@ -84,7 +86,9 @@ jobs:
         run: |
           set -euo pipefail
           bun run db:generate-seed
-          git diff --exit-code -- supabase/migrations/20260724170535_catalog_bootstrap.sql
+          git diff --exit-code -- \
+            supabase/migrations/20260724170535_catalog_bootstrap.sql \
+            supabase/migrations/20260822181000_operational_baseline_seed.sql
 
       - name: Typecheck backend
         run: bun run typecheck:server

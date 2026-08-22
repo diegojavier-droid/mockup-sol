@@ -134,7 +134,7 @@ jobs:
           extras=13
           personalization_fields=12
           personalization_options=43
-          service_personalization_option_modifiers=304
+          service_personalization_option_modifiers=192
           service_personalization_rules=200
           services=43
           EOF
@@ -239,6 +239,62 @@ jobs:
 
           rollback;
           SQL
+
+      - name: Verify booking domain invariants
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare n int;
+          begin
+            -- Baseline operativo sembrado
+            select count(*) into n from public.areas;
+            if n <> 4 then raise exception 'areas expected 4, got %', n; end if;
+            select count(*) into n from public.business_settings;
+            if n <> 8 then raise exception 'business_settings expected 8, got %', n; end if;
+            select count(*) into n from public.service_parameters;
+            if n <> 43 then raise exception 'service_parameters expected 43, got %', n; end if;
+            select count(*) into n from public.service_price_tiers;
+            if n <> 127 then raise exception 'service_price_tiers expected 127, got %', n; end if;
+
+            -- Gate A1: el largo nunca es modificador
+            select count(*) into n
+            from public.service_personalization_option_modifiers m
+            join public.personalization_fields f on f.id = m.field_id
+            where f.field_role = 'tier_selector';
+            if n <> 0 then raise exception 'tier_selector fields carry % modifiers', n; end if;
+
+            -- length_affects_price=false → precio constante entre tiers
+            select count(*) into n from (
+              select t.service_id from public.service_price_tiers t
+              join public.service_parameters p on p.service_id = t.service_id
+              where p.length_affects_price = false
+              group by t.service_id having count(distinct t.price_main) > 1
+            ) x;
+            if n <> 0 then raise exception '% services violate flat-price flag', n; end if;
+
+            -- Depilación quedó con datos validados por Sol
+            select count(*) into n from public.service_price_tiers t
+            join public.services s on s.id = t.service_id
+            join public.categories c on c.id = s.category_id
+            where c.slug = 'depilacion' and t.source <> 'sol_validated';
+            if n <> 0 then raise exception 'depilacion tiers not sol_validated'; end if;
+          end $$;
+          SQL
+
+          # anon no puede leer el dominio de reservas ni ejecutar las RPCs
+          for probe in "select count(*) from public.bookings" \
+                       "select count(*) from public.customers" \
+                       "select public.expire_stale_bookings()"; do
+            if psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 \
+                 -c "set role anon; $probe;" >/tmp/anon-probe.log 2>&1; then
+              echo "::error::anon unexpectedly allowed: $probe"
+              cat /tmp/anon-probe.log
+              exit 1
+            fi
+          done
+          echo "booking domain invariants OK"
 
       - name: Verify field-option composite FK
         run: |
