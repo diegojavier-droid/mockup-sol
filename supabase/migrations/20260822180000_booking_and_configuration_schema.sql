@@ -138,6 +138,7 @@ create table public.service_parameters (
 
 revoke all on public.service_parameters from anon, authenticated;
 grant select on public.service_parameters to anon, authenticated; -- catálogo público necesita display_mode
+grant all on public.service_parameters to service_role;           -- el panel los edita
 alter table public.service_parameters enable row level security;
 
 create policy service_parameters_public_read on public.service_parameters
@@ -169,6 +170,7 @@ create table public.service_price_tiers (
   confidence        text not null default 'low'
     check (confidence in ('high','medium','low')),
   effective_from    date not null default current_date,
+  updated_by        text, -- quién cambió el valor (§27: cambios auditables)
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now(),
   primary key (service_id, length_tier),
@@ -177,6 +179,7 @@ create table public.service_price_tiers (
 
 revoke all on public.service_price_tiers from anon, authenticated;
 grant select on public.service_price_tiers to anon, authenticated;
+grant all on public.service_price_tiers to service_role;          -- el panel los edita
 alter table public.service_price_tiers enable row level security;
 
 create policy service_price_tiers_public_read on public.service_price_tiers
