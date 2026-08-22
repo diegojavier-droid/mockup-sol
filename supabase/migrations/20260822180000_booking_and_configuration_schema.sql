@@ -38,8 +38,21 @@ create table public.business_settings (
 );
 
 revoke all on public.business_settings from anon, authenticated;
+grant select on public.business_settings to anon, authenticated;
 grant all on public.business_settings to service_role;
 alter table public.business_settings enable row level security;
+
+-- Solo las claves que la experiencia pública necesita mostrar u operar
+-- (la seña, la ventana de reembolso, la granularidad de turnos) son
+-- legibles sin privilegios. El resto queda para el backend.
+create policy business_settings_public_read on public.business_settings
+  for select using (
+    key in (
+      'deposit_rate_pct','refund_window_hours','hold_window_minutes',
+      'default_setup_minutes','slot_granularity_minutes',
+      'min_advance_hours','max_advance_days'
+    )
+  );
 
 insert into public.business_settings (key, value, description, source, confidence) values
   ('deposit_rate_pct',        '20', 'Seña para reservar (% del mínimo estimado)',            'sol_validated',     'high'),

@@ -7,7 +7,5 @@ const app = createApp(env);
 const port = env.PORT ?? 3001;
 
 serve({ fetch: app.fetch, port }, (info) => {
-  console.log(
-    `[sol-mai-api] listening on http://localhost:${info.port} (${env.APP_ENV})`,
-  );
+  console.log(`[sol-mai-api] listening on http://localhost:${info.port} (${env.APP_ENV})`);
 });
