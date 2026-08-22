@@ -310,10 +310,14 @@ jobs:
             exit 1
           fi
 
+          # src/server.ts is the Cloudflare Worker entry (wrangler main): it
+          # mounts the Hono API from server/ and never ships to the browser.
+          # Every other src/ file remains forbidden from importing server/.
           if command -v rg >/dev/null 2>&1; then
-            SERVER_IMPORTS=$(rg -n "from ['\"].*\\bserver/" src || true)
+            SERVER_IMPORTS=$(rg -n "from ['\"].*\\bserver/" src --glob '!server.ts' || true)
           else
-            SERVER_IMPORTS=$(grep -RIn -E "from ['\"].*\\bserver/" src || true)
+            SERVER_IMPORTS=$(grep -RIn -E "from ['\"].*\\bserver/" src \
+              | grep -v '^src/server\.ts:' || true)
           fi
 
           if [ -n "$SERVER_IMPORTS" ]; then
