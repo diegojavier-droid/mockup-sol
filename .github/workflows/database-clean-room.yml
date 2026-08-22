@@ -283,6 +283,114 @@ jobs:
           end $$;
           SQL
 
+          # Dominio de reservas: concurrencia, pagos y cancelación.
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare v_tok text; v_id uuid; v_r text; v_res jsonb; i int;
+          begin
+            -- capacidad 1: el solape se rechaza
+            perform public.create_booking('depilacion', now() + interval '3 days',
+              now() + interval '3 days' + interval '30 minutes', 30, 'fixed', 30000, null, 20, 6000,
+              '{"first_name":"CI","phone_e164":"+5493420001001"}'::jsonb, '[]'::jsonb, null, 'online');
+            begin
+              perform public.create_booking('depilacion', now() + interval '3 days' + interval '15 minutes',
+                now() + interval '3 days' + interval '45 minutes', 30, 'fixed', 12000, null, 20, 2400,
+                '{"first_name":"CI2","phone_e164":"+5493420001002"}'::jsonb, '[]'::jsonb, null, 'online');
+              raise exception 'capacity 1 overlap was not rejected';
+            exception when others then
+              if sqlerrm <> 'capacity_full' then raise; end if;
+            end;
+
+            -- capacidad 5: pico real, no conteo de solapes
+            for i in 1..5 loop
+              perform public.create_booking('peluqueria', now() + interval '6 days' + interval '10 hours',
+                now() + interval '6 days' + interval '12 hours', 120, 'fixed', 40000, null, 20, 8000,
+                format('{"first_name":"P%s","phone_e164":"+549342000200%s"}', i, i)::jsonb,
+                '[]'::jsonb, null, 'manual');
+            end loop;
+            begin
+              perform public.create_booking('peluqueria', now() + interval '6 days' + interval '10 hours',
+                now() + interval '6 days' + interval '12 hours', 120, 'fixed', 40000, null, 20, 8000,
+                '{"first_name":"P6","phone_e164":"+5493420002099"}'::jsonb, '[]'::jsonb, null, 'manual');
+              raise exception 'capacity 5 was not enforced';
+            exception when others then
+              if sqlerrm <> 'capacity_full' then raise; end if;
+            end;
+
+            -- servicio inexistente en items
+            begin
+              perform public.create_booking('depilacion', now() + interval '40 days',
+                now() + interval '40 days' + interval '30 minutes', 30, 'fixed', 1, null, 20, 1,
+                '{"first_name":"CI","phone_e164":"+5493420003001"}'::jsonb,
+                '[{"service_slug":"no-existe","role":"main","name":"x","price_amount":1,"duration_min":1}]'::jsonb,
+                null, 'online');
+              raise exception 'unknown service was accepted';
+            exception when others then
+              if sqlerrm <> 'unknown_service' then raise; end if;
+            end;
+
+            -- pago: confirma, es idempotente, y el tardío no re-bloquea
+            select b.id into v_id from public.bookings b where b.status = 'pending_payment' limit 1;
+            v_r := public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-1', 6000, 'approved', '{}'::jsonb);
+            if v_r <> 'confirmed' then raise exception 'expected confirmed, got %', v_r; end if;
+            v_r := public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-1', 6000, 'approved', '{}'::jsonb);
+            if v_r <> 'already_confirmed' then raise exception 'expected already_confirmed, got %', v_r; end if;
+
+            perform public.create_booking('depilacion', now() + interval '8 days',
+              now() + interval '8 days' + interval '15 minutes', 15, 'fixed', 12000, null, 20, 2400,
+              '{"first_name":"Late","phone_e164":"+5493420004001"}'::jsonb, '[]'::jsonb, null, 'online');
+            update public.bookings set payment_required_until = now() - interval '1 minute'
+              where status = 'pending_payment';
+            if public.expire_stale_bookings() < 1 then raise exception 'expire_stale_bookings did nothing'; end if;
+            select b.id into v_id from public.bookings b where b.status = 'expired' limit 1;
+            v_r := public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-2', 2400, 'approved', '{}'::jsonb);
+            if v_r <> 'late_payment' then raise exception 'expected late_payment, got %', v_r; end if;
+            if (select status from public.bookings where id = v_id) <> 'expired' then
+              raise exception 'late payment re-blocked the slot';
+            end if;
+
+            -- cancelación: reembolsable a >=24h, no reembolsable el mismo día
+            select b.public_token into v_tok from public.bookings b
+             where b.status = 'confirmed' and b.starts_at > now() + interval '24 hours' limit 1;
+            v_res := public.cancel_booking(v_tok, 'ci');
+            if (v_res->>'refund_due')::boolean is distinct from true then
+              raise exception 'expected refund_due=true, got %', v_res;
+            end if;
+
+            select public.create_booking('depilacion', now() + interval '5 hours',
+              now() + interval '5 hours 30 minutes', 30, 'fixed', 30000, null, 20, 6000,
+              '{"first_name":"Soon","phone_e164":"+5493420005001"}'::jsonb, '[]'::jsonb, null, 'manual')
+              ->> 'public_token' into v_tok;
+            v_res := public.cancel_booking(v_tok, null);
+            if (v_res->>'refund_due')::boolean is distinct from false then
+              raise exception 'expected refund_due=false, got %', v_res;
+            end if;
+            if v_res->>'previous_status' <> 'confirmed' then
+              raise exception 'previous_status missing from cancel result';
+            end if;
+
+            -- snapshot inmutable frente a cambios de catálogo
+            declare v_snap int; v_bid uuid;
+            begin
+              select bi.booking_id, bi.snapshot_price_amount into v_bid, v_snap
+                from public.booking_items bi where bi.role = 'main' limit 1;
+              if v_bid is not null then
+                update public.service_price_tiers set price_main = price_main + 5000
+                  where service_id = (select service_id from public.booking_items
+                                       where booking_id = v_bid and role = 'main');
+                if (select snapshot_price_amount from public.booking_items
+                     where booking_id = v_bid and role = 'main') <> v_snap then
+                  raise exception 'snapshot changed after a price update';
+                end if;
+                if (select count(*) from public.parameter_history
+                     where table_name = 'service_price_tiers' and field = 'price_main') < 1 then
+                  raise exception 'parameter_history did not record the price change';
+                end if;
+              end if;
+            end;
+          end $$;
+          SQL
+
           # anon no puede leer el dominio de reservas ni ejecutar las RPCs
           for probe in "select count(*) from public.bookings" \
                        "select count(*) from public.customers" \

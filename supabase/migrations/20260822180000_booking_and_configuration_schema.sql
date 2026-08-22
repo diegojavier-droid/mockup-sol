@@ -817,7 +817,15 @@ begin
          refund_due = v_refund
    where id = v_booking.id;
 
-  return jsonb_build_object('status', 'cancelled', 'refund_due', v_refund);
+  -- previous_status permite explicar la cancelación en términos humanos:
+  -- una reserva que nunca pagó seña no tiene nada que reintegrar, y decir
+  -- "no se reintegra" ahí sería confuso y sonaría a penalidad.
+  return jsonb_build_object(
+    'status', 'cancelled',
+    'refund_due', v_refund,
+    'previous_status', v_booking.status,
+    'deposit_amount', v_booking.deposit_amount
+  );
 end;
 $$;
 
