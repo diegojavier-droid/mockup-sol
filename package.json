@@ -15,7 +15,12 @@
     "dev:server": "tsx watch server/src/index.ts",
     "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
     "db:generate-seed": "bun run scripts/generate-catalog-seed.ts",
-    "db:apply": "supabase migration up --local"
+    "db:apply": "supabase migration up --local",
+    "test": "bun test server/src",
+    "test:e2e": "bun run scripts/e2e-booking.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "stack:up": "bash scripts/local-stack.sh up",
+    "stack:down": "bash scripts/local-stack.sh down"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",

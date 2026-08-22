@@ -93,6 +93,24 @@ jobs:
       - name: Typecheck backend
         run: bun run typecheck:server
 
+      - name: Run domain and behaviour tests
+        run: bun run test
+
+      - name: Reject mock data outside tests and fixtures
+        run: |
+          set -euo pipefail
+          # PostgreSQL es la fuente de verdad: ningún componente vuelve a
+          # leer el catálogo del mock. booking-data queda sólo para tipos
+          # y helpers de formato, y el generador de seed lo usa a propósito.
+          MATCHES=$(git grep -n -E 'from "@/lib/booking-mock' -- src \
+            ':(exclude)src/lib/booking-data.ts' \
+            ':(exclude)src/lib/booking-rules.ts' || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Frontend components must read the catalog from the API, not the mock:"
+            echo "$MATCHES"
+            exit 1
+          fi
+
       - name: Build TanStack Start
         run: bun run build
 
