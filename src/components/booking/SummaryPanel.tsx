@@ -1,6 +1,7 @@
 import type { CategoryId, Extra, Personalization, Service } from "@/lib/booking-data";
-import { categories } from "@/lib/booking-data";
+
 import { computeTotals } from "@/lib/booking-totals";
+import { useCatalog } from "@/lib/catalog-context";
 
 export interface SummaryData {
   category: CategoryId | null;
@@ -19,6 +20,7 @@ export function SummaryPanel({
   data: SummaryData;
   variant?: "side" | "bottom";
 }) {
+  const { categories } = useCatalog();
   const cat = categories.find((category) => category.id === data.category);
   const { dur, price, depositPrice, remainingPrice } = computeTotals(data);
   const isEmpty = !data.category && !data.service;

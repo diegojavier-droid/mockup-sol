@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { getServiceImage } from "@/lib/service-images";
 import { selectableCardClass } from "../booking-styles";
 import { SelectedMark } from "../cards/SelectedMark";
+import { formatServicePrice } from "@/lib/price-display";
+import { useCatalog } from "@/lib/catalog-context";
 
 export function BookingServiceCard({
   service,
@@ -24,6 +26,7 @@ export function BookingServiceCard({
   showAction?: boolean;
   className?: string;
 }) {
+  const { priceDisplayModes } = useCatalog();
   const imageSrc = getServiceImage(service.id, categoryId, service.imageUrl);
   const shouldShowAction = showAction ?? false;
 
@@ -46,7 +49,7 @@ export function BookingServiceCard({
             {service.name}
           </h3>
           <p className="font-serif text-base leading-none text-foreground/85">
-            Desde {service.price}
+            {formatServicePrice(service.price, priceDisplayModes[service.id])}
           </p>
         </div>
       </>

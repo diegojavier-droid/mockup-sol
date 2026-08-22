@@ -49,7 +49,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / peinado-diario
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'peinado-diario'
+  select id, 'from', true, true, 10, false from public.services where slug = 'peinado-diario'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 11000, 30, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'peinado-diario'
@@ -65,7 +65,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / peinado-social
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'peinado-social'
+  select id, 'from', true, true, 10, false from public.services where slug = 'peinado-social'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 18000, 50, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'peinado-social'
@@ -81,7 +81,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / recogido
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'recogido'
+  select id, 'from', true, true, 10, false from public.services where slug = 'recogido'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 22000, 60, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'recogido'
@@ -145,7 +145,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / bano-luz
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'bano-luz'
+  select id, 'from', true, true, 10, false from public.services where slug = 'bano-luz'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 14000, 30, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'bano-luz'
@@ -177,7 +177,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / babylights
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'babylights'
+  select id, 'from', true, true, 10, false from public.services where slug = 'babylights'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 52000, 150, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'babylights'
@@ -193,7 +193,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / balayage
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'balayage'
+  select id, 'from', true, true, 10, false from public.services where slug = 'balayage'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 58000, 180, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'balayage'
@@ -209,7 +209,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / claritos
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'claritos'
+  select id, 'from', true, true, 10, false from public.services where slug = 'claritos'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 28000, 90, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'claritos'
@@ -225,7 +225,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / alisado
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'alisado'
+  select id, 'from', true, true, 10, false from public.services where slug = 'alisado'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 65000, 180, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'alisado'
@@ -353,7 +353,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / color-nutricion
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'color-nutricion'
+  select id, 'from', true, true, 10, false from public.services where slug = 'color-nutricion'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 42000, 120, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'color-nutricion'
@@ -369,7 +369,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / mechas-tonalizacion
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'mechas-tonalizacion'
+  select id, 'from', true, true, 10, false from public.services where slug = 'mechas-tonalizacion'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 52000, 150, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'mechas-tonalizacion'
@@ -385,7 +385,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / balayage-nutricion
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'balayage-nutricion'
+  select id, 'from', true, true, 10, false from public.services where slug = 'balayage-nutricion'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 68000, 210, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'balayage-nutricion'
@@ -401,7 +401,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / alisado-corte
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'alisado-corte'
+  select id, 'from', true, true, 10, false from public.services where slug = 'alisado-corte'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 72000, 210, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'alisado-corte'
@@ -417,7 +417,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / alisado-nutricion
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'alisado-nutricion'
+  select id, 'from', true, true, 10, false from public.services where slug = 'alisado-nutricion'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 72000, 210, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'alisado-nutricion'
@@ -433,7 +433,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / mechas-corte-brushing
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'mechas-corte-brushing'
+  select id, 'from', true, true, 10, false from public.services where slug = 'mechas-corte-brushing'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 62000, 180, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'mechas-corte-brushing'
@@ -449,7 +449,7 @@ insert into public.service_price_tiers (service_id, length_tier, price_main, dur
   on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;
 -- peluqueria / color-tratamiento
 insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)
-  select id, 'fixed', true, true, 10, false from public.services where slug = 'color-tratamiento'
+  select id, 'from', true, true, 10, false from public.services where slug = 'color-tratamiento'
   on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;
 insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)
   select id, 'corto', 48000, 150, 0, 'industry_baseline', 'Derivado del mock UX validado; comercial a confirmar con Sol Mai', 'low' from public.services where slug = 'color-tratamiento'

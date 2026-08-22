@@ -49,7 +49,8 @@ export function CustomerDataStep({
   return (
     <StepShell title="¿Cómo podemos contactarte?">
       <p className="-mt-1 text-sm leading-relaxed text-muted-foreground">
-        Usaremos estos datos para enviarte la confirmación, el enlace de seña y el recordatorio del turno.
+        Usaremos estos datos para enviarte la confirmación, el enlace de seña y el recordatorio del
+        turno.
       </p>
       <div
         className="mt-5 rounded-3xl border border-border bg-card p-5 shadow-sm lg:p-6"

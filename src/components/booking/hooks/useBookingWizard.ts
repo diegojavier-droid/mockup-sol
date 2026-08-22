@@ -7,16 +7,14 @@ import {
 import type { BookingRequestPayloadInput, CustomerIdentityInput } from "@/lib/booking-schema";
 import {
   formatDateLabel,
-  getSlotsForDate,
-  getTodayKey,
-  extras,
-  personalizationFields,
-  services,
   type CategoryId,
   type Extra,
   type Personalization,
   type Service,
 } from "@/lib/booking-data";
+import { useCatalog, type CatalogData } from "@/lib/catalog-context";
+import { useAvailability, useCreateBooking, useQuote } from "@/lib/api/booking-hooks";
+import type { ApiCreatedBooking, LengthTier } from "@/lib/api/catalog-types";
 import { computeBookingOperationalTotals } from "@/lib/booking-totals";
 import {
   clearBookingDraft,
@@ -40,21 +38,36 @@ import type {
 } from "../steps/CustomerDataStep";
 
 const alwaysVisibleSteps: BookingStepKey[] = ["category", "service"];
+
+/** Mismo criterio que el generador de seed: la etiqueta viaja como slug. */
+function slugifyOption(label: string) {
+  return label
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 const checkoutSteps: BookingStepKey[] = ["dateTime", "customerData", "review"];
 
-function categoryHasPersonalization(category: CategoryId | null) {
-  return category ? personalizationFields[category].length > 0 : true;
+function categoryHasPersonalization(catalog: CatalogData, category: CategoryId | null) {
+  return category ? catalog.personalizationFields[category].length > 0 : true;
 }
 
-function categoryHasExtras(category: CategoryId | null) {
-  return category ? extras[category].length > 0 : true;
+function categoryHasExtras(catalog: CatalogData, category: CategoryId | null) {
+  return category ? catalog.extras[category].length > 0 : true;
 }
 
-function buildVisibleBookingStepKeys(category: CategoryId | null): BookingStepKey[] {
+// El wizard sólo muestra pasos que piden una decisión real: si el
+// servicio no tiene personalización o extras, esos pasos no existen.
+function buildVisibleBookingStepKeys(
+  catalog: CatalogData,
+  category: CategoryId | null,
+): BookingStepKey[] {
   return [
     ...alwaysVisibleSteps,
-    ...(categoryHasPersonalization(category) ? (["details"] as const) : []),
-    ...(categoryHasExtras(category) ? (["extras"] as const) : []),
+    ...(categoryHasPersonalization(catalog, category) ? (["details"] as const) : []),
+    ...(categoryHasExtras(catalog, category) ? (["extras"] as const) : []),
     ...checkoutSteps,
   ];
 }
@@ -72,8 +85,8 @@ function getStepKey(stepKeys: BookingStepKey[], step: WizardStep): BookingStepKe
   return stepKeys[step] ?? stepKeys[stepKeys.length - 1];
 }
 
-function getNextStepAfterService(category: CategoryId | null): WizardStep {
-  const stepKeys = buildVisibleBookingStepKeys(category);
+function getNextStepAfterService(catalog: CatalogData, category: CategoryId | null): WizardStep {
+  const stepKeys = buildVisibleBookingStepKeys(catalog, category);
   return getStepPosition(stepKeys, stepKeys[BOOKING_STEP_INDEX.service + 1] ?? "dateTime");
 }
 
@@ -254,46 +267,56 @@ interface BookingNavigationContext {
   returnTarget: BookingReturnTarget;
 }
 
-function getInitialService(initialSelection?: BookingInitialSelection): Service | null {
+function getInitialService(
+  catalog: CatalogData,
+  initialSelection?: BookingInitialSelection,
+): Service | null {
   if (!initialSelection?.categoryId || !initialSelection.serviceId) return null;
 
   return (
-    services[initialSelection.categoryId].find(
+    catalog.services[initialSelection.categoryId].find(
       (availableService) => availableService.id === initialSelection.serviceId,
     ) ?? null
   );
 }
 
 function getInitialStep(
+  catalog: CatalogData,
   initialSelection?: BookingInitialSelection,
   initialService?: Service | null,
 ): WizardStep {
   if (!initialSelection?.categoryId) return BOOKING_STEP_INDEX.category;
   if (!initialService) return BOOKING_STEP_INDEX.service;
 
-  return getNextStepAfterService(initialSelection.categoryId);
+  return getNextStepAfterService(catalog, initialSelection.categoryId);
 }
 
-function getServiceById(categoryId: CategoryId | null, serviceId: string | null): Service | null {
+function getServiceById(
+  catalog: CatalogData,
+  categoryId: CategoryId | null,
+  serviceId: string | null,
+): Service | null {
   if (!categoryId || !serviceId) return null;
 
   return (
-    services[categoryId].find((availableService) => availableService.id === serviceId) ?? null
+    catalog.services[categoryId].find((availableService) => availableService.id === serviceId) ??
+    null
   );
 }
 
-function getExtrasByIds(categoryId: CategoryId | null, extraIds: string[]) {
+function getExtrasByIds(catalog: CatalogData, categoryId: CategoryId | null, extraIds: string[]) {
   if (!categoryId) return [];
 
-  return extras[categoryId].filter((extra) => extraIds.includes(extra.id));
+  return catalog.extras[categoryId].filter((extra) => extraIds.includes(extra.id));
 }
 
 function getRestoredStep(
+  catalog: CatalogData,
   stepKey: BookingStepKey,
   categoryId: CategoryId | null,
   selectedService: Service | null,
 ): WizardStep {
-  const stepKeys = buildVisibleBookingStepKeys(categoryId);
+  const stepKeys = buildVisibleBookingStepKeys(catalog, categoryId);
   if (!categoryId) return getStepPosition(stepKeys, "category");
   if (!selectedService && BOOKING_STEP_INDEX[stepKey] > BOOKING_STEP_INDEX.service) {
     return getStepPosition(stepKeys, "service");
@@ -320,20 +343,22 @@ export function useBookingWizard(
   initialSelection?: BookingInitialSelection,
   navigationContext?: BookingNavigationContext,
 ) {
+  const catalog = useCatalog();
   const [restoredDraft] = useState<BookingDraftState | null>(() =>
     getInitialDraftState(initialSelection),
   );
-  const initialService = getInitialService(initialSelection);
+  const initialService = getInitialService(catalog, initialSelection);
   const restoredService = restoredDraft
-    ? getServiceById(restoredDraft.selectedCategoryId, restoredDraft.selectedServiceId)
+    ? getServiceById(catalog, restoredDraft.selectedCategoryId, restoredDraft.selectedServiceId)
     : null;
   const initialStep = restoredDraft
     ? getRestoredStep(
+        catalog,
         restoredDraft.currentStepKey,
         restoredDraft.selectedCategoryId,
         restoredService,
       )
-    : getInitialStep(initialSelection, initialService);
+    : getInitialStep(catalog, initialSelection, initialService);
   const initialStepRef = useRef<WizardStep>(initialStep);
   const [step, setStep] = useState<WizardStep>(initialStep);
   const [category, setCategory] = useState<CategoryId | null>(
@@ -346,7 +371,7 @@ export function useBookingWizard(
   );
   const [chosenExtras, setChosenExtras] = useState<Extra[]>(
     restoredDraft
-      ? getExtrasByIds(restoredDraft.selectedCategoryId, restoredDraft.selectedExtras)
+      ? getExtrasByIds(catalog, restoredDraft.selectedCategoryId, restoredDraft.selectedExtras)
       : [],
   );
   const [date, setDate] = useState<string | null>(restoredDraft?.selectedDate ?? null);
@@ -361,25 +386,70 @@ export function useBookingWizard(
   const [isCustomerRecognized, setIsCustomerRecognized] = useState(false);
   const [paymentPending, setPaymentPending] = useState(restoredDraft?.paymentPending ?? false);
   const [bookingRequestError, setBookingRequestError] = useState<string | null>(null);
+  const [confirmedBooking, setConfirmedBooking] = useState<ApiCreatedBooking | null>(null);
 
-  const visibleStepKeys = useMemo(() => buildVisibleBookingStepKeys(category), [category]);
+  const visibleStepKeys = useMemo(
+    () => buildVisibleBookingStepKeys(catalog, category),
+    [catalog, category],
+  );
   const stepKey = getStepKey(visibleStepKeys, step);
   const stepLabels = useMemo(() => getStepLabels(visibleStepKeys), [visibleStepKeys]);
 
-  const availabilityRequest = useMemo(() => {
-    const totals = computeBookingOperationalTotals({
-      category,
-      service,
-      extras: chosenExtras,
-      personalization: personal,
-    });
+  // El largo es una dimensión estructural: selecciona el tier de precio
+  // y duración en el backend. El resto de las respuestas son modificadores.
+  const lengthTier = useMemo<LengthTier | null>(() => {
+    const raw = personal["largo"];
+    if (!raw) return null;
+    const map: Record<string, LengthTier> = {
+      Corto: "corto",
+      "Media melena": "medio",
+      Largo: "largo",
+      "Muy largo": "xl",
+    };
+    return map[raw] ?? null;
+  }, [personal]);
 
+  const personalizationSlugs = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const [fieldId, option] of Object.entries(personal)) {
+      if (fieldId === "largo") continue;
+      out[fieldId] = slugifyOption(option);
+    }
+    return out;
+  }, [personal]);
+
+  const quoteInput = useMemo(
+    () => ({
+      serviceSlug: service?.id ?? null,
+      lengthTier,
+      personalization: personalizationSlugs,
+      extraCodes: chosenExtras.map((extra) => extra.id),
+    }),
+    [service?.id, lengthTier, personalizationSlugs, chosenExtras],
+  );
+
+  // Precio y duración los calcula el backend: el frontend sólo muestra.
+  const quoteQuery = useQuote(quoteInput);
+  const quote = quoteQuery.data ?? null;
+
+  const availabilityQuery = useAvailability(quoteInput);
+  const availableDays = useMemo(() => availabilityQuery.data?.days ?? [], [availabilityQuery.data]);
+  const bookableOnline = availabilityQuery.data?.bookableOnline ?? true;
+
+  const slotsByDate = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const day of availableDays) map.set(day.date, day.times);
+    return map;
+  }, [availableDays]);
+
+  const createBookingMutation = useCreateBooking();
+
+  const availabilityRequest = useMemo(() => {
     return {
-      durationMinutes: totals.durationMinutes,
-      operationalBufferMinutes: totals.operationalBufferMinutes,
+      durationMinutes: quote?.durationShownMin ?? 0,
       ...(category && service ? { areaId: category, capacityUnits: 1 } : {}),
     };
-  }, [category, chosenExtras, personal, service]);
+  }, [quote?.durationShownMin, category, service]);
 
   const data: SummaryData = useMemo(
     () => ({
@@ -411,13 +481,12 @@ export function useBookingWizard(
     if (stepKey === "service") return !!service;
     if (stepKey === "details") {
       return category
-        ? personalizationFields[category].every((field) => personal[field.id])
+        ? catalog.personalizationFields[category].every((field) => personal[field.id])
         : false;
     }
     if (stepKey === "extras") return true;
     if (stepKey === "dateTime") return !!date && !!time;
-    if (stepKey === "customerData")
-      return Object.keys(customerValidationErrors).length === 0;
+    if (stepKey === "customerData") return Object.keys(customerValidationErrors).length === 0;
     return true;
   }, [category, customerValidationErrors, date, personal, service, stepKey, time]);
 
@@ -489,7 +558,7 @@ export function useBookingWizard(
   const chooseService = (selectedService: Service) => {
     setService(selectedService);
     setChosenExtras([]);
-    setStep(getNextStepAfterService(category));
+    setStep(getNextStepAfterService(catalog, category));
   };
 
   const choosePersonalization = (fieldId: string, option: string) => {
@@ -509,7 +578,7 @@ export function useBookingWizard(
   };
 
   const chooseDate = (selectedDate: string) => {
-    if (getSlotsForDate(selectedDate, getTodayKey(), availabilityRequest).length === 0) return;
+    if ((slotsByDate.get(selectedDate) ?? []).length === 0) return;
 
     setDate(selectedDate);
     setTime(null);
@@ -552,7 +621,11 @@ export function useBookingWizard(
     }));
   };
 
-  const confirmBookingRequest = () => {
+  /**
+   * Crea la reserva de verdad. El backend recalcula precio y duración,
+   * así que lo que se manda es la selección, nunca importes.
+   */
+  const confirmBookingRequest = async () => {
     setBookingRequestError(null);
 
     const payload = buildBookingRequestPayload({
@@ -568,17 +641,39 @@ export function useBookingWizard(
     });
     const payloadResult = bookingRequestPayloadSchema.safeParse(payload);
 
-    if (!payloadResult.success) {
-      console.error("Booking request payload validation error", payloadResult.error);
+    if (!payloadResult.success || !service || !date || !time) {
       setBookingRequestError(
         "No pudimos preparar la solicitud. Revisá tus datos o intentá nuevamente.",
       );
       return;
     }
 
-    const bookingRequestPayload: BookingRequestPayloadInput = payloadResult.data;
-    console.log("Booking request payload", bookingRequestPayload);
-    setPaymentPending(true);
+    try {
+      const created = await createBookingMutation.mutateAsync({
+        serviceSlug: service.id,
+        lengthTier,
+        personalization: personalizationSlugs,
+        extraCodes: chosenExtras.map((extra) => extra.id),
+        // El horario elegido es hora del salón (Santa Fe, UTC-3).
+        startsAt: `${date}T${time}:00-03:00`,
+        customer: {
+          firstName: customer.firstName.trim(),
+          phone: customer.whatsapp.trim(),
+          email: customer.email.trim(),
+          acceptsMarketing: false,
+        },
+        note: additionalComments.trim() || undefined,
+      });
+
+      setConfirmedBooking(created);
+      setPaymentPending(true);
+      clearBookingDraft();
+    } catch (error) {
+      // El backend habla en lenguaje humano; se muestra tal cual.
+      setBookingRequestError(
+        error instanceof Error ? error.message : "No pudimos confirmar el turno. Intentá otra vez.",
+      );
+    }
   };
 
   const next = () => {
@@ -630,6 +725,14 @@ export function useBookingWizard(
     chooseService,
     chosenExtras,
     confirmBookingRequest,
+    confirmedBooking,
+    isConfirming: createBookingMutation.isPending,
+    quote,
+    quoteError: quoteQuery.error as Error | null,
+    availableDays,
+    slotsByDate,
+    bookableOnline,
+    isLoadingAvailability: availabilityQuery.isLoading,
     paymentPending,
     customer,
     customerErrors,

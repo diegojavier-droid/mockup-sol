@@ -291,11 +291,20 @@ function tierRowsFor(
   return rows;
 }
 
-function displayModeFor(catId: CategoryId, tag: string | undefined): string {
-  if (catId === "depilacion" || catId === "unas") return "fixed";
-  if (catId === "maquillaje") return "from";
+/**
+ * Cómo se presenta el precio. La regla sale del dato, no de una lista:
+ * si el precio cambia según el largo, el catálogo sólo puede mostrar un
+ * "Desde"; si es igual en todos los largos, es un precio cerrado.
+ * El color va un paso más allá porque depende del diagnóstico.
+ */
+function displayModeFor(
+  catId: CategoryId,
+  tag: string | undefined,
+  lengthAffectsPrice: boolean,
+): string {
   if (tag === "color") return "subject_to_confirmation";
-  if (tag === "tratamiento") return "from";
+  if (catId === "maquillaje") return "from";
+  if (lengthAffectsPrice) return "from";
   return "fixed";
 }
 
@@ -338,7 +347,7 @@ Object.entries(services).forEach(([catId, list]) => {
     const rows = tierRowsFor(categoryId, svc, decision);
     const affectsPrice = rows.some((r) => r.price !== rows[0].price);
     const affectsDuration = rows.some((r) => r.duration !== rows[0].duration);
-    const mode = displayModeFor(categoryId, svc.tag);
+    const mode = displayModeFor(categoryId, svc.tag, affectsPrice);
     const setup = setupOverrideFor(categoryId, svc.tag);
 
     op.push(`-- ${catId} / ${svc.id}`);

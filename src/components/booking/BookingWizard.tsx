@@ -147,7 +147,8 @@ export function BookingWizard({
                 time={wizard.time}
                 onChooseDate={wizard.chooseDate}
                 onChooseTime={wizard.setTime}
-                availabilityRequest={wizard.availabilityRequest}
+                slotsByDate={wizard.slotsByDate}
+                isLoadingAvailability={wizard.isLoadingAvailability}
               />
             )}
 

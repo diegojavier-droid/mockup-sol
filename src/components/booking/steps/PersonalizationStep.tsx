@@ -1,10 +1,11 @@
 import { useState } from "react";
 
-import { personalizationFields, type CategoryId, type Personalization } from "@/lib/booking-data";
+import { type CategoryId, type Personalization } from "@/lib/booking-data";
 import type { PersonalizationField } from "@/lib/booking-types";
 import { cn } from "@/lib/utils";
 import { selectableCardClass } from "../booking-styles";
 import { StepShell } from "../wizard/StepShell";
+import { useCatalog } from "@/lib/catalog-context";
 
 const ADDITIONAL_COMMENTS_MAX_LENGTH = 500;
 
@@ -151,6 +152,7 @@ export function PersonalizationStep({
   onChangeAdditionalComments: (value: string) => void;
   onChooseOption: (fieldId: string, option: string) => void;
 }) {
+  const { personalizationFields } = useCatalog();
   const buckets = bucketFields(personalizationFields[category]);
   const [noteOpen, setNoteOpen] = useState(additionalComments.trim().length > 0);
 

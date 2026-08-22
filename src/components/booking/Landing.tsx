@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { categories, services, type CategoryId, type Service } from "@/lib/booking-data";
+import { type CategoryId, type Service } from "@/lib/booking-data";
 import type { StartBookingInput } from "./booking-navigation-types";
 import { BookingCategoryCard } from "./shared/BookingCategoryCard";
 import { BookingServiceCard } from "./shared/BookingServiceCard";
 import { ServiceDetailsDrawer } from "./shared/ServiceDetailsDrawer";
 import heroImage from "@/assets/sol-mai-hero.jpg";
 import solMaiLogo from "@/assets/sol-mai-logo-header.png";
+import { useCatalog } from "@/lib/catalog-context";
 
 export function Landing({
   onSelectPublicCategory,
@@ -18,6 +19,7 @@ export function Landing({
   restoreServicesViewKey: number;
   selectedCategory: CategoryId | null;
 }) {
+  const { categories, services } = useCatalog();
   const selectedCategoryData = selectedCategory
     ? categories.find((category) => category.id === selectedCategory)
     : null;

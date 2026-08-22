@@ -448,7 +448,6 @@ export const bookingServiceRuleMatrix: Record<string, ServicePersonalizationRule
   "depi-cejas": { category: "depilacion", fields: {} },
   "depi-bigote": { category: "depilacion", fields: {} },
   "depi-bozo-menton": { category: "depilacion", fields: {} },
-
 };
 
 export const bookingRules: Record<CategoryId, CategoryBookingRules> = {
