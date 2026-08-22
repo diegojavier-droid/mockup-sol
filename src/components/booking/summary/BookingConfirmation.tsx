@@ -1,7 +1,12 @@
 import { useState } from "react";
-import { computeBookingTotals } from "@/lib/booking-totals";
+import { useDepositCheckout } from "@/lib/api/booking-hooks";
+import type { ApiCreatedBooking } from "@/lib/api/catalog-types";
 import { solMaiContact } from "@/lib/sol-mai-contact";
 import type { SummaryData } from "../SummaryPanel";
+
+function formatPrice(amount: number) {
+  return `$${amount.toLocaleString("es-AR")}`;
+}
 
 type LocalPaymentView = "pending" | "informed";
 
@@ -9,17 +14,41 @@ export function BookingConfirmation({
   data,
   onClose,
   wasDraftRestored = false,
+  booking,
 }: {
   data: SummaryData;
   onClose: () => void;
   wasDraftRestored?: boolean;
+  /** La reserva ya persistida. Sin ella no hay seña que cobrar. */
+  booking?: ApiCreatedBooking | null;
 }) {
-  const { depositPrice, depositAmount } = computeBookingTotals(data);
+  const depositAmount = booking?.depositAmount ?? 0;
+  const depositPrice = formatPrice(depositAmount);
   const payLabel = depositAmount ? `Abonar seña — ${depositPrice}` : "Abonar seña";
   const [view, setView] = useState<LocalPaymentView>("pending");
+  const checkout = useDepositCheckout();
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
 
-  const handlePayDeposit = () => {
-    window.open(solMaiContact.mercadoPagoDepositUrl, "_blank", "noopener");
+  // El link de pago se crea para ESTA reserva: así el webhook sabe qué
+  // turno confirmar. Un link fijo no permitiría conciliarlo.
+  const handlePayDeposit = async () => {
+    if (!booking) return;
+    setCheckoutMessage(null);
+    try {
+      const result = await checkout.mutateAsync(booking.publicToken);
+      if (result.checkoutUrl) {
+        window.open(result.checkoutUrl, "_blank", "noopener");
+      } else {
+        setCheckoutMessage(
+          result.message ??
+            "El pago online todavía no está habilitado. Te escribimos para coordinar la seña.",
+        );
+      }
+    } catch (error) {
+      setCheckoutMessage(
+        error instanceof Error ? error.message : "No pudimos abrir el pago. Probá de nuevo.",
+      );
+    }
   };
 
   return (
@@ -63,13 +92,20 @@ export function BookingConfirmation({
                 <button
                   type="button"
                   onClick={handlePayDeposit}
-                  className="mt-4 block w-full rounded-full bg-primary py-3.5 text-center font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  disabled={!booking || checkout.isPending}
+                  className="mt-4 block w-full rounded-full bg-primary py-3.5 text-center font-serif text-base text-primary-foreground shadow-[0_18px_40px_-18px_rgba(80,55,30,0.5)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
                 >
-                  {payLabel}
+                  {checkout.isPending ? "Abriendo el pago…" : payLabel}
                 </button>
-                <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-                  Pagás en Mercado Pago. Sol Mai no ve ni guarda tus datos de tarjeta.
-                </p>
+                {checkoutMessage ? (
+                  <p className="mt-3 rounded-2xl bg-cream/60 px-4 py-3 text-[12px] leading-relaxed text-foreground/80">
+                    {checkoutMessage}
+                  </p>
+                ) : (
+                  <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                    Pagás en Mercado Pago. Sol Mai no ve ni guarda tus datos de tarjeta.
+                  </p>
+                )}
               </div>
 
               {/* Ya pagué — link discreto */}

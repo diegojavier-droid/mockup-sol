@@ -82,6 +82,7 @@ export function BookingWizard({
         data={wizard.data}
         onClose={wizard.closeAndClearDraft}
         wasDraftRestored={wizard.wasDraftRestored}
+        booking={wizard.confirmedBooking}
       />
     );
   }
