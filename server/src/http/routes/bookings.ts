@@ -244,6 +244,7 @@ export function createBookingsRoute(env: ServerEnv) {
             startsAt: booking.starts_at,
             paymentRequiredUntil: booking.payment_required_until,
             depositAmount: booking.deposit_amount,
+            depositRatePct: quote.depositRatePct,
             estimatedAmount: quote.estimatedMinAmount,
             remainingAmount: quote.remainingAmount,
             priceDisplayMode: quote.priceDisplayMode,

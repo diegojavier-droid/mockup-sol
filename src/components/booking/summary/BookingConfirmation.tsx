@@ -26,6 +26,7 @@ export function BookingConfirmation({
   const depositPrice = formatPrice(depositAmount);
   const payLabel = depositAmount ? `Abonar seña — ${depositPrice}` : "Abonar seña";
   const [view, setView] = useState<LocalPaymentView>("pending");
+  const [linkCopied, setLinkCopied] = useState(false);
   const checkout = useDepositCheckout();
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
 
@@ -86,7 +87,7 @@ export function BookingConfirmation({
               {/* Bloque de pago dominante */}
               <div className="rounded-2xl border border-champagne-deep/25 bg-gradient-to-b from-champagne/55 to-cream/60 px-5 py-4 text-center">
                 <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Seña 20%
+                  {booking?.depositRatePct ? `Seña ${booking.depositRatePct}%` : "Seña"}
                 </p>
                 <p className="mt-1 font-serif text-3xl text-foreground">{depositPrice}</p>
                 <button
@@ -134,6 +135,33 @@ export function BookingConfirmation({
                 </button>
               </div>
             </>
+          )}
+
+          {/* El enlace a su reserva. Sin esto la clienta no tiene forma de
+              volver: todavía no hay email de confirmación, y sin este link
+              tampoco puede cancelar ni ver en qué estado quedó. */}
+          {booking && (
+            <div className="rounded-2xl border border-border bg-cream/40 px-4 py-3">
+              <p className="text-[11px] leading-relaxed text-foreground/80">
+                Guardá este enlace para ver o cancelar tu turno:
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  const url = `${window.location.origin}/reserva/${booking.publicToken}`;
+                  try {
+                    await navigator.clipboard.writeText(url);
+                    setLinkCopied(true);
+                    window.setTimeout(() => setLinkCopied(false), 2500);
+                  } catch {
+                    window.open(url, "_blank", "noopener");
+                  }
+                }}
+                className="mt-2 w-full truncate rounded-full border border-champagne-deep/30 bg-card px-4 py-2 text-center text-xs text-foreground transition-colors hover:border-champagne-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                {linkCopied ? "Enlace copiado" : "Copiar enlace de mi reserva"}
+              </button>
+            </div>
           )}
 
           {/* Soporte discreto */}

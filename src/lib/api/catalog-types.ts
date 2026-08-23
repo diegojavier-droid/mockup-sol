@@ -115,6 +115,8 @@ export interface ApiCreatedBooking {
   startsAt: string;
   paymentRequiredUntil: string | null;
   depositAmount: number;
+  /** Porcentaje realmente aplicado: la dueña puede cambiarlo sin redeploy. */
+  depositRatePct: number;
   estimatedAmount: number;
   remainingAmount: number;
   priceDisplayMode: PriceDisplayMode;

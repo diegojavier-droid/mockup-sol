@@ -180,6 +180,18 @@ async function main() {
     "el flujo cierra con un mensaje para la clienta",
     /se[ñn]a|turno|confirmad|pendiente/i.test(finalText),
   );
+  // Sin este enlace la clienta no tiene forma de volver a su reserva:
+  // todavía no hay email de confirmación.
+  check(
+    "se le entrega el enlace a su propia reserva",
+    finalText.includes("Copiar enlace de mi reserva"),
+  );
+  // El porcentaje sale del backend: si Sol lo cambia, el cartel cambia.
+  check(
+    "el porcentaje de seña es el real, no uno fijo en el código",
+    /Seña\s*\d+%/.test(finalText),
+    finalText.match(/Seña\s*\d+%/)?.[0] ?? "no se encontró",
+  );
 
   await browser.close();
 
