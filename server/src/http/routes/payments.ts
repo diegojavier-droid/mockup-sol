@@ -41,6 +41,19 @@ export function createPaymentsRoute(env: ServerEnv) {
       });
     }
 
+    // El turno deja de estar retenido en cuanto vence la ventana, lo
+    // decida o no el barrido de vencidos: cobrar una seña acá sería
+    // cobrar por un horario que ya puede haber tomado otra persona.
+    if (
+      booking.paymentRequiredUntil &&
+      new Date(booking.paymentRequiredUntil).getTime() <= Date.now()
+    ) {
+      throw new HTTPException(409, {
+        message:
+          "Se venció el tiempo para reservar este horario. Elegí uno nuevo y lo tomamos al toque.",
+      });
+    }
+
     const { data: idRow, error: idError } = await admin
       .from("bookings")
       .select("id")

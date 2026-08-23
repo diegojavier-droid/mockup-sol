@@ -88,7 +88,42 @@ async function handleApiRequest(request: Request, env: unknown, ctx: unknown): P
   }
 }
 
+/**
+ * Cierra las reservas cuyo hold venció sin que llegara la seña.
+ *
+ * No libera capacidad: de eso ya se encarga `booking_blocks()`, que deja
+ * de contar un `pending_payment` vencido en el mismo instante en que
+ * vence. Lo que hace es dejar el estado guardado igual al estado real,
+ * para que la agenda del salón no muestre pendientes eternos.
+ */
+async function handleScheduled(env: unknown): Promise<void> {
+  const [{ createSupabaseAdminClient }, { loadServerEnv }, { expireStaleBookings }] =
+    await Promise.all([
+      import("../server/src/lib/supabase"),
+      import("../server/src/config/env"),
+      import("../server/src/lib/booking/repository"),
+    ]);
+
+  const serverEnv = loadServerEnv({ ...process.env, ...collectEnvStrings(env) });
+  const expired = await expireStaleBookings(createSupabaseAdminClient(serverEnv));
+  if (expired > 0) {
+    console.log(`[sol-mai-cron] ${expired} reserva(s) vencida(s) sin seña`);
+  }
+}
+
 export default {
+  async scheduled(
+    _event: unknown,
+    env: unknown,
+    ctx: { waitUntil?: (p: Promise<unknown>) => void },
+  ) {
+    const work = handleScheduled(env).catch((error) => {
+      console.error("[sol-mai-cron] expire_stale_bookings falló:", error);
+    });
+    ctx?.waitUntil?.(work);
+    await work;
+  },
+
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const { pathname } = new URL(request.url);
     if (pathname === "/api" || pathname.startsWith("/api/")) {

@@ -4,6 +4,13 @@
   "compatibility_date": "2026-07-24",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
+  // Barrido de reservas cuyo hold venció sin pago. La capacidad ya se
+  // libera sola (booking_blocks deja de contarlas al vencer), pero la
+  // fila queda en pending_payment: esto la cierra para que la agenda
+  // muestre el estado real.
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
   "observability": {
     "enabled": true
   }
