@@ -404,6 +404,113 @@ jobs:
           done
           echo "booking domain invariants OK"
 
+      - name: Verify V4.1 channels, no-show and overrides
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare v jsonb; v_id uuid; v_n int; i int;
+          begin
+            -- Los cuatro canales internos confirman SIN seña. Antes la
+            -- condición era `p_source = 'manual'` y los otros tres habrían
+            -- caído en pending_payment.
+            for i in 1..4 loop
+              v := public.create_booking('peluqueria',
+                now() + interval '3 days' + (i || ' hours')::interval,
+                now() + interval '3 days' + (i || ' hours')::interval + interval '1 hour',
+                60, 'fixed', 40000, null, 20, 8000,
+                format('{"first_name":"C%s","phone_e164":"+54934259000%s"}', i, i)::jsonb,
+                '[]'::jsonb, null,
+                (array['manual','phone','whatsapp','walk_in'])[i], null, null, false, null);
+              if v->>'status' <> 'confirmed' or v->>'deposit_status' <> 'none' then
+                raise exception 'canal % exigió pago: % / %',
+                  (array['manual','phone','whatsapp','walk_in'])[i], v->>'status', v->>'deposit_status';
+              end if;
+            end loop;
+
+            -- El canal público sí retiene contra pago.
+            v := public.create_booking('peluqueria', now() + interval '3 days 9 hours',
+              now() + interval '3 days 10 hours', 60, 'fixed', 40000, null, 20, 8000,
+              '{"first_name":"On","phone_e164":"+5493425900099"}'::jsonb, '[]'::jsonb, null, 'online');
+            if v->>'status' <> 'pending_payment' then
+              raise exception 'el canal online no exigió seña';
+            end if;
+
+            -- Override: sin él bloquea, con él entra y deja bitácora.
+            perform public.create_booking('depilacion', now() + interval '4 days',
+              now() + interval '4 days' + interval '30 minutes', 30, 'fixed', 12000, null, 20, 2400,
+              '{"first_name":"A","phone_e164":"+5493425910001"}'::jsonb, '[]'::jsonb, null, 'manual');
+            begin
+              perform public.create_booking('depilacion', now() + interval '4 days',
+                now() + interval '4 days' + interval '30 minutes', 30, 'fixed', 12000, null, 20, 2400,
+                '{"first_name":"B","phone_e164":"+5493425910002"}'::jsonb, '[]'::jsonb, null, 'manual');
+              raise exception 'sin override no debería entrar';
+            exception when others then
+              if sqlerrm <> 'capacity_full' then raise; end if;
+            end;
+
+            v := public.create_booking('depilacion', now() + interval '4 days',
+              now() + interval '4 days' + interval '30 minutes', 30, 'fixed', 12000, null, 20, 2400,
+              '{"first_name":"B","phone_e164":"+5493425910002"}'::jsonb, '[]'::jsonb, null,
+              'manual', null, 'ci@sol-mai.test', true, 'excepción de prueba');
+            if (v->>'created_via_override')::boolean is not true then
+              raise exception 'el override no quedó marcado';
+            end if;
+            select count(*) into v_n from public.audit_log
+             where action = 'capacity_override' and entity_id = (v->>'id')::uuid;
+            if v_n <> 1 then raise exception 'el override no dejó bitácora'; end if;
+
+            -- El override NO toca la configuración global.
+            select capacity into v_n from public.areas where slug = 'depilacion';
+            if v_n <> 1 then raise exception 'el override cambió la capacidad del área'; end if;
+
+            -- El canal público no puede pedir override.
+            begin
+              perform public.create_booking('depilacion', now() + interval '4 days',
+                now() + interval '4 days' + interval '30 minutes', 30, 'fixed', 12000, null, 20, 2400,
+                '{"first_name":"X","phone_e164":"+5493425910003"}'::jsonb, '[]'::jsonb, null,
+                'online', null, null, true, 'colarse');
+              raise exception 'online consiguió un override';
+            exception when others then
+              if sqlerrm <> 'override_not_allowed_online' then raise; end if;
+            end;
+
+            -- No-show con seña acreditada: se retiene.
+            v := public.create_booking('peluqueria', now() + interval '5 days',
+              now() + interval '5 days 1 hour', 60, 'fixed', 40000, null, 20, 8000,
+              '{"first_name":"NS","phone_e164":"+5493425920001"}'::jsonb, '[]'::jsonb, null, 'online');
+            v_id := (v->>'id')::uuid;
+            perform public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-NS', 8000, 'approved', '{}'::jsonb);
+            v := public.mark_no_show(v_id, null, 'ci@sol-mai.test');
+            if v->>'deposit_status' <> 'retained' then
+              raise exception 'la seña no se retuvo: %', v->>'deposit_status';
+            end if;
+            if (v->>'deposit_amount')::int <> 8000 then
+              raise exception 'importe retenido incorrecto';
+            end if;
+
+            -- No-show sin seña: sin consecuencia económica inventada.
+            v := public.create_booking('peluqueria', now() + interval '6 days',
+              now() + interval '6 days 1 hour', 60, 'fixed', 40000, null, 20, 8000,
+              '{"first_name":"NS2","phone_e164":"+5493425920002"}'::jsonb, '[]'::jsonb, null, 'phone');
+            v := public.mark_no_show((v->>'id')::uuid, null, 'ci@sol-mai.test');
+            if v->>'deposit_status' = 'retained' or (v->>'deposit_amount')::int <> 0 then
+              raise exception 'retuvo una seña inexistente';
+            end if;
+
+            -- no_show y cancelled no se mezclan.
+            select count(*) into v_n from public.bookings where status = 'cancelled';
+            if v_n <> 0 then raise exception 'un no_show se contó como cancelled'; end if;
+
+            -- Las cuatro áreas quedan reservables online (D-13).
+            select count(*) into v_n from public.areas where is_bookable_online;
+            if v_n <> 4 then raise exception 'esperaba 4 áreas online, hay %', v_n; end if;
+          end $$;
+          SQL
+
+          echo "V4.1 channel/no-show/override invariants OK"
+
       - name: Verify field-option composite FK
         run: |
           set -euo pipefail

@@ -22,7 +22,13 @@ import {
   TransitionError,
   updateBookingStatus,
 } from "../../lib/admin/repository";
-import { createBooking, BookingError } from "../../lib/booking/repository";
+import {
+  createBooking,
+  checkCapacity,
+  markNoShow,
+  BookingError,
+  type CapacityCheck,
+} from "../../lib/booking/repository";
 import { normalizePhoneAr } from "../../domain/phone";
 import { computeQuote } from "../../domain/quote";
 import { QuoteError } from "../../domain/types";
@@ -31,6 +37,24 @@ import { createCatalogRepository } from "../../lib/catalog/repository";
 import { createSupabaseAnonClient } from "../../lib/supabase";
 
 const SALON_TZ = "-03:00";
+
+/**
+ * Qué se le dice a la persona cuando el turno no entra.
+ *
+ * Nunca "no disponible": eso obliga a adivinar. Se dicen los números
+ * concretos, porque son los que permiten decidir si vale la pena crear
+ * la excepción.
+ */
+function capacityConflictMessage(check: CapacityCheck): string {
+  if (check.area_closed) {
+    return `Ese horario está marcado como cerrado${check.area_name ? ` para ${check.area_name}` : ""}. Podés crear el turno igualmente.`;
+  }
+  if (check.capacity !== undefined && check.peak !== undefined) {
+    const donde = check.area_name ? ` en ${check.area_name}` : "";
+    return `Ese horario ya está completo${donde}: ${check.peak} de ${check.capacity} lugares ocupados. Podés crear el turno igualmente.`;
+  }
+  return "Ese horario supera la disponibilidad configurada. Podés crear el turno igualmente.";
+}
 
 export function createAdminRoute(env: ServerEnv) {
   const route = new Hono<{ Variables: StaffVars }>();
@@ -95,7 +119,64 @@ export function createAdminRoute(env: ServerEnv) {
     }
   });
 
-  // Turno manual: el salón sigue tomando turnos por teléfono (§14.12).
+  /**
+   * Ausencia sin aviso. No es una variante de cancelar: nadie avisó y la
+   * hora se perdió. Si había seña acreditada se retiene; si no la había,
+   * no se inventa ninguna consecuencia económica.
+   */
+  route.post("/bookings/:id/no-show", async (c) => {
+    const staff = c.get("staff");
+    try {
+      const result = await markNoShow(createSupabaseAdminClient(env), {
+        bookingId: c.req.param("id"),
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      });
+      const message =
+        result.deposit_status === "retained"
+          ? `Registrado como ausencia. La seña de $${result.deposit_amount.toLocaleString("es-AR")} queda retenida.`
+          : "Registrado como ausencia. No había seña abonada, así que no hay nada que retener.";
+      return c.json({ data: { ...result, message } });
+    } catch (error) {
+      if (error instanceof BookingError || error instanceof Error) {
+        const code = error instanceof BookingError ? error.code : error.message;
+        if (code === "booking_not_found") {
+          throw new HTTPException(404, { message: "No encontramos ese turno." });
+        }
+        if (code === "not_markable") {
+          throw new HTTPException(409, {
+            message: "Sólo se puede marcar ausencia en un turno que estaba tomado.",
+          });
+        }
+      }
+      throw error;
+    }
+  });
+
+  /**
+   * Qué pasa si se crea un turno en este horario. Se consulta ANTES de
+   * intentar, para poder advertir con números en vez de fallar.
+   */
+  route.get("/capacity", async (c) => {
+    const schema = z.object({
+      area: z.string().min(1).max(64),
+      startsAt: z.string().datetime({ offset: true }),
+      endsAt: z.string().datetime({ offset: true }),
+    });
+    const parsed = schema.safeParse(c.req.query());
+    if (!parsed.success) throw new HTTPException(400, { message: "Consulta inválida." });
+    const check = await checkCapacity(createSupabaseAdminClient(env), {
+      areaSlug: parsed.data.area,
+      startsAt: new Date(parsed.data.startsAt),
+      endsAt: new Date(parsed.data.endsAt),
+    });
+    if (!check.found) throw new HTTPException(404, { message: "No encontramos esa área." });
+    return c.json({
+      data: { ...check, message: check.fits ? null : capacityConflictMessage(check) },
+    });
+  });
+
+  // Turno interno: el salón toma turnos por mostrador, teléfono y WhatsApp.
   route.post("/bookings", async (c) => {
     const schema = z.object({
       serviceSlug: z.string().min(1).max(64),
@@ -110,6 +191,11 @@ export function createAdminRoute(env: ServerEnv) {
         email: z.string().email().max(160).optional(),
       }),
       note: z.string().max(500).optional(),
+      // El canal es un dato del negocio: por dónde llegó la clienta.
+      source: z.enum(["manual", "phone", "whatsapp", "walk_in"]).default("manual"),
+      // Crear aunque el motor diga que no entra. Nunca silencioso.
+      override: z.boolean().default(false),
+      overrideReason: z.string().max(300).optional(),
     });
     const parsed = schema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) throw new HTTPException(400, { message: "Revisá los datos del turno." });
@@ -142,9 +228,10 @@ export function createAdminRoute(env: ServerEnv) {
     }
 
     const startsAt = new Date(body.startsAt);
+    const staff = c.get("staff");
     try {
-      // source=manual: nace confirmado y sin seña — el compromiso ahí es
-      // la conversación, no el pago.
+      // Cualquier canal interno nace confirmado y sin seña: el compromiso
+      // ahí es la conversación, no el pago.
       const booking = await createBooking(createSupabaseAdminClient(env), {
         areaSlug: context.areaSlug,
         startsAt,
@@ -174,18 +261,29 @@ export function createAdminRoute(env: ServerEnv) {
           setup_min: item.setupMin,
         })),
         customerNote: body.note ?? null,
-        source: "manual",
+        source: body.source,
+        createdBy: staff.staffId,
+        actorLabel: staff.email,
+        override: body.override,
+        overrideReason: body.overrideReason ?? null,
       });
       return c.json({ data: booking }, 201);
     } catch (error) {
       if (error instanceof BookingError) {
-        const messages: Record<string, string> = {
-          capacity_full: "No hay lugar en ese horario. Elegí otro o liberá capacidad.",
-          area_closed: "Ese día está cerrado. Sacá el bloqueo o elegí otra fecha.",
-        };
-        throw new HTTPException(409, {
-          message: messages[error.code] ?? "No se pudo crear el turno.",
-        });
+        // El motor no dice "no": dice qué pasa y deja decidir. El detalle
+        // numérico permite al frontend ofrecer [Crear igualmente].
+        if (error.code === "capacity_full" || error.code === "area_closed") {
+          const check = await checkCapacity(createSupabaseAdminClient(env), {
+            areaSlug: context.areaSlug,
+            startsAt,
+            endsAt: new Date(startsAt.getTime() + quote.blockingMin * 60_000),
+          });
+          throw new HTTPException(409, {
+            message: capacityConflictMessage(check),
+            cause: { code: error.code, capacity: check },
+          });
+        }
+        throw new HTTPException(409, { message: "No se pudo crear el turno." });
       }
       throw error;
     }
@@ -508,6 +606,7 @@ function describeStatus(status: string): string {
     attended: "atendido",
     cancelled: "cancelado",
     expired: "vencido",
+    no_show: "marcado como ausencia",
   };
   return labels[status] ?? status;
 }

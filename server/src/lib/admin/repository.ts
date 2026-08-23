@@ -16,6 +16,10 @@ export interface AgendaEntry {
   shownDurationMin: number;
   status: string;
   source: string;
+  depositStatus: string;
+  /** Se creó superando la disponibilidad. La agenda lo distingue. */
+  createdViaOverride: boolean;
+  overrideReason: string | null;
   area: string;
   priceEstimatedMin: number;
   priceDisplayMode: string;
@@ -32,7 +36,7 @@ export interface AgendaEntry {
 }
 
 const AGENDA_SELECT =
-  "id, public_token, starts_at, ends_at, shown_duration_min, status, source, price_estimated_min, price_display_mode, deposit_amount, customer_note, areas!inner(slug), customers!inner(id, first_name, last_name, phone_e164, email), booking_items(snapshot_name, role, sort_order)";
+  "id, public_token, starts_at, ends_at, shown_duration_min, status, source, deposit_status, created_via_override, override_reason, price_estimated_min, price_display_mode, deposit_amount, customer_note, areas!inner(slug), customers!inner(id, first_name, last_name, phone_e164, email), booking_items(snapshot_name, role, sort_order)";
 
 type AgendaRow = {
   id: string;
@@ -42,6 +46,9 @@ type AgendaRow = {
   shown_duration_min: number;
   status: string;
   source: string;
+  deposit_status: string;
+  created_via_override: boolean;
+  override_reason: string | null;
   price_estimated_min: number;
   price_display_mode: string;
   deposit_amount: number;
@@ -66,6 +73,9 @@ function toAgendaEntry(row: AgendaRow): AgendaEntry {
     shownDurationMin: row.shown_duration_min,
     status: row.status,
     source: row.source,
+    depositStatus: row.deposit_status,
+    createdViaOverride: row.created_via_override,
+    overrideReason: row.override_reason,
     area: row.areas.slug,
     priceEstimatedMin: row.price_estimated_min,
     priceDisplayMode: row.price_display_mode,
@@ -121,6 +131,9 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   expired: ["confirmed", "cancelled"],
   attended: [],
   cancelled: [],
+  // Una ausencia es terminal: se registró que la hora se perdió. Revertirla
+  // sería reescribir lo que pasó, no corregir un estado.
+  no_show: [],
 };
 
 export class TransitionError extends Error {
