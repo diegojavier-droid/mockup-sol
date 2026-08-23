@@ -185,7 +185,13 @@ EOF
       const email = process.argv[1];
       const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
       const h = b64({ alg: "HS256", typ: "JWT" });
-      const p = b64({ sub: "00000000-0000-4000-8000-000000000001", email, role: "authenticated", exp: Math.floor(Date.now()/1000)+86400 });
+      // Un `sub` distinto por email: en Supabase real cada cuenta tiene el
+      // suyo, y un sub compartido haría que todas las identidades de
+      // desarrollo resolvieran a la misma persona.
+      const { createHash } = require("crypto");
+      const h32 = createHash("sha256").update(email).digest("hex").slice(0, 32);
+      const sub = `${h32.slice(0,8)}-${h32.slice(8,12)}-4${h32.slice(13,16)}-8${h32.slice(17,20)}-${h32.slice(20,32)}`;
+      const p = b64({ sub, email, role: "authenticated", exp: Math.floor(Date.now()/1000)+86400 });
       console.log(`${h}.${p}.${createHmac("sha256", secret).update(`${h}.${p}`).digest("base64url")}`);
     ' "${2:-sol@solmai.ar}"
     ;;

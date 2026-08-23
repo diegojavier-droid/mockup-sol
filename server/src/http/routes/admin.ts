@@ -23,6 +23,7 @@ import {
   updateBookingStatus,
 } from "../../lib/admin/repository";
 import { closeService, loadReconciliation } from "../../lib/admin/repository";
+import { listPendingLinks, resolvePendingLink } from "../../lib/identity/repository";
 import {
   createBooking,
   checkCapacity,
@@ -166,6 +167,39 @@ export function createAdminRoute(env: ServerEnv) {
       }
       throw error;
     }
+  });
+
+  /**
+   * Vínculos de identidad esperando confirmación.
+   *
+   * Aparecen cuando alguien entra con Google y sólo coincide el teléfono
+   * con una ficha existente. Hasta que el salón confirme, esa persona
+   * puede reservar pero no ve el historial: el teléfono no autentica.
+   */
+  route.get("/pending-links", async (c) => {
+    const links = await listPendingLinks(createSupabaseAdminClient(env));
+    return c.json({ data: links });
+  });
+
+  route.post("/pending-links/:id", async (c) => {
+    const schema = z.object({ approve: z.boolean() });
+    const parsed = schema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) throw new HTTPException(400, { message: "Indicá si se aprueba." });
+    const staff = c.get("staff");
+    const result = await resolvePendingLink(createSupabaseAdminClient(env), {
+      identityId: c.req.param("id"),
+      approve: parsed.data.approve,
+      actorId: staff.staffId,
+      actorLabel: staff.email,
+    });
+    return c.json({
+      data: {
+        ...result,
+        message: parsed.data.approve
+          ? "Vinculado. Ahora ve su historial."
+          : "Rechazado. La cuenta queda sin acceso a esa ficha.",
+      },
+    });
   });
 
   /**

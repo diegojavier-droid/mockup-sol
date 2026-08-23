@@ -6,6 +6,7 @@ import { createCatalogRoute } from "./http/routes/catalog";
 import { createQuoteRoute } from "./http/routes/quote";
 import { createAvailabilityRoute } from "./http/routes/availability";
 import { createBookingsRoute } from "./http/routes/bookings";
+import { createIdentityRoute } from "./http/routes/identity";
 import { createPaymentsRoute } from "./http/routes/payments";
 import { createAdminRoute } from "./http/routes/admin";
 
@@ -18,6 +19,7 @@ export function createApp(env: ServerEnv) {
   v1.route("/quote", createQuoteRoute(env));
   v1.route("/availability", createAvailabilityRoute(env));
   v1.route("/bookings", createBookingsRoute(env));
+  v1.route("/identity", createIdentityRoute(env));
   v1.route("/payments", createPaymentsRoute(env));
   v1.route("/admin", createAdminRoute(env));
 

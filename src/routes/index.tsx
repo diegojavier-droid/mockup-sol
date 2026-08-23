@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Landing } from "@/components/booking/Landing";
 import { BookingWizard } from "@/components/booking/BookingWizard";
+import { KnownCustomerBlock } from "@/components/booking/KnownCustomerBlock";
+import { readCustomerToken } from "@/lib/api/identity-hooks";
+import { useCatalog } from "@/lib/catalog-context";
 import type {
   BookingReturnTarget,
   StartBookingInput,
@@ -42,6 +45,17 @@ function Index() {
     setInitialCategory(undefined);
     setInitialServiceId(undefined);
     setReturnTarget(undefined);
+  };
+
+  // El token vive en el navegador; el backend decide qué puede ver.
+  const [hasCustomerSession] = useState(() => Boolean(readCustomerToken()));
+  const { services: servicesByCategory } = useCatalog();
+
+  const categoryOfService = (slug: string): CategoryId | undefined => {
+    for (const [categoryId, list] of Object.entries(servicesByCategory)) {
+      if (list.some((s) => s.id === slug)) return categoryId as CategoryId;
+    }
+    return undefined;
   };
 
   const handleStartBooking = ({
@@ -95,11 +109,31 @@ function Index() {
   }
 
   return (
-    <Landing
-      onSelectPublicCategory={setSelectedPublicCategory}
-      onStart={handleStartBooking}
-      restoreServicesViewKey={restoreServicesViewKey}
-      selectedCategory={selectedPublicCategory}
-    />
+    <>
+      {/* Para una clienta que ya vino, la reserva empieza por lo que ya
+          se hizo, no por el catálogo. Sin historial no se muestra nada. */}
+      <div className="pt-4">
+        <KnownCustomerBlock
+          enabled={hasCustomerSession}
+          onRepeat={(service) =>
+            handleStartBooking({
+              initialSelection: {
+                categoryId: categoryOfService(service.serviceSlug),
+                serviceId: service.serviceSlug,
+              },
+              // Si vuelve atrás, vuelve al inicio: entró por su historial,
+              // no navegando el catálogo.
+              returnTarget: { type: "landing" },
+            })
+          }
+        />
+      </div>
+      <Landing
+        onSelectPublicCategory={setSelectedPublicCategory}
+        onStart={handleStartBooking}
+        restoreServicesViewKey={restoreServicesViewKey}
+        selectedCategory={selectedPublicCategory}
+      />
+    </>
   );
 }
