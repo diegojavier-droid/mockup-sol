@@ -511,6 +511,67 @@ jobs:
 
           echo "V4.1 channel/no-show/override invariants OK"
 
+      - name: Verify V4.1 resources
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_area uuid; v_n int; v_cap int; v_res uuid; v_staff uuid;
+            v jsonb; v_day date; v_svc text; v_items jsonb; v_b1 uuid; v_b2 uuid; v_b3 uuid;
+          begin
+            select id into v_area from public.areas where slug = 'peluqueria';
+
+            -- ÁREA != ESTACIÓN: la capacidad se deriva de las estaciones.
+            select count(*) into v_n from public.resources
+             where kind = 'physical' and is_active;
+            if v_n <> 8 then raise exception 'esperaba 8 estaciones, hay %', v_n; end if;
+
+            select capacity into v_cap from public.areas where id = v_area;
+            if v_cap <> 5 then raise exception 'Peluquería debería tener capacidad 5, tiene %', v_cap; end if;
+
+            -- Agregar una estación sube la capacidad sin tocar el área a mano.
+            insert into public.resources (area_id, kind, code, name)
+            values (v_area, 'physical', 'P6', 'Estación 6') returning id into v_res;
+            select capacity into v_cap from public.areas where id = v_area;
+            if v_cap <> 6 then raise exception 'agregar una estación no subió la capacidad: %', v_cap; end if;
+
+            update public.resources set is_active = false where id = v_res;
+            select capacity into v_cap from public.areas where id = v_area;
+            if v_cap <> 5 then raise exception 'desactivar una estación no bajó la capacidad: %', v_cap; end if;
+
+            -- Fuera de servicio: baja la capacidad EFECTIVA sólo en su rango.
+            select id into v_res from public.resources
+             where area_id = v_area and code = 'P1';
+            insert into public.resource_blocks (resource_id, starts_at, ends_at, reason)
+            values (v_res, now() + interval '10 days', now() + interval '11 days', 'Reparación');
+
+            v_cap := public.effective_area_capacity(v_area,
+                       now() + interval '10 days' + interval '2 hours',
+                       now() + interval '10 days' + interval '3 hours');
+            if v_cap <> 4 then raise exception 'una estación fuera de servicio debería dejar 4, dejó %', v_cap; end if;
+
+            v_cap := public.effective_area_capacity(v_area,
+                       now() + interval '20 days', now() + interval '20 days' + interval '1 hour');
+            if v_cap <> 5 then raise exception 'fuera del rango la capacidad debe volver a 5, dio %', v_cap; end if;
+
+            -- Un recurso humano sin persona no significa nada.
+            begin
+              insert into public.resources (area_id, kind, code, name)
+              values (v_area, 'human', 'X1', 'Sin persona');
+              raise exception 'gate roto: se aceptó un recurso humano sin staff';
+            exception when check_violation then null;
+            end;
+
+            -- El paso tiene que poder repetirse: no dejar rastros.
+            delete from public.resource_blocks where resource_id = v_res;
+            delete from public.resources where area_id = v_area and code = 'P6';
+          end $$;
+          SQL
+
+          echo "V4.1 resource invariants OK"
+
       - name: Verify field-option composite FK
         run: |
           set -euo pipefail
