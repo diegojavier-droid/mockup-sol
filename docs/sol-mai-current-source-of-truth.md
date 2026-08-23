@@ -79,6 +79,8 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - El horario pedido se valida contra la misma grilla que publica `/availability`: el canal público no puede reservar fuera de horario, fuera de grilla ni más allá de la anticipación máxima. El canal `manual` del salón sí puede, porque es su agenda.
 - Reservar no autoriza a editar la ficha de otra clienta: desde el canal público los datos ya cargados no se pisan, sólo se completan los que faltan.
 - Existe panel interno con agenda, ficha de clienta y configuración de precios, tiempos y horarios, protegido por Supabase Auth + lista de acceso + `staff_members` con rol.
+- La clienta recibe al confirmar el enlace a su propia reserva (`/reserva/:token`), desde donde ve el estado, paga la seña y cancela. La regla de 24 h se le explica antes de decidir, no después.
+- El porcentaje de seña que se muestra es el aplicado de verdad: si la dueña lo cambia, cambia el cartel.
 - `supabase/migrations/` es la fuente canónica del schema.
 - El migration ledger fue reconciliado con las versiones canónicas del repo.
 - RLS pública e integridad relacional del catálogo fueron verificadas contra PostgreSQL real.
