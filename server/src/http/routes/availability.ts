@@ -23,9 +23,9 @@ import {
   loadBusinessHours,
   loadScheduleExceptions,
 } from "../../lib/availability/repository";
+import { SALON_TZ_OFFSET_MIN } from "../../config/salon";
 
-/** Santa Fe (Argentina) no aplica DST: offset fijo UTC-3. */
-export const SALON_TZ_OFFSET_MIN = -180;
+export { SALON_TZ_OFFSET_MIN } from "../../config/salon";
 
 const querySchema = z.object({
   service: z

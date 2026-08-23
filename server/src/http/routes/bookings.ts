@@ -27,6 +27,15 @@ import {
   getBookingByToken,
   type CreateBookingItem,
 } from "../../lib/booking/repository";
+import { checkOfferedSlot } from "../../domain/offered-slot";
+import {
+  loadArea,
+  loadAvailabilitySettings,
+  loadBlockingDemands,
+  loadBusinessHours,
+  loadScheduleExceptions,
+} from "../../lib/availability/repository";
+import { SALON_TZ_OFFSET_MIN } from "../../config/salon";
 
 const createSchema = z.object({
   serviceSlug: z
@@ -66,6 +75,14 @@ const BOOKING_ERROR_MESSAGES: Record<string, { status: 400 | 404 | 409 | 422; me
   unknown_service: { status: 404, message: "No encontramos ese servicio." },
   unknown_extra: { status: 404, message: "No encontramos uno de los adicionales elegidos." },
   invalid_window: { status: 400, message: "El horario elegido no es válido." },
+  not_offered: {
+    status: 409,
+    message: "Ese horario ya no está disponible. Elegí otro y lo reservamos.",
+  },
+  too_far_ahead: {
+    status: 422,
+    message: "Todavía no estamos tomando turnos para esa fecha. Probá con una más cercana.",
+  },
   booking_not_found: { status: 404, message: "No encontramos esa reserva." },
   not_cancellable: {
     status: 409,
@@ -147,6 +164,41 @@ export function createBookingsRoute(env: ServerEnv) {
 
     const endsAt = new Date(startsAt.getTime() + quote.blockingMin * 60_000);
 
+    // El horario tiene que ser uno de los que el salón ofrece de verdad.
+    // Que el instante sea futuro no alcanza: sin esto entra un domingo a
+    // las 03:00 salteando `/availability`.
+    const admin = createSupabaseAdminClient(env);
+    const area = await loadArea(admin, context.areaSlug);
+    if (!area) throw bookingHttpError("area_not_found");
+    if (!area.isBookableOnline) throw bookingHttpError("area_not_bookable_online");
+
+    const now = new Date();
+    const settings = await loadAvailabilitySettings(anon);
+    const window = { from: new Date(startsAt.getTime() - 86_400_000), to: endsAt };
+    const [businessHours, exceptions, existing] = await Promise.all([
+      loadBusinessHours(anon),
+      loadScheduleExceptions(admin, { areaId: area.id, ...window }),
+      loadBlockingDemands(admin, { areaId: area.id, ...window, now }),
+    ]);
+
+    const rejection = checkOfferedSlot({
+      startsAt,
+      now,
+      maxAdvanceDays: settings.maxAdvanceDays,
+      availability: {
+        blockingMin: quote.blockingMin,
+        areaCapacity: area.capacity,
+        businessHours,
+        exceptions,
+        existing,
+        slotGranularityMin: settings.slotGranularityMin,
+        minAdvanceMin: settings.minAdvanceMin,
+        now,
+        tzOffsetMin: SALON_TZ_OFFSET_MIN,
+      },
+    });
+    if (rejection) throw bookingHttpError(rejection);
+
     const items: CreateBookingItem[] = quote.items.map((item) => ({
       ...(item.role === "main"
         ? { service_slug: item.slug }
@@ -162,7 +214,7 @@ export function createBookingsRoute(env: ServerEnv) {
     }));
 
     try {
-      const booking = await createBooking(createSupabaseAdminClient(env), {
+      const booking = await createBooking(admin, {
         areaSlug: context.areaSlug,
         startsAt,
         endsAt,
