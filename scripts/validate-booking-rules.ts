@@ -148,13 +148,11 @@ assert(
   "Makeup contextual answer must not show impact chip",
 );
 assert(
-  totals("unas", "semi", { estado: "Con semipermanente" }, ["retiro-extra"]).durationMinutes ===
-    70,
+  totals("unas", "semi", { estado: "Con semipermanente" }, ["retiro-extra"]).durationMinutes === 70,
   "Nails removal extra must add 25 min",
 );
 assert(
-  totals("unas", "semi", { estado: "Con semipermanente" }, ["retiro-extra"]).priceAmount ===
-    13500,
+  totals("unas", "semi", { estado: "Con semipermanente" }, ["retiro-extra"]).priceAmount === 13500,
   "Nails removal extra must add fixed price",
 );
 assert(
@@ -218,10 +216,7 @@ assert(
 withTemporaryAppointments([makeAppointment({ areaId: "peluqueria" })], () => {
   assert(availableAtTen("maquillaje"), "A hair appointment must not block makeup at the same time");
   assert(availableAtTen("unas"), "A hair appointment must not block nails at the same time");
-  assert(
-    availableAtTen("depilacion"),
-    "A hair appointment must not block waxing at the same time",
-  );
+  assert(availableAtTen("depilacion"), "A hair appointment must not block waxing at the same time");
 });
 
 withTemporaryAppointments(
@@ -280,15 +275,12 @@ withTemporaryAppointments(
 );
 assert(availableAtTen("unas"), "Nails must allow 1 appointment when capacity is free");
 
-withTemporaryAppointments(
-  [makeAppointment({ areaId: "depilacion", serviceName: "Cejas" })],
-  () => {
-    assert(
-      !availableAtTen("depilacion"),
-      "The 2nd simultaneous waxing appointment must not be available in MVP",
-    );
-  },
-);
+withTemporaryAppointments([makeAppointment({ areaId: "depilacion", serviceName: "Cejas" })], () => {
+  assert(
+    !availableAtTen("depilacion"),
+    "The 2nd simultaneous waxing appointment must not be available in MVP",
+  );
+});
 assert(availableAtTen("depilacion"), "Waxing must allow 1 appointment when capacity is free");
 
 withTemporaryAppointments([makeAppointment({ areaId: "maquillaje", active: false })], () => {

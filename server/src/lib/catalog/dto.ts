@@ -27,6 +27,14 @@ export interface ServiceSummaryDTO {
   priceAmount: number;
   currency: string;
   tag: string | null;
+  /**
+   * Cómo debe presentarse el precio: 'fixed' exacto, 'from' → "Desde $X",
+   * 'subject_to_confirmation' → "Desde $X · sujeto a confirmación
+   * profesional". Nunca presentar un modo no-fixed como precio cerrado.
+   */
+  priceDisplayMode: "fixed" | "from" | "subject_to_confirmation";
+  /** Mínimo entre los tiers del servicio (el "Desde"). */
+  priceFromAmount: number;
 }
 
 export interface ExtraDTO {
@@ -48,11 +56,14 @@ export interface ExtraDTO {
   currency: string;
 }
 
-
 export interface PersonalizationOptionDTO {
   slug: string;
   label: string;
   value: string;
+  /** Deltas para ESTE servicio (0 si no aplica). Solo campos modifier. */
+  durationDeltaMinutes: number;
+  priceFixedAmount: number;
+  pricePercentage: number;
 }
 
 export interface PersonalizationFieldDTO {
@@ -61,10 +72,35 @@ export interface PersonalizationFieldDTO {
   label: string;
   fieldType: "single_choice" | "multi_choice" | "text";
   isRequired: boolean;
+  /**
+   * tier_selector: elige la fila de service_price_tiers (el largo).
+   * modifier: aplica deltas por opción. context: informativo, no cotiza.
+   */
+  fieldRole: "tier_selector" | "modifier" | "context";
+  /** Decisión para el servicio consultado (detail); 'contextual' en listados. */
+  decision: "operational" | "contextual" | "not_applicable";
   options: PersonalizationOptionDTO[];
+}
+
+export interface ServiceTierDTO {
+  lengthTier: "corto" | "medio" | "largo" | "xl" | "unico";
+  priceMain: number;
+  durationMainMin: number;
+  processMin: number;
+  source: string;
+  confidence: string;
+}
+
+export interface ServiceParametersDTO {
+  priceDisplayMode: "fixed" | "from" | "subject_to_confirmation";
+  lengthAffectsPrice: boolean;
+  lengthAffectsDuration: boolean;
+  requiresConsultation: boolean;
 }
 
 export interface ServiceDetailDTO extends ServiceSummaryDTO {
   extras: ExtraDTO[];
   personalization: PersonalizationFieldDTO[];
+  tiers: ServiceTierDTO[];
+  parameters: ServiceParametersDTO;
 }

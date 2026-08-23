@@ -38,6 +38,23 @@ import type { CategoryId } from "@/lib/booking-types";
 
 const OUTPUT_PATH = "supabase/migrations/20260724170535_catalog_bootstrap.sql";
 
+/**
+ * Segundo output: baseline operativo (tiers + parámetros por servicio).
+ * Corre después del schema de booking/configuración (20260822180000).
+ *
+ * El largo es dimensión estructural: sus reglas del mock se traducen a
+ * filas de service_price_tiers (importes absolutos por tier), nunca a
+ * personalization modifiers (gate A1/C1 del blueprint).
+ */
+const OPERATIONAL_OUTPUT_PATH = "supabase/migrations/20260822181000_operational_baseline_seed.sql";
+
+const LENGTH_LABEL_TO_TIER: Record<string, string> = {
+  Corto: "corto",
+  "Media melena": "medio",
+  Largo: "largo",
+  "Muy largo": "xl",
+};
+
 function q(s: string | null | undefined) {
   if (s == null) return "null";
   return `'${String(s).replace(/'/g, "''")}'`;
@@ -146,7 +163,9 @@ out.push("");
 // -------------------- service_personalization_rules + modifiers --------------------
 out.push("-- service_personalization_rules + option modifiers (desde bookingServiceRuleMatrix)");
 
-function decisionKind(d: PersonalizationFieldDecision): "operational" | "contextual" | "not_applicable" {
+function decisionKind(
+  d: PersonalizationFieldDecision,
+): "operational" | "contextual" | "not_applicable" {
   return d.type;
 }
 
@@ -172,24 +191,22 @@ Object.entries(services).forEach(([catId, list]) => {
   list.forEach((svc) => {
     const matrixEntry = bookingServiceRuleMatrix[svc.id];
     categoryFields.forEach((field) => {
-      const decision: PersonalizationFieldDecision =
-        matrixEntry?.fields[field.id] ??
-        categoryDefaults[field.id] ??
-        { type: "contextual" };
+      const decision: PersonalizationFieldDecision = matrixEntry?.fields[field.id] ??
+        categoryDefaults[field.id] ?? { type: "contextual" };
 
       const kind = decisionKind(decision);
 
-      out.push(
-        `insert into public.service_personalization_rules (service_id, field_id, decision)`,
-      );
+      out.push(`insert into public.service_personalization_rules (service_id, field_id, decision)`);
       out.push(
         `  select s.id, f.id, ${q(kind)} from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = ${q(svc.id)} and c.slug = ${q(catId)} and f.slug = ${q(field.id)}`,
       );
-      out.push(
-        `  on conflict (service_id, field_id) do update set decision = excluded.decision;`,
-      );
+      out.push(`  on conflict (service_id, field_id) do update set decision = excluded.decision;`);
 
       if (decision.type !== "operational") return;
+
+      // El largo NO se emite como modificador: se traduce a tiers en el
+      // seed operativo (ver más abajo). Emitirlo acá duplicaría precio.
+      if (field.id === "largo") return;
 
       Object.entries(decision.options).forEach(([optionLabel, rule]) => {
         const optionSlug = slugify(optionLabel);
@@ -232,3 +249,135 @@ out.push("");
 
 writeFileSync(OUTPUT_PATH, out.join("\n"));
 console.log("bootstrap written:", OUTPUT_PATH, "·", out.length, "lines");
+
+// =====================================================================
+// Seed operativo: service_price_tiers + service_parameters
+// =====================================================================
+
+interface TierRow {
+  tier: string;
+  price: number;
+  duration: number;
+}
+
+function largoDecisionFor(
+  catId: CategoryId,
+  serviceId: string,
+): PersonalizationFieldDecision | null {
+  const matrixEntry = bookingServiceRuleMatrix[serviceId];
+  const categoryDefaults = bookingRules[catId]?.personalizationModifiers ?? {};
+  return matrixEntry?.fields["largo"] ?? categoryDefaults["largo"] ?? null;
+}
+
+function tierRowsFor(
+  catId: CategoryId,
+  svc: { priceAmount: number; durationMinutes: number },
+  decision: PersonalizationFieldDecision | null,
+): TierRow[] {
+  if (decision?.type !== "operational") {
+    return [{ tier: "unico", price: svc.priceAmount, duration: svc.durationMinutes }];
+  }
+  const rows: TierRow[] = [];
+  for (const [label, tier] of Object.entries(LENGTH_LABEL_TO_TIER)) {
+    const rule = decision.options[label];
+    const { fixed, percentage } = rule ? priceParts(rule) : { fixed: 0, percentage: 0 };
+    const durationDelta = rule?.durationMinutes ?? 0;
+    rows.push({
+      tier,
+      price: svc.priceAmount + fixed + Math.round((svc.priceAmount * percentage) / 100),
+      duration: svc.durationMinutes + durationDelta,
+    });
+  }
+  return rows;
+}
+
+/**
+ * Cómo se presenta el precio. La regla sale del dato, no de una lista:
+ * si el precio cambia según el largo, el catálogo sólo puede mostrar un
+ * "Desde"; si es igual en todos los largos, es un precio cerrado.
+ * El color va un paso más allá porque depende del diagnóstico.
+ */
+function displayModeFor(
+  catId: CategoryId,
+  tag: string | undefined,
+  lengthAffectsPrice: boolean,
+): string {
+  if (tag === "color") return "subject_to_confirmation";
+  if (catId === "maquillaje") return "from";
+  if (lengthAffectsPrice) return "from";
+  return "fixed";
+}
+
+function setupOverrideFor(catId: CategoryId, tag: string | undefined): number | null {
+  if (catId === "depilacion") return 0; // validado por Sol: sin preparación
+  if (catId === "peluqueria") return tag === "color" ? 15 : 10;
+  return null; // default_setup_minutes (12)
+}
+
+const op: string[] = [];
+op.push("-- =====================================================================");
+op.push("-- Sol Mai · Baseline operativo (tiers + parámetros por servicio)");
+op.push("--");
+op.push("-- Generado desde src/lib/booking-mock/* y src/lib/booking-rules.ts.");
+op.push("-- Regenerar con:  bun run db:generate-seed");
+op.push("--");
+op.push("-- Procedencia: los valores de Depilación fueron validados por Sol");
+op.push("-- Mai (source=sol_validated). El resto replica el mock UX validado");
+op.push("-- y queda marcado industry_baseline/confidence=low: son valores a");
+op.push("-- confirmar y editables desde el panel, nunca verdad del negocio.");
+op.push("--");
+op.push("-- NO editar a mano. Este archivo es OUTPUT del generador.");
+op.push("-- =====================================================================");
+op.push("");
+op.push("begin;");
+op.push("set local search_path = public;");
+op.push("");
+
+Object.entries(services).forEach(([catId, list]) => {
+  const categoryId = catId as CategoryId;
+  const validated = categoryId === "depilacion";
+  const source = validated ? "sol_validated" : "industry_baseline";
+  const confidence = validated ? "high" : "low";
+  const sourceRef = validated
+    ? "Duración y precio confirmados por Sol Mai (08-2026)"
+    : "Derivado del mock UX validado; comercial a confirmar con Sol Mai";
+
+  list.forEach((svc) => {
+    const decision = largoDecisionFor(categoryId, svc.id);
+    const rows = tierRowsFor(categoryId, svc, decision);
+    const affectsPrice = rows.some((r) => r.price !== rows[0].price);
+    const affectsDuration = rows.some((r) => r.duration !== rows[0].duration);
+    const mode = displayModeFor(categoryId, svc.tag, affectsPrice);
+    const setup = setupOverrideFor(categoryId, svc.tag);
+
+    op.push(`-- ${catId} / ${svc.id}`);
+    op.push(
+      `insert into public.service_parameters (service_id, price_display_mode, length_affects_price, length_affects_duration, setup_minutes_override, requires_consultation)`,
+    );
+    op.push(
+      `  select id, ${q(mode)}, ${affectsPrice}, ${affectsDuration}, ${setup === null ? "null" : setup}, ${mode === "subject_to_confirmation"} from public.services where slug = ${q(svc.id)}`,
+    );
+    op.push(
+      `  on conflict (service_id) do update set price_display_mode = excluded.price_display_mode, length_affects_price = excluded.length_affects_price, length_affects_duration = excluded.length_affects_duration, setup_minutes_override = excluded.setup_minutes_override, requires_consultation = excluded.requires_consultation;`,
+    );
+
+    rows.forEach((r) => {
+      op.push(
+        `insert into public.service_price_tiers (service_id, length_tier, price_main, duration_main_min, process_min, source, source_ref, confidence)`,
+      );
+      op.push(
+        `  select id, ${q(r.tier)}, ${r.price}, ${r.duration}, 0, ${q(source)}, ${q(sourceRef)}, ${q(confidence)} from public.services where slug = ${q(svc.id)}`,
+      );
+      op.push(
+        `  on conflict (service_id, length_tier) do update set price_main = excluded.price_main, duration_main_min = excluded.duration_main_min, process_min = excluded.process_min, source = excluded.source, source_ref = excluded.source_ref, confidence = excluded.confidence;`,
+      );
+    });
+  });
+});
+
+op.push("");
+op.push("commit;");
+op.push("");
+
+writeFileSync(OPERATIONAL_OUTPUT_PATH, op.join("\n"));
+console.log("operational seed written:", OPERATIONAL_OUTPUT_PATH, "·", op.length, "lines");

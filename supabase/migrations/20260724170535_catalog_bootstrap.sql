@@ -363,18 +363,6 @@ insert into public.personalization_options (field_id, slug, label, value, sort_o
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'corte-fem' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'corte-fem' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'corte-fem' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 15, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'corte-fem' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 25, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'corte-fem' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'corte-fem' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -414,18 +402,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'brushing' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'brushing' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 15, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'brushing' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'brushing' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 45, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'brushing' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'brushing' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -465,18 +441,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'peinado-diario' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'peinado-diario' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'peinado-diario' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 20, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'peinado-diario' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 8 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'peinado-diario' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'peinado-diario' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -516,18 +480,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'peinado-social' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'peinado-social' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'peinado-social' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 20, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'peinado-social' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 8 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'peinado-social' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'peinado-social' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -567,18 +519,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'recogido' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'recogido' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'recogido' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 20, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'recogido' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 8 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'recogido' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'recogido' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -618,18 +558,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'color-global' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'color-global' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 15, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'color-global' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'color-global' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 45, 0, 20 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'color-global' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'color-global' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -669,18 +597,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'retoque-raiz' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'retoque-raiz' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'retoque-raiz' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 5, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'retoque-raiz' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'retoque-raiz' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'retoque-raiz' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -708,18 +624,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'tonalizacion' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'tonalizacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'tonalizacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 20, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'tonalizacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 15 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'tonalizacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'tonalizacion' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -759,18 +663,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'bano-luz' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'bano-luz' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'bano-luz' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 20, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'bano-luz' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 15 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'bano-luz' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'bano-luz' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -810,18 +702,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mechas' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'mechas' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 20, 0, 8 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'mechas' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 40, 0, 15 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'mechas' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 60, 0, 25 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'mechas' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mechas' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -861,18 +741,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'babylights' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'babylights' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 20, 0, 8 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'babylights' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 40, 0, 15 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'babylights' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 60, 0, 25 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'babylights' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'babylights' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -912,18 +780,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'balayage' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'balayage' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 20, 0, 8 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'balayage' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 40, 0, 15 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'balayage' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 60, 0, 25 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'balayage' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'balayage' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -963,18 +819,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'claritos' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'claritos' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 20, 0, 8 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'claritos' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 40, 0, 15 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'claritos' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 60, 0, 25 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'claritos' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'claritos' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1014,18 +858,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'alisado' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'alisado' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'alisado' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 45, 0, 20 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'alisado' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 60, 0, 30 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'alisado' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'alisado' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1065,18 +897,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'botox' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'botox' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'botox' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 15, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'botox' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 25, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'botox' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'botox' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1116,18 +936,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'nutricion' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 15, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 25, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'nutricion' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1167,18 +975,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'hidratacion' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'hidratacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'hidratacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 15, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'hidratacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 25, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'hidratacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'hidratacion' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1218,18 +1014,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'reparacion' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'reparacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'reparacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 15, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'reparacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 25, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'reparacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'reparacion' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1269,18 +1053,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'reconstruccion' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'reconstruccion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'reconstruccion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 15, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'reconstruccion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 25, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'reconstruccion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'reconstruccion' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1320,18 +1092,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'post-color' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'post-color' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 10, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'post-color' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 15, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'post-color' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 25, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'post-color' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'post-color' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1371,18 +1131,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'corte-brushing' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'corte-brushing' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 15, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'corte-brushing' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'corte-brushing' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 45, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'corte-brushing' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'corte-brushing' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1422,18 +1170,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'color-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'color-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 15, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'color-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'color-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 45, 0, 20 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'color-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'color-nutricion' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1473,18 +1209,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mechas-tonalizacion' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'mechas-tonalizacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 20, 0, 8 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'mechas-tonalizacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 40, 0, 15 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'mechas-tonalizacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 60, 0, 25 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'mechas-tonalizacion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mechas-tonalizacion' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1524,18 +1248,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'balayage-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'balayage-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 20, 0, 8 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'balayage-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 40, 0, 15 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'balayage-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 60, 0, 25 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'balayage-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'balayage-nutricion' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1575,18 +1287,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'alisado-corte' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'alisado-corte' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'alisado-corte' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 45, 0, 20 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'alisado-corte' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 60, 0, 30 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'alisado-corte' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'alisado-corte' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1626,18 +1326,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'alisado-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'alisado-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'alisado-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 45, 0, 20 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'alisado-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 60, 0, 30 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'alisado-nutricion' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'alisado-nutricion' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1677,18 +1365,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mechas-corte-brushing' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'mechas-corte-brushing' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 20, 0, 8 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'mechas-corte-brushing' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 40, 0, 15 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'mechas-corte-brushing' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 60, 0, 25 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'mechas-corte-brushing' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mechas-corte-brushing' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
@@ -1728,18 +1404,6 @@ insert into public.service_personalization_rules (service_id, field_id, decision
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'color-tratamiento' and c.slug = 'peluqueria' and f.slug = 'largo'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 0, 0, 0 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'color-tratamiento' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'corto'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 15, 0, 5 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'color-tratamiento' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'media-melena'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 30, 0, 10 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'color-tratamiento' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
-insert into public.service_personalization_option_modifiers (service_id, field_id, option_id, duration_delta_minutes, price_fixed_amount, price_percentage)
-  select s.id, f.id, o.id, 45, 0, 20 from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id join public.personalization_options o on o.field_id = f.id where s.slug = 'color-tratamiento' and c.slug = 'peluqueria' and f.slug = 'largo' and o.slug = 'muy-largo'
-  on conflict (service_id, field_id, option_id) do update set duration_delta_minutes = excluded.duration_delta_minutes, price_fixed_amount = excluded.price_fixed_amount, price_percentage = excluded.price_percentage;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'operational' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'color-tratamiento' and c.slug = 'peluqueria' and f.slug = 'densidad'
   on conflict (service_id, field_id) do update set decision = excluded.decision;

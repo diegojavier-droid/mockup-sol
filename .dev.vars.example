@@ -1,0 +1,13 @@
+# Local Worker dev/preview vars — copy to .dev.vars (gitignored) and fill in.
+# These mirror server/src/config/env.ts (see docs/backend-env.md).
+NODE_ENV=development
+APP_ENV=local
+API_BASE_URL=http://localhost:5173
+PUBLIC_WEB_BASE_URL=http://localhost:5173
+SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+# SUPABASE_SECRET_KEY=sb_secret_...   # required for bookings/admin
+INTERNAL_AUTH_JWT_AUDIENCE=sol-mai-internal
+INTERNAL_AUTH_ALLOWED_EMAILS=owner@example.com
+# MERCADO_PAGO_ACCESS_TOKEN=
+# MERCADO_PAGO_WEBHOOK_SECRET=

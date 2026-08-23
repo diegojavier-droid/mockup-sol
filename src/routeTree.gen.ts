@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as OperacionesRouteImport } from './routes/operaciones'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReservaTokenRouteImport } from './routes/reserva.$token'
 
 const OperacionesRoute = OperacionesRouteImport.update({
   id: '/operaciones',
@@ -22,31 +23,40 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReservaTokenRoute = ReservaTokenRouteImport.update({
+  id: '/reserva/$token',
+  path: '/reserva/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/operaciones': typeof OperacionesRoute
+  '/reserva/$token': typeof ReservaTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/operaciones': typeof OperacionesRoute
+  '/reserva/$token': typeof ReservaTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/operaciones': typeof OperacionesRoute
+  '/reserva/$token': typeof ReservaTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/operaciones'
+  fullPaths: '/' | '/operaciones' | '/reserva/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/operaciones'
-  id: '__root__' | '/' | '/operaciones'
+  to: '/' | '/operaciones' | '/reserva/$token'
+  id: '__root__' | '/' | '/operaciones' | '/reserva/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   OperacionesRoute: typeof OperacionesRoute
+  ReservaTokenRoute: typeof ReservaTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reserva/$token': {
+      id: '/reserva/$token'
+      path: '/reserva/$token'
+      fullPath: '/reserva/$token'
+      preLoaderRoute: typeof ReservaTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   OperacionesRoute: OperacionesRoute,
+  ReservaTokenRoute: ReservaTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

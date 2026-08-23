@@ -20,7 +20,9 @@ import type {
   PersonalizationFieldDTO,
   PersonalizationOptionDTO,
   ServiceDetailDTO,
+  ServiceParametersDTO,
   ServiceSummaryDTO,
+  ServiceTierDTO,
 } from "./dto";
 
 type CategoryRow = {
@@ -39,6 +41,8 @@ type ServiceRow = {
   currency: string;
   tag: string | null;
   categories: { slug: string } | null;
+  service_parameters: { price_display_mode: string } | null;
+  service_price_tiers: { price_main: number }[] | null;
 };
 
 type ExtraRow = {
@@ -50,7 +54,6 @@ type ExtraRow = {
   currency: string;
   categories: { slug: string } | null;
 };
-
 
 type OptionRow = {
   slug: string;
@@ -65,6 +68,7 @@ type FieldRow = {
   field_type: "single_choice" | "multi_choice" | "text";
   is_required: boolean;
   sort_order: number;
+  field_role: "tier_selector" | "modifier" | "context";
   categories: { slug: string } | null;
   personalization_options: OptionRow[] | null;
 };
@@ -79,6 +83,9 @@ function toCategoryDTO(row: CategoryRow): CategoryDTO {
 }
 
 function toServiceDTO(row: ServiceRow): ServiceSummaryDTO {
+  const tierPrices = (row.service_price_tiers ?? []).map((t) => t.price_main);
+  const priceFromAmount = tierPrices.length ? Math.min(...tierPrices) : row.price_amount;
+  const mode = row.service_parameters?.price_display_mode;
   return {
     slug: row.slug,
     categorySlug: row.categories?.slug ?? "",
@@ -88,6 +95,8 @@ function toServiceDTO(row: ServiceRow): ServiceSummaryDTO {
     priceAmount: row.price_amount,
     currency: row.currency,
     tag: row.tag,
+    priceDisplayMode: mode === "fixed" || mode === "subject_to_confirmation" ? mode : "from",
+    priceFromAmount,
   };
 }
 
@@ -103,18 +112,26 @@ function toExtraDTO(row: ExtraRow): ExtraDTO {
   };
 }
 
-
 function toFieldDTO(row: FieldRow): PersonalizationFieldDTO {
   const options: PersonalizationOptionDTO[] = (row.personalization_options ?? [])
     .slice()
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((o) => ({ slug: o.slug, label: o.label, value: o.value }));
+    .map((o) => ({
+      slug: o.slug,
+      label: o.label,
+      value: o.value,
+      durationDeltaMinutes: 0,
+      priceFixedAmount: 0,
+      pricePercentage: 0,
+    }));
   return {
     slug: row.slug,
     categorySlug: row.categories?.slug ?? "",
     label: row.label,
     fieldType: row.field_type,
     isRequired: row.is_required,
+    fieldRole: row.field_role,
+    decision: "contextual",
     options,
   };
 }
@@ -123,15 +140,11 @@ export interface CatalogRepository {
   listCategories(): Promise<CategoryDTO[]>;
   listServices(params?: { categorySlug?: string }): Promise<ServiceSummaryDTO[]>;
   listExtras(params?: { categorySlug?: string }): Promise<ExtraDTO[]>;
-  listPersonalizationFields(
-    params?: { categorySlug?: string },
-  ): Promise<PersonalizationFieldDTO[]>;
+  listPersonalizationFields(params?: { categorySlug?: string }): Promise<PersonalizationFieldDTO[]>;
   getServiceDetail(slug: string): Promise<ServiceDetailDTO | null>;
 }
 
-export function createCatalogRepository(
-  client: SupabaseAnonServerClient,
-): CatalogRepository {
+export function createCatalogRepository(client: SupabaseAnonServerClient): CatalogRepository {
   return {
     async listCategories() {
       const { data, error } = await client
@@ -149,7 +162,7 @@ export function createCatalogRepository(
       let q = client
         .from("services")
         .select(
-          "slug, name, description, duration_minutes, price_amount, currency, tag, sort_order, categories!inner(slug)",
+          "slug, name, description, duration_minutes, price_amount, currency, tag, sort_order, categories!inner(slug), service_parameters(price_display_mode), service_price_tiers(price_main)",
         )
         .eq("is_public", true)
         .eq("is_active", true)
@@ -177,12 +190,11 @@ export function createCatalogRepository(
       return (data ?? []).map((r) => toExtraDTO(r as unknown as ExtraRow));
     },
 
-
     async listPersonalizationFields({ categorySlug } = {}) {
       let q = client
         .from("personalization_fields")
         .select(
-          "slug, label, field_type, is_required, sort_order, categories!inner(slug), personalization_options!personalization_options_field_id_fkey(slug, label, value, sort_order)",
+          "slug, label, field_type, is_required, sort_order, field_role, categories!inner(slug), personalization_options!personalization_options_field_id_fkey(slug, label, value, sort_order)",
         )
         .eq("is_public", true)
         .eq("is_active", true)
@@ -198,7 +210,7 @@ export function createCatalogRepository(
       const { data, error } = await client
         .from("services")
         .select(
-          "slug, name, description, duration_minutes, price_amount, currency, tag, sort_order, categories!inner(slug)",
+          "id, slug, name, description, duration_minutes, price_amount, currency, tag, sort_order, categories!inner(slug), service_parameters(price_display_mode, length_affects_price, length_affects_duration, requires_consultation), service_price_tiers(length_tier, price_main, duration_main_min, process_min, source, confidence)",
         )
         .eq("is_public", true)
         .eq("is_active", true)
@@ -208,12 +220,114 @@ export function createCatalogRepository(
       if (error) throw error;
       if (!data) return null;
 
-      const svc = toServiceDTO(data as unknown as ServiceRow);
-      const [extras, personalization] = await Promise.all([
+      const row = data as unknown as Omit<
+        ServiceRow,
+        "service_parameters" | "service_price_tiers"
+      > & {
+        id: string;
+        service_parameters: {
+          price_display_mode: string;
+          length_affects_price: boolean;
+          length_affects_duration: boolean;
+          requires_consultation: boolean;
+        } | null;
+        service_price_tiers:
+          | {
+              length_tier: ServiceTierDTO["lengthTier"];
+              price_main: number;
+              duration_main_min: number;
+              process_min: number;
+              source: string;
+              confidence: string;
+            }[]
+          | null;
+      };
+      const svc = toServiceDTO(row);
+
+      const [extras, personalization, rulesRes, modifiersRes] = await Promise.all([
         this.listExtras({ categorySlug: svc.categorySlug }),
         this.listPersonalizationFields({ categorySlug: svc.categorySlug }),
+        client
+          .from("service_personalization_rules")
+          .select(
+            "decision, personalization_fields!service_personalization_rules_field_id_fkey!inner(slug)",
+          )
+          .eq("service_id", row.id),
+        client
+          .from("service_personalization_option_modifiers")
+          .select(
+            "duration_delta_minutes, price_fixed_amount, price_percentage, personalization_fields!service_personalization_option_modifiers_field_id_fkey(slug), personalization_options!spom_field_option_fk(slug)",
+          )
+          .eq("service_id", row.id),
       ]);
-      return { ...svc, extras, personalization };
+      if (rulesRes.error) throw rulesRes.error;
+      if (modifiersRes.error) throw modifiersRes.error;
+
+      const decisionByField = new Map<string, PersonalizationFieldDTO["decision"]>();
+      for (const r of (rulesRes.data ?? []) as unknown as {
+        decision: PersonalizationFieldDTO["decision"];
+        personalization_fields: { slug: string } | null;
+      }[]) {
+        if (r.personalization_fields?.slug) {
+          decisionByField.set(r.personalization_fields.slug, r.decision);
+        }
+      }
+
+      const modifierByFieldOption = new Map<
+        string,
+        { durationDeltaMinutes: number; priceFixedAmount: number; pricePercentage: number }
+      >();
+      for (const m of (modifiersRes.data ?? []) as unknown as {
+        duration_delta_minutes: number;
+        price_fixed_amount: number;
+        price_percentage: number;
+        personalization_fields: { slug: string } | null;
+        personalization_options: { slug: string } | null;
+      }[]) {
+        const f = m.personalization_fields?.slug;
+        const o = m.personalization_options?.slug;
+        if (f && o) {
+          modifierByFieldOption.set(`${f}:${o}`, {
+            durationDeltaMinutes: m.duration_delta_minutes,
+            priceFixedAmount: m.price_fixed_amount,
+            pricePercentage: Number(m.price_percentage),
+          });
+        }
+      }
+
+      const fields = personalization.map((f) => ({
+        ...f,
+        decision: decisionByField.get(f.slug) ?? "contextual",
+        options: f.options.map((o) => ({
+          ...o,
+          ...(modifierByFieldOption.get(`${f.slug}:${o.slug}`) ?? {}),
+        })),
+      }));
+
+      const tiers: ServiceTierDTO[] = (row.service_price_tiers ?? []).map((t) => ({
+        lengthTier: t.length_tier,
+        priceMain: t.price_main,
+        durationMainMin: t.duration_main_min,
+        processMin: t.process_min,
+        source: t.source,
+        confidence: t.confidence,
+      }));
+
+      const parameters: ServiceParametersDTO = row.service_parameters
+        ? {
+            priceDisplayMode: svc.priceDisplayMode,
+            lengthAffectsPrice: row.service_parameters.length_affects_price,
+            lengthAffectsDuration: row.service_parameters.length_affects_duration,
+            requiresConsultation: row.service_parameters.requires_consultation,
+          }
+        : {
+            priceDisplayMode: "from",
+            lengthAffectsPrice: false,
+            lengthAffectsDuration: false,
+            requiresConsultation: false,
+          };
+
+      return { ...svc, extras, personalization: fields, tiers, parameters };
     },
   };
 }

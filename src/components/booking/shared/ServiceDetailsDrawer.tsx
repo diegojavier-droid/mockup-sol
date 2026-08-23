@@ -1,4 +1,4 @@
-import { categories, type CategoryId, type Service } from "@/lib/booking-data";
+import { type CategoryId, type Service } from "@/lib/booking-data";
 import {
   Drawer,
   DrawerContent,
@@ -8,6 +8,8 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { getServiceImage } from "@/lib/service-images";
+import { useCatalog } from "@/lib/catalog-context";
+import { formatServicePrice, priceQualifier } from "@/lib/price-display";
 
 type ServiceDetailsDrawerProps = {
   service: Service | null;
@@ -68,6 +70,7 @@ export function ServiceDetailsDrawer({
   onOpenChange,
   onReserve,
 }: ServiceDetailsDrawerProps) {
+  const { categories, priceDisplayModes } = useCatalog();
   if (!service || !categoryId) {
     return null;
   }
@@ -134,12 +137,18 @@ export function ServiceDetailsDrawer({
               <h2 className="font-serif text-2xl leading-tight text-foreground">{service.name}</h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 {service.duration} <span className="text-champagne/80">·</span>{" "}
-                <span className="font-serif text-foreground">Desde {service.price}</span>
+                <span className="font-serif text-foreground">
+                  {formatServicePrice(service.price, priceDisplayModes[service.id])}
+                </span>
               </p>
+              {priceQualifier(priceDisplayModes[service.id]) ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {priceQualifier(priceDisplayModes[service.id])}
+                </p>
+              ) : null}
               <p className="mt-1 text-xs text-muted-foreground">
                 Reservá con seña del 20%. El saldo se abona en el salón.
               </p>
-
 
               <p className="mt-4 text-sm leading-relaxed text-foreground/80">{service.desc}</p>
 

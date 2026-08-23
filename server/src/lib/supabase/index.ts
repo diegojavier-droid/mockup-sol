@@ -5,10 +5,7 @@
  * See docs/backend-supabase.md for the full policy.
  */
 
-export {
-  createSupabaseAdminClient,
-  type SupabaseAdminClient,
-} from "./adminClient";
+export { createSupabaseAdminClient, type SupabaseAdminClient } from "./adminClient";
 
 export {
   createSupabaseAnonClient,

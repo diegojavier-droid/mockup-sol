@@ -1,27 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  formatDateLabel,
-  getDayAvailabilityStatus,
-  getMonthDays,
-  getMonthLabel,
-  getSlotsForDate,
-  getTodayKey,
-  hasAvailableSlotsInMonth,
-} from "@/lib/booking-data";
-import type { AvailabilityRequest } from "@/lib/booking-data";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatDateLabel, getMonthDays, getMonthLabel, getTodayKey } from "@/lib/booking-data";
+import type { DayAvailabilityStatus } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { TimeSlotButton } from "../cards/TimeSlotButton";
 import { StepShell } from "../wizard/StepShell";
 
-
 const weekdayLabels = ["D", "L", "M", "M", "J", "V", "S"];
 const shortWeekdays = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const shortMonths = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const shortMonths = [
+  "ene",
+  "feb",
+  "mar",
+  "abr",
+  "may",
+  "jun",
+  "jul",
+  "ago",
+  "sep",
+  "oct",
+  "nov",
+  "dic",
+];
 
 const CAROUSEL_LOOKAHEAD_DAYS = 21;
 
@@ -77,23 +77,29 @@ export function DateTimeStep({
   time,
   onChooseDate,
   onChooseTime,
-  availabilityRequest,
+  slotsByDate,
+  isLoadingAvailability = false,
 }: {
   date: string | null;
   time: string | null;
   onChooseDate: (date: string) => void;
   onChooseTime: (time: string) => void;
-  availabilityRequest: AvailabilityRequest;
+  /** Disponibilidad real calculada por el backend: fecha → horarios. */
+  slotsByDate: Map<string, string[]>;
+  isLoadingAvailability?: boolean;
 }) {
   const todayKey = useMemo(() => getTodayKey(), []);
   const upcomingDays = useMemo(() => buildUpcomingDays(), []);
+  const dayStatus = useCallback(
+    (dateKey: string): DayAvailabilityStatus => {
+      if (dateKey < todayKey) return "past";
+      return (slotsByDate.get(dateKey) ?? []).length > 0 ? "available" : "unavailable";
+    },
+    [slotsByDate, todayKey],
+  );
   const availableUpcomingDays = useMemo(
-    () =>
-      upcomingDays.filter(
-        ({ dateKey }) =>
-          getDayAvailabilityStatus(dateKey, todayKey, availabilityRequest) === "available",
-      ),
-    [availabilityRequest, todayKey, upcomingDays],
+    () => upcomingDays.filter(({ dateKey }) => dayStatus(dateKey) === "available"),
+    [dayStatus, upcomingDays],
   );
 
   const [showMonthView, setShowMonthView] = useState(false);
@@ -105,12 +111,12 @@ export function DateTimeStep({
 
   const monthDays = useMemo(() => getMonthDays(visibleMonth), [visibleMonth]);
   const monthHasAvailability = useMemo(
-    () => hasAvailableSlotsInMonth(visibleMonth, todayKey, availabilityRequest),
-    [availabilityRequest, todayKey, visibleMonth],
+    () => monthDays.some((dateKey) => dateKey !== null && dayStatus(dateKey) === "available"),
+    [dayStatus, monthDays],
   );
   const selectedSlots = useMemo(
-    () => (date ? getSlotsForDate(date, todayKey, availabilityRequest) : []),
-    [availabilityRequest, date, todayKey],
+    () => (date ? (slotsByDate.get(date) ?? []) : []),
+    [date, slotsByDate],
   );
 
   const selectedRef = useRef<HTMLButtonElement>(null);
@@ -133,7 +139,7 @@ export function DateTimeStep({
   };
 
   const handleMonthPick = (dateKey: string) => {
-    const status = getDayAvailabilityStatus(dateKey, todayKey, availabilityRequest);
+    const status = dayStatus(dateKey);
 
     if (status !== "available") {
       setDayFeedback("No hay horarios para este día. Probá con otra fecha.");
@@ -158,7 +164,9 @@ export function DateTimeStep({
       {/* Resumen de selección */}
       {selectedLabel && (
         <div className="mb-3 flex items-center gap-2 rounded-2xl border border-champagne-deep/30 bg-cream/50 px-4 py-2.5 text-sm">
-          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Elegiste</span>
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Elegiste
+          </span>
           <span className="font-serif text-foreground">
             {selectedLabel}
             {time ? ` · ${time}` : ""}
@@ -269,7 +277,7 @@ export function DateTimeStep({
                 if (!dateKey) return <span key={`blank-${index}`} aria-hidden="true" />;
 
                 const dayNumber = Number(dateKey.slice(-2));
-                const status = getDayAvailabilityStatus(dateKey, todayKey, availabilityRequest);
+                const status = dayStatus(dateKey);
                 const selected = date === dateKey;
                 const unavailable = status !== "available";
 
@@ -313,7 +321,6 @@ export function DateTimeStep({
         </CollapsibleContent>
       </Collapsible>
 
-
       {dayFeedback && (
         <p className="mt-3 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
           {dayFeedback}
@@ -324,9 +331,7 @@ export function DateTimeStep({
       <div className="mt-5">
         <div className="mb-2 flex items-baseline justify-between gap-3">
           <p className="text-sm font-medium text-foreground">Horarios</p>
-          {date && (
-            <p className="text-xs text-muted-foreground">{formatDateLabel(date)}</p>
-          )}
+          {date && <p className="text-xs text-muted-foreground">{formatDateLabel(date)}</p>}
         </div>
         {date && selectedSlots.length > 0 ? (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">

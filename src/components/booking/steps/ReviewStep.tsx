@@ -1,9 +1,9 @@
-import { categories } from "@/lib/booking-data";
 import type { Personalization } from "@/lib/booking-data";
 import { computeTotals } from "@/lib/booking-totals";
 import type { SummaryData } from "../SummaryPanel";
 import { StepShell } from "../wizard/StepShell";
 import type { CustomerFormState } from "./CustomerDataStep";
+import { useCatalog } from "@/lib/catalog-context";
 
 export function ReviewStep({
   customer,
@@ -18,6 +18,7 @@ export function ReviewStep({
   error: string | null;
   onConfirm: () => void;
 }) {
+  const { categories } = useCatalog();
   const category = categories.find((currentCategory) => currentCategory.id === data.category);
   const { price, depositPrice, remainingPrice } = computeTotals(data);
 
@@ -111,7 +112,11 @@ function ReviewAmount({
   return (
     <div className="flex items-baseline justify-between gap-3">
       <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</span>
-      <span className={emphasize ? "font-serif text-2xl text-foreground" : "font-serif text-lg text-foreground"}>
+      <span
+        className={
+          emphasize ? "font-serif text-2xl text-foreground" : "font-serif text-lg text-foreground"
+        }
+      >
         {value}
       </span>
     </div>

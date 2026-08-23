@@ -1,7 +1,8 @@
-import { categories, personalizationFields, type Personalization } from "@/lib/booking-data";
+import { type Personalization } from "@/lib/booking-data";
 import { computeTotals } from "@/lib/booking-totals";
 import type { CustomerFormState } from "../steps/CustomerDataStep";
 import type { SummaryData } from "../SummaryPanel";
+import { useCatalog } from "@/lib/catalog-context";
 
 const visibleFieldLabels: Record<string, string> = {
   quimicos: "Tratamientos previos",
@@ -16,6 +17,7 @@ export function BookingSummaryDetails({
   data: SummaryData;
   personal: Personalization;
 }) {
+  const { categories, personalizationFields } = useCatalog();
   const category = categories.find((currentCategory) => currentCategory.id === data.category);
   const { dur, price, depositPrice, remainingPrice } = computeTotals(data);
   const fields = data.category ? personalizationFields[data.category] : [];

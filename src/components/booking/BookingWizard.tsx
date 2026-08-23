@@ -82,6 +82,7 @@ export function BookingWizard({
         data={wizard.data}
         onClose={wizard.closeAndClearDraft}
         wasDraftRestored={wizard.wasDraftRestored}
+        booking={wizard.confirmedBooking}
       />
     );
   }
@@ -147,7 +148,8 @@ export function BookingWizard({
                 time={wizard.time}
                 onChooseDate={wizard.chooseDate}
                 onChooseTime={wizard.setTime}
-                availabilityRequest={wizard.availabilityRequest}
+                slotsByDate={wizard.slotsByDate}
+                isLoadingAvailability={wizard.isLoadingAvailability}
               />
             )}
 

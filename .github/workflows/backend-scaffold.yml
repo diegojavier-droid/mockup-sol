@@ -73,6 +73,12 @@ jobs:
       - name: Typecheck backend
         run: bun run typecheck:server
 
+      - name: Typecheck frontend
+        run: bun run typecheck
+
+      - name: Run domain and behaviour tests
+        run: bun run test
+
       - name: Build frontend
         run: bun run build
 

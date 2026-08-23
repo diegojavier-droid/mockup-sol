@@ -1,6 +1,7 @@
-import { services, type CategoryId, type Service } from "@/lib/booking-data";
+import { type CategoryId, type Service } from "@/lib/booking-data";
 import { BookingServiceCard } from "../shared/BookingServiceCard";
 import { StepShell } from "../wizard/StepShell";
+import { useCatalog } from "@/lib/catalog-context";
 
 export function ServiceStep({
   category,
@@ -11,6 +12,7 @@ export function ServiceStep({
   service: Service | null;
   onChooseService: (service: Service) => void;
 }) {
+  const { services } = useCatalog();
   return (
     <StepShell title="Elegí tu servicio">
       <div className="grid gap-3 sm:grid-cols-2">

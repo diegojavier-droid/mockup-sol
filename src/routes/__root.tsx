@@ -10,6 +10,7 @@ import {
 import type { ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { CatalogProvider } from "@/lib/catalog-context";
 
 function NotFoundComponent() {
   return (
@@ -127,8 +128,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      {/* El catálogo real viaja por contexto: la base de datos es la
+          fuente de verdad y ningún componente vuelve a importar mocks. */}
+      <CatalogProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </CatalogProvider>
     </QueryClientProvider>
   );
 }
