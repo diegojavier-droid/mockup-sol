@@ -45,7 +45,27 @@ async function resolveIdentity(env: ServerEnv, token: string): Promise<StaffIden
   });
   if (rpcError) throw rpcError;
 
-  const row = (rows as { staff_id: string; display_name: string; role: string }[] | null)?.[0];
+  type StaffRow = { staff_id: string; display_name: string; role: string };
+  let row = (rows as StaffRow[] | null)?.[0];
+
+  // Arranque en frío: una instalación limpia no tiene ninguna fila de
+  // staff, así que nadie podría entrar nunca a configurar el sistema. La
+  // primera persona de la lista de acceso que inicie sesión queda como
+  // dueña; la función se cierra sola apenas existe alguien, de modo que
+  // esto no es un alta de usuarios sino un único arranque.
+  if (!row) {
+    const { data: provisioned, error: provisionError } = await admin.rpc(
+      "provision_initial_owner",
+      {
+        p_email: email,
+        p_display_name:
+          (data?.user?.user_metadata as { full_name?: string } | undefined)?.full_name ?? null,
+      },
+    );
+    if (provisionError) throw provisionError;
+    row = (provisioned as StaffRow[] | null)?.[0];
+  }
+
   if (!row) return null;
 
   return {
