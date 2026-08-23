@@ -28,6 +28,7 @@ export interface AgendaEntry {
   priceDisplayMode: string;
   depositAmount: number;
   customerNote: string | null;
+  station: { id: string; code: string; name: string } | null;
   customer: {
     id: string;
     firstName: string;
@@ -236,5 +237,64 @@ export function useDashboard(params: { from: string; to: string }) {
     queryKey: ["admin", "dashboard", search.toString()],
     queryFn: () => adminApi.get<DashboardSummary>(`/dashboard?${search.toString()}`),
     staleTime: 60_000,
+  });
+}
+
+export interface Station {
+  id: string;
+  area: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+  blockedUntil: string | null;
+  blockReason: string | null;
+}
+
+export function useStations(area?: string) {
+  const search = new URLSearchParams();
+  if (area) search.set("area", area);
+  return useQuery({
+    queryKey: ["admin", "stations", search.toString()],
+    queryFn: () => adminApi.get<Station[]>(`/stations?${search.toString()}`),
+    staleTime: 60_000,
+  });
+}
+
+export function useAssignStation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { bookingId: string; stationId: string | null }) =>
+      adminApi.post<{ ok: true }>(`/bookings/${input.bookingId}/station`, {
+        stationId: input.stationId,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin", "agenda"] });
+    },
+  });
+}
+
+export function useBlockStation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { stationId: string; startsAt: string; endsAt: string; reason: string }) =>
+      adminApi.post<{ id: string; displacedBookings: number; message: string | null }>(
+        `/stations/${input.stationId}/block`,
+        { startsAt: input.startsAt, endsAt: input.endsAt, reason: input.reason },
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin", "agenda"] });
+      void qc.invalidateQueries({ queryKey: ["admin", "stations"] });
+    },
+  });
+}
+
+export function useUnblockStation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (blockId: string) =>
+      adminApi.post<{ ok: true }>(`/stations/blocks/${blockId}/remove`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin", "stations"] });
+    },
   });
 }

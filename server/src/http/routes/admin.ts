@@ -22,7 +22,16 @@ import {
   TransitionError,
   updateBookingStatus,
 } from "../../lib/admin/repository";
-import { closeService, loadDashboardSummary, loadReconciliation } from "../../lib/admin/repository";
+import {
+  assignStation,
+  blockStation,
+  closeService,
+  listStations,
+  loadDashboardSummary,
+  loadReconciliation,
+  StationError,
+  unblockStation,
+} from "../../lib/admin/repository";
 import { listPendingLinks, resolvePendingLink } from "../../lib/identity/repository";
 import {
   createBooking,
@@ -257,6 +266,93 @@ export function createAdminRoute(env: ServerEnv) {
       }
       throw error;
     }
+  });
+
+  // ------------------------------------------------------------ estaciones
+  // ÁREA != ESTACIÓN: el mostrador necesita poder decir "a qué sillón" y
+  // "cuál está fuera de servicio". La asignación sigue siendo OPCIONAL
+  // (D-06): obligarla rompería el alta rápida.
+
+  route.get("/stations", async (c) => {
+    const schema = z.object({
+      area: z.string().min(1).max(64).optional(),
+      at: z.string().datetime({ offset: true }).optional(),
+    });
+    const parsed = schema.safeParse(c.req.query());
+    if (!parsed.success) throw new HTTPException(400, { message: "Consulta inválida." });
+
+    const stations = await listStations(createSupabaseAdminClient(env), {
+      area: parsed.data.area,
+      at: parsed.data.at ? new Date(parsed.data.at) : undefined,
+    });
+    return c.json({ data: stations });
+  });
+
+  route.post("/bookings/:id/station", async (c) => {
+    const schema = z.object({ stationId: z.string().uuid().nullable() });
+    const parsed = schema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) throw new HTTPException(400, { message: "Elegí una estación válida." });
+
+    try {
+      await assignStation(createSupabaseAdminClient(env), {
+        bookingId: c.req.param("id"),
+        stationId: parsed.data.stationId,
+      });
+    } catch (error) {
+      if (error instanceof StationError) {
+        throw new HTTPException(error.code === "not_found" ? 404 : 409, {
+          message:
+            error.code === "not_found"
+              ? "No encontramos ese turno o esa estación."
+              : error.code === "blocked"
+                ? "Esa estación está fuera de servicio en ese horario."
+                : "Esa estación no es del área del turno.",
+        });
+      }
+      throw error;
+    }
+    return c.json({ data: { ok: true } });
+  });
+
+  route.post("/stations/:id/block", async (c) => {
+    const schema = z.object({
+      startsAt: z.string().datetime({ offset: true }),
+      endsAt: z.string().datetime({ offset: true }),
+      reason: z.string().min(1).max(200),
+    });
+    const parsed = schema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) throw new HTTPException(400, { message: "Faltan datos del bloqueo." });
+
+    const startsAt = new Date(parsed.data.startsAt);
+    const endsAt = new Date(parsed.data.endsAt);
+    if (endsAt <= startsAt) throw new HTTPException(400, { message: "El rango está al revés." });
+
+    const result = await blockStation(createSupabaseAdminClient(env), {
+      stationId: c.req.param("id"),
+      startsAt,
+      endsAt,
+      reason: parsed.data.reason,
+      createdBy: c.get("staff").staffId,
+    });
+
+    return c.json({
+      data: {
+        ...result,
+        // Que el mostrador sepa a cuántas personas hay que reubicar: el
+        // turno no se cancela, se queda sin estación.
+        message:
+          result.displacedBookings === 0
+            ? null
+            : `${result.displacedBookings} ${
+                result.displacedBookings === 1 ? "turno quedó" : "turnos quedaron"
+              } sin estación asignada. Siguen en la agenda: hay que reubicarlos.`,
+      },
+    });
+  });
+
+  route.post("/stations/blocks/:blockId/remove", async (c) => {
+    await unblockStation(createSupabaseAdminClient(env), c.req.param("blockId"));
+    return c.json({ data: { ok: true } });
   });
 
   /**

@@ -7,9 +7,17 @@
  */
 
 import { useMemo, useState } from "react";
-import { useAgenda, useAreas, useMarkNoShow, type AgendaEntry } from "@/lib/api/admin-hooks";
+import {
+  useAgenda,
+  useAreas,
+  useAssignStation,
+  useMarkNoShow,
+  useStations,
+  type AgendaEntry,
+} from "@/lib/api/admin-hooks";
 import { NewBookingDialog } from "./NewBookingDialog";
 import { CloseServiceDialog } from "./CloseServiceDialog";
+import { StationsDialog } from "./StationsDialog";
 
 type Range = "hoy" | "manana" | "semana";
 
@@ -68,6 +76,7 @@ export function AgendaScreen() {
   const [pickedDate, setPickedDate] = useState<string>("");
   const [area, setArea] = useState<string>("");
   const [creating, setCreating] = useState(false);
+  const [managingStations, setManagingStations] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const cfg = RANGES.find((r) => r.id === range)!;
@@ -99,13 +108,22 @@ export function AgendaScreen() {
               : `${entries.length} ${entries.length === 1 ? "turno" : "turnos"}`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          className="rounded-full bg-primary px-5 py-2.5 font-serif text-sm text-primary-foreground shadow-sm transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          + Nuevo turno
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setManagingStations(true)}
+            className="rounded-full border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:border-champagne"
+          >
+            Estaciones
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="rounded-full bg-primary px-5 py-2.5 font-serif text-sm text-primary-foreground shadow-sm transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            + Nuevo turno
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-wrap gap-2">
@@ -198,6 +216,8 @@ export function AgendaScreen() {
         </section>
       ))}
 
+      {managingStations && <StationsDialog onClose={() => setManagingStations(false)} />}
+
       {creating && (
         <NewBookingDialog
           onClose={() => setCreating(false)}
@@ -245,6 +265,7 @@ function BookingRow({
 }) {
   const [confirmingNoShow, setConfirmingNoShow] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [assigning, setAssigning] = useState(false);
   const noShow = useMarkNoShow();
   const open = entry.status === "confirmed" || entry.status === "pending_payment";
 
@@ -283,12 +304,25 @@ function BookingRow({
             Seña retenida
           </span>
         )}
+        {entry.station && (
+          <span className="rounded-full border border-current/25 px-2 py-0.5 opacity-80">
+            {entry.station.name}
+          </span>
+        )}
       </div>
 
       {open && (
         <div className="mt-3 flex flex-wrap gap-2 border-t border-current/10 pt-2.5">
           {entry.status === "confirmed" && (
             <RowAction onClick={() => setClosing(true)}>Cerrar atención</RowAction>
+          )}
+
+          {assigning ? (
+            <StationPicker entry={entry} onDone={() => setAssigning(false)} />
+          ) : (
+            <RowAction onClick={() => setAssigning(true)}>
+              {entry.station ? "Cambiar estación" : "Asignar estación"}
+            </RowAction>
           )}
 
           {confirmingNoShow ? (
@@ -359,5 +393,57 @@ function RowAction({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Elegir sillón para un turno.
+ *
+ * "Sin asignar" es una opción de primera clase, no un estado de error:
+ * la asignación es opcional (D-06) y el motor razona por capacidad de
+ * área mientras no la haya.
+ */
+function StationPicker({ entry, onDone }: { entry: AgendaEntry; onDone: () => void }) {
+  const stations = useStations(entry.area);
+  const assign = useAssignStation();
+  const [error, setError] = useState<string | null>(null);
+
+  const usable = (stations.data ?? []).filter((s) => s.isActive);
+
+  return (
+    <div className="flex w-full flex-wrap items-center gap-2">
+      {stations.isPending && <span className="text-xs opacity-70">Buscando estaciones…</span>}
+      {usable.map((s) => (
+        <RowAction
+          key={s.id}
+          disabled={assign.isPending || Boolean(s.blockedUntil)}
+          onClick={() => {
+            setError(null);
+            assign.mutate(
+              { bookingId: entry.id, stationId: s.id },
+              { onSuccess: onDone, onError: (e) => setError((e as Error).message) },
+            );
+          }}
+        >
+          {s.blockedUntil ? `${s.name} · fuera de servicio` : s.name}
+        </RowAction>
+      ))}
+      {entry.station && (
+        <RowAction
+          disabled={assign.isPending}
+          onClick={() => {
+            setError(null);
+            assign.mutate(
+              { bookingId: entry.id, stationId: null },
+              { onSuccess: onDone, onError: (e) => setError((e as Error).message) },
+            );
+          }}
+        >
+          Sin asignar
+        </RowAction>
+      )}
+      <RowAction onClick={onDone}>Cerrar</RowAction>
+      {error && <span className="w-full text-xs text-destructive">{error}</span>}
+    </div>
   );
 }

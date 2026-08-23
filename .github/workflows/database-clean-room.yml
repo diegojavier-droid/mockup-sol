@@ -572,6 +572,91 @@ jobs:
 
           echo "V4.1 resource invariants OK"
 
+      - name: Verify out-of-service stations reduce enforced capacity
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_day date := (current_date + 30);
+            v_svc text; v_items jsonb; v_res uuid; v_area uuid; r jsonb; i int; v_id uuid;
+            v_from timestamptz; v_to timestamptz;
+          begin
+            select id into v_area from public.areas where slug = 'peluqueria';
+            v_from := (v_day::text || ' 10:00-03')::timestamptz;
+            v_to   := (v_day::text || ' 11:00-03')::timestamptz;
+
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules r2
+                 join public.personalization_fields f on f.id = r2.field_id
+                where r2.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','Prueba','price_amount',20000,'duration_min',60,'process_min',0,'setup_min',0));
+
+            r := public.check_capacity('peluqueria', v_from, v_to);
+            if (r->>'capacity')::int <> 5 then
+              raise exception 'sin bloqueos la capacidad debe ser 5, dio %', r->>'capacity';
+            end if;
+
+            -- `effective_area_capacity` existía y no la llamaba nadie: sin
+            -- esto, un sillón roto no reducía la disponibilidad y el salón
+            -- seguía tomando 5 turnos simultáneos con 4 puestos usables.
+            select id into v_res from public.resources where area_id = v_area and code = 'P1';
+            insert into public.resource_blocks (resource_id, starts_at, ends_at, reason)
+            values (v_res, v_from - interval '1 hour', v_to + interval '1 hour', 'Sillón roto');
+
+            r := public.check_capacity('peluqueria', v_from, v_to);
+            if (r->>'capacity')::int <> 4 then
+              raise exception 'una estación fuera de servicio debe dejar capacidad 4, dio %',
+                r->>'capacity';
+            end if;
+
+            for i in 1..4 loop
+              perform public.create_booking('peluqueria', v_from, v_to, 60,
+                'fixed', 20000, 20000, 0.30, 6000,
+                format('{"first_name":"K%s","phone_e164":"+54934259100%s"}', i, i)::jsonb,
+                v_items, null, 'manual');
+            end loop;
+
+            -- El quinto NO entra: no hay sillón libre.
+            begin
+              perform public.create_booking('peluqueria', v_from, v_to, 60,
+                'fixed', 20000, 20000, 0.30, 6000,
+                '{"first_name":"K5","phone_e164":"+5493425910099"}'::jsonb,
+                v_items, null, 'manual');
+              raise exception 'GATE ROTO: entró un quinto turno con sólo cuatro puestos usables';
+            exception when raise_exception then
+              if position('GATE ROTO' in sqlerrm) > 0 then raise; end if;
+            end;
+
+            -- La excepción explícita sigue siendo posible, y queda registrada.
+            v_id := (public.create_booking('peluqueria', v_from, v_to, 60,
+              'fixed', 20000, 20000, 0.30, 6000,
+              '{"first_name":"K6","phone_e164":"+5493425910088"}'::jsonb,
+              v_items, null, 'manual', null, 'ci', true, 'La clienta ya está en el salón')->>'id')::uuid;
+            if not (select created_via_override from public.bookings where id = v_id) then
+              raise exception 'el override debería quedar registrado';
+            end if;
+
+            -- Reparada la estación, la capacidad vuelve sola.
+            delete from public.resource_blocks where resource_id = v_res;
+            r := public.check_capacity('peluqueria', v_from, v_to);
+            if (r->>'capacity')::int <> 5 then
+              raise exception 'al reparar la estación la capacidad debe volver a 5, dio %',
+                r->>'capacity';
+            end if;
+
+            delete from public.payments where booking_id in
+              (select id from public.bookings where starts_at = v_from);
+            delete from public.bookings where starts_at = v_from;
+          end $$;
+          SQL
+
+          echo "effective-capacity invariants OK"
+
       - name: Verify V4.1 dashboard
         run: |
           set -euo pipefail
