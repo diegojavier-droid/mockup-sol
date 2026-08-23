@@ -22,6 +22,7 @@ import {
   TransitionError,
   updateBookingStatus,
 } from "../../lib/admin/repository";
+import { closeService, loadReconciliation } from "../../lib/admin/repository";
 import {
   createBooking,
   checkCapacity,
@@ -54,6 +55,20 @@ function capacityConflictMessage(check: CapacityCheck): string {
     return `Ese horario ya está completo${donde}: ${check.peak} de ${check.capacity} lugares ocupados. Podés crear el turno igualmente.`;
   }
   return "Ese horario supera la disponibilidad configurada. Podés crear el turno igualmente.";
+}
+
+/**
+ * Qué falta, dicho por su nombre. "Falta un dato" obliga a adivinar cuál,
+ * y quien lo lee está con una clienta enfrente.
+ */
+function quoteErrorMessage(code: string): string {
+  const messages: Record<string, string> = {
+    length_required: "Este servicio cobra según el largo del pelo: elegí uno.",
+    tier_not_found: "No tenemos precio cargado para ese largo. Revisalo en Configuración.",
+    unknown_option: "Una de las opciones elegidas ya no existe en el catálogo.",
+    service_not_quotable: "Ese servicio todavía no tiene precio cargado.",
+  };
+  return messages[code] ?? "Falta un dato para calcular el turno.";
 }
 
 export function createAdminRoute(env: ServerEnv) {
@@ -154,6 +169,139 @@ export function createAdminRoute(env: ServerEnv) {
   });
 
   /**
+   * Cerrar la atención. Pasa con la clienta todavía en el salón, así que
+   * sólo tres cosas son obligatorias: qué se hizo, cuánto se acordó y
+   * cuánto entró. Todo lo demás es opcional.
+   */
+  route.post("/bookings/:id/close", async (c) => {
+    const schema = z.object({
+      finalPrice: z.number().int().min(0),
+      servicesDone: z.string().max(400).optional(),
+      staffId: z.string().uuid().nullish(),
+      durationMin: z.number().int().min(1).max(1440).nullish(),
+      formula: z.string().max(2000).optional(),
+      // NULL es un valor válido y significa "no sabemos". Nunca se estima.
+      costAmount: z.number().int().min(0).nullish(),
+      observation: z.string().max(1000).optional(),
+      payments: z
+        .array(
+          z.object({
+            amount: z.number().int().min(1),
+            method: z.enum(["efectivo", "transferencia", "mercado_pago", "otro"]),
+            kind: z.enum(["deposit", "balance", "adjustment"]).default("balance"),
+            note: z.string().max(200).optional(),
+          }),
+        )
+        .max(10)
+        .default([]),
+    });
+    const parsed = schema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) throw new HTTPException(400, { message: "Revisá los datos del cierre." });
+    const staff = c.get("staff");
+
+    try {
+      const result = await closeService(createSupabaseAdminClient(env), {
+        bookingId: c.req.param("id"),
+        ...parsed.data,
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      });
+      const parts = [`Atención cerrada por $${result.final_price.toLocaleString("es-AR")}.`];
+      if (result.outstanding > 0) {
+        parts.push(`Queda un saldo de $${result.outstanding.toLocaleString("es-AR")}.`);
+      }
+      return c.json({ data: { ...result, message: parts.join(" ") } });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      if (code.includes("booking_not_found")) {
+        throw new HTTPException(404, { message: "No encontramos ese turno." });
+      }
+      if (code.includes("not_closable")) {
+        throw new HTTPException(409, {
+          message: "Ese turno no se puede cerrar: fue cancelado o marcado como ausencia.",
+        });
+      }
+      throw error;
+    }
+  });
+
+  /**
+   * Conciliación con el Excel. Dos meses comparando totales, no
+   * recargando datos a mano.
+   */
+  route.get("/reconciliation", async (c) => {
+    const schema = z.object({
+      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      format: z.enum(["json", "csv"]).default("json"),
+    });
+    const parsed = schema.safeParse(c.req.query());
+    if (!parsed.success) throw new HTTPException(400, { message: "Indicá desde y hasta." });
+
+    const from = new Date(`${parsed.data.from}T00:00:00${SALON_TZ}`);
+    const to = new Date(`${parsed.data.to}T00:00:00${SALON_TZ}`);
+    to.setUTCDate(to.getUTCDate() + 1);
+
+    const rows = await loadReconciliation(createSupabaseAdminClient(env), { from, to });
+
+    if (parsed.data.format === "csv") {
+      const cols = [
+        "starts_at",
+        "area",
+        "channel",
+        "customer",
+        "customer_phone",
+        "status",
+        "estimated_amount",
+        "final_amount",
+        "collected_amount",
+        "outstanding_amount",
+        "payment_methods",
+        "cost_amount",
+        "margin_amount",
+        "deposit_status",
+        "attended_by",
+      ] as const;
+      const esc = (v: unknown) =>
+        v === null || v === undefined ? "" : `"${String(v).replace(/"/g, '""')}"`;
+      const csv = [
+        cols.join(","),
+        ...rows.map((r) => cols.map((k) => esc(r[k as keyof typeof r])).join(",")),
+      ].join("\n");
+      return c.body(csv, 200, {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": `attachment; filename="sol-mai-${parsed.data.from}_${parsed.data.to}.csv"`,
+      });
+    }
+
+    const totals = rows.reduce(
+      (acc, r) => ({
+        estimated: acc.estimated + (r.estimated_amount ?? 0),
+        final: acc.final + (r.final_amount ?? 0),
+        collected: acc.collected + (r.collected_amount ?? 0),
+        outstanding: acc.outstanding + (r.outstanding_amount ?? 0),
+      }),
+      { estimated: 0, final: 0, collected: 0, outstanding: 0 },
+    );
+    // El margen sólo se informa sobre las atenciones que tienen costo.
+    const withCost = rows.filter((r) => r.margin_amount !== null);
+    return c.json({
+      data: {
+        rows,
+        totals,
+        margin:
+          withCost.length === 0
+            ? { available: false, coverage: 0, amount: null }
+            : {
+                available: true,
+                coverage: withCost.length,
+                amount: withCost.reduce((a, r) => a + (r.margin_amount ?? 0), 0),
+              },
+      },
+    });
+  });
+
+  /**
    * Qué pasa si se crea un turno en este horario. Se consulta ANTES de
    * intentar, para poder advertir con números en vez de fallar.
    */
@@ -222,7 +370,7 @@ export function createAdminRoute(env: ServerEnv) {
       });
     } catch (error) {
       if (error instanceof QuoteError) {
-        throw new HTTPException(422, { message: "Falta un dato para calcular el turno." });
+        throw new HTTPException(422, { message: quoteErrorMessage(error.code) });
       }
       throw error;
     }

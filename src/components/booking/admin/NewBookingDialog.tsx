@@ -16,7 +16,17 @@ import {
   useCustomerSearch,
   type BookingSource,
 } from "@/lib/api/admin-hooks";
+import { useServiceDetail } from "@/lib/api/booking-hooks";
+import type { LengthTier } from "@/lib/api/catalog-types";
 import { useCatalog } from "@/lib/catalog-context";
+
+const LENGTH_LABEL: Record<string, string> = {
+  corto: "Corto",
+  medio: "Media melena",
+  largo: "Largo",
+  xl: "Muy largo",
+  unico: "Único",
+};
 
 const CHANNELS: { id: Exclude<BookingSource, "online">; label: string }[] = [
   { id: "walk_in", label: "Sin turno" },
@@ -45,23 +55,34 @@ export function NewBookingDialog({
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
   const [search, setSearch] = useState("");
+  const [lengthTier, setLengthTier] = useState<LengthTier | "">("");
   const [conflict, setConflict] = useState<string | null>(null);
   const [overrideReason, setOverrideReason] = useState("");
 
   const hits = useCustomerSearch(search);
   const create = useCreateInternalBooking();
+  // Igual que en el flujo público: se pregunta sólo lo que ESE servicio
+  // necesita. La mayoría de Peluquería cobra por largo y sin ese dato el
+  // backend no puede cotizar.
+  const detail = useServiceDetail(serviceSlug || null);
+  const lengthOptions = (detail.data?.tiers ?? [])
+    .map((t) => t.lengthTier)
+    .filter((t): t is LengthTier => Boolean(t) && t !== "unico");
+  const needsLength = lengthOptions.length > 1;
 
   const services = categories.flatMap((c) =>
     (servicesByCategory[c.id] ?? []).map((s) => ({ slug: s.id, name: s.name, area: c.name })),
   );
 
-  const canSubmit = serviceSlug && firstName.trim() && phone.trim() && when;
+  const canSubmit =
+    serviceSlug && firstName.trim() && phone.trim() && when && (!needsLength || lengthTier);
 
   function submit(withOverride: boolean) {
     setConflict(null);
     create.mutate(
       {
         serviceSlug,
+        lengthTier: lengthTier || null,
         startsAt: `${when}:00-03:00`,
         customer: { firstName: firstName.trim(), phone: phone.trim() },
         note: note.trim() || undefined,
@@ -161,7 +182,10 @@ export function NewBookingDialog({
         <Field label="Servicio">
           <select
             value={serviceSlug}
-            onChange={(e) => setServiceSlug(e.target.value)}
+            onChange={(e) => {
+              setServiceSlug(e.target.value);
+              setLengthTier("");
+            }}
             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="">Elegir…</option>
@@ -172,6 +196,31 @@ export function NewBookingDialog({
             ))}
           </select>
         </Field>
+
+        {needsLength && (
+          <Field label="Largo del pelo">
+            <div className="flex flex-wrap gap-2">
+              {lengthOptions.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setLengthTier(t)}
+                  aria-pressed={lengthTier === t}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    lengthTier === t
+                      ? "border-champagne-deep bg-champagne/40 text-foreground"
+                      : "border-border text-muted-foreground hover:border-champagne"
+                  }`}
+                >
+                  {LENGTH_LABEL[t] ?? t}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Este servicio cobra distinto según el largo.
+            </p>
+          </Field>
+        )}
 
         <Field label="Cuándo">
           <input

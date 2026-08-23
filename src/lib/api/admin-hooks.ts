@@ -166,3 +166,35 @@ export function useCustomerSearch(term: string) {
     staleTime: 30_000,
   });
 }
+
+export type PaymentMethod = "efectivo" | "transferencia" | "mercado_pago" | "otro";
+
+export interface CloseServiceInput {
+  bookingId: string;
+  finalPrice: number;
+  servicesDone?: string;
+  staffId?: string | null;
+  durationMin?: number | null;
+  formula?: string;
+  /** NULL es válido y significa "no sabemos". Nunca se estima. */
+  costAmount?: number | null;
+  observation?: string;
+  payments?: { amount: number; method: PaymentMethod; kind?: string; note?: string }[];
+}
+
+export function useCloseService() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, ...body }: CloseServiceInput) =>
+      adminApi.post<{
+        booking_id: string;
+        status: string;
+        final_price: number;
+        estimated: number;
+        collected: number;
+        outstanding: number;
+        message: string;
+      }>(`/bookings/${bookingId}/close`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "agenda"] }),
+  });
+}

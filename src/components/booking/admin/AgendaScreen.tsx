@@ -7,14 +7,9 @@
  */
 
 import { useMemo, useState } from "react";
-import {
-  useAgenda,
-  useAreas,
-  useMarkNoShow,
-  useUpdateBookingStatus,
-  type AgendaEntry,
-} from "@/lib/api/admin-hooks";
+import { useAgenda, useAreas, useMarkNoShow, type AgendaEntry } from "@/lib/api/admin-hooks";
 import { NewBookingDialog } from "./NewBookingDialog";
+import { CloseServiceDialog } from "./CloseServiceDialog";
 
 type Range = "hoy" | "manana" | "semana";
 
@@ -249,8 +244,8 @@ function BookingRow({
   onFeedback: (msg: string) => void;
 }) {
   const [confirmingNoShow, setConfirmingNoShow] = useState(false);
+  const [closing, setClosing] = useState(false);
   const noShow = useMarkNoShow();
-  const status = useUpdateBookingStatus();
   const open = entry.status === "confirmed" || entry.status === "pending_payment";
 
   return (
@@ -293,17 +288,7 @@ function BookingRow({
       {open && (
         <div className="mt-3 flex flex-wrap gap-2 border-t border-current/10 pt-2.5">
           {entry.status === "confirmed" && (
-            <RowAction
-              onClick={() =>
-                status.mutate(
-                  { bookingId: entry.id, status: "attended" },
-                  { onSuccess: () => onFeedback("Turno marcado como atendido.") },
-                )
-              }
-              disabled={status.isPending}
-            >
-              Atendida
-            </RowAction>
+            <RowAction onClick={() => setClosing(true)}>Cerrar atención</RowAction>
           )}
 
           {confirmingNoShow ? (
@@ -334,6 +319,17 @@ function BookingRow({
             <RowAction onClick={() => setConfirmingNoShow(true)}>No vino</RowAction>
           )}
         </div>
+      )}
+
+      {closing && (
+        <CloseServiceDialog
+          entry={entry}
+          onClose={() => setClosing(false)}
+          onClosed={(msg) => {
+            setClosing(false);
+            onFeedback(msg);
+          }}
+        />
       )}
     </article>
   );

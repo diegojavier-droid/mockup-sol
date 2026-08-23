@@ -115,6 +115,20 @@ function bookingHttpError(code: string): HTTPException {
   return new HTTPException(mapped.status, { message: mapped.message });
 }
 
+/**
+ * Qué falta, dicho por su nombre. "Falta un dato" obliga a adivinar cuál,
+ * y quien lo lee está con una clienta enfrente.
+ */
+function quoteErrorMessage(code: string): string {
+  const messages: Record<string, string> = {
+    length_required: "Este servicio cobra según el largo del pelo: elegí uno.",
+    tier_not_found: "No tenemos precio cargado para ese largo. Revisalo en Configuración.",
+    unknown_option: "Una de las opciones elegidas ya no existe en el catálogo.",
+    service_not_quotable: "Ese servicio todavía no tiene precio cargado.",
+  };
+  return messages[code] ?? "Falta un dato para calcular el turno.";
+}
+
 export function createBookingsRoute(env: ServerEnv) {
   const route = new Hono();
 
@@ -157,7 +171,7 @@ export function createBookingsRoute(env: ServerEnv) {
       });
     } catch (error) {
       if (error instanceof QuoteError) {
-        throw new HTTPException(422, { message: "Falta un dato para calcular el turno." });
+        throw new HTTPException(422, { message: quoteErrorMessage(error.code) });
       }
       throw error;
     }

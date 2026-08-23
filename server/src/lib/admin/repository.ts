@@ -373,3 +373,93 @@ export async function recordExecution(
   );
   if (error) throw error;
 }
+
+// ---------------------------------------------------------------------
+// Cierre de atención y conciliación
+// ---------------------------------------------------------------------
+
+export interface ClosePaymentLine {
+  amount: number;
+  method: "efectivo" | "transferencia" | "mercado_pago" | "otro";
+  kind?: "deposit" | "balance" | "adjustment";
+  note?: string | null;
+}
+
+export interface CloseServiceParams {
+  bookingId: string;
+  finalPrice: number;
+  servicesDone?: string | null;
+  staffId?: string | null;
+  durationMin?: number | null;
+  formula?: string | null;
+  costAmount?: number | null;
+  observation?: string | null;
+  payments?: ClosePaymentLine[];
+  actorId?: string | null;
+  actorLabel?: string | null;
+}
+
+export interface CloseServiceResult {
+  booking_id: string;
+  status: string;
+  final_price: number;
+  estimated: number;
+  collected: number;
+  outstanding: number;
+}
+
+export async function closeService(
+  admin: SupabaseAdminClient,
+  params: CloseServiceParams,
+): Promise<CloseServiceResult> {
+  const { data, error } = await admin.rpc("close_service", {
+    p_booking_id: params.bookingId,
+    p_final_price: params.finalPrice,
+    p_services_done: params.servicesDone ?? null,
+    p_staff_id: params.staffId ?? null,
+    p_duration_min: params.durationMin ?? null,
+    p_formula: params.formula ?? null,
+    p_cost_amount: params.costAmount ?? null,
+    p_observation: params.observation ?? null,
+    p_payments: params.payments ?? [],
+    p_actor_id: params.actorId ?? null,
+    p_actor_label: params.actorLabel ?? null,
+  });
+  if (error) throw error;
+  return data as CloseServiceResult;
+}
+
+export interface ReconciliationRow {
+  booking_id: string;
+  starts_at: string;
+  area: string;
+  channel: string;
+  customer: string;
+  customer_phone: string;
+  status: string;
+  estimated_amount: number;
+  final_amount: number | null;
+  collected_amount: number;
+  outstanding_amount: number;
+  payment_methods: string | null;
+  cost_amount: number | null;
+  /** NULL significa NO DISPONIBLE: sin costo cargado no se estima margen. */
+  margin_amount: number | null;
+  deposit_status: string;
+  attended_by: string | null;
+  closed_at: string | null;
+}
+
+export async function loadReconciliation(
+  admin: SupabaseAdminClient,
+  params: { from: Date; to: Date },
+): Promise<ReconciliationRow[]> {
+  const { data, error } = await admin
+    .from("reconciliation_report")
+    .select("*")
+    .gte("starts_at", params.from.toISOString())
+    .lt("starts_at", params.to.toISOString())
+    .order("starts_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as ReconciliationRow[];
+}
