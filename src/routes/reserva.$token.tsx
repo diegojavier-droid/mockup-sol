@@ -11,7 +11,8 @@
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useBooking, useDepositCheckout } from "@/lib/api/booking-hooks";
+import { useState } from "react";
+import { useBooking, useCancelBooking, useDepositCheckout } from "@/lib/api/booking-hooks";
 import { formatPrice } from "@/lib/catalog-context";
 
 export const Route = createFileRoute("/reserva/$token")({
@@ -63,10 +64,31 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Qué se le advierte antes de cancelar, según lo que realmente está en
+ * juego. Hablarle de reintegros a quien nunca pagó la seña suena a
+ * penalidad por dinero que no entregó.
+ */
+function cancellationWarning(booking: {
+  status: string;
+  startsAt: string;
+  depositAmount: number;
+}): string {
+  if (booking.status === "pending_payment" || booking.depositAmount === 0) {
+    return "¿Confirmás que querés cancelar? No abonaste la seña, así que no hay nada pendiente.";
+  }
+  const hoursAhead = (new Date(booking.startsAt).getTime() - Date.now()) / 3_600_000;
+  return hoursAhead >= 24
+    ? "¿Confirmás que querés cancelar? Como faltan más de 24 horas, te devolvemos la seña."
+    : "¿Confirmás que querés cancelar? Falta menos de 24 horas, así que la seña no se reintegra.";
+}
+
 function BookingStatus() {
   const { token } = Route.useParams();
-  const { data: booking, isLoading, isError } = useBooking(token);
+  const { data: booking, isLoading, isError, refetch } = useBooking(token);
   const checkout = useDepositCheckout();
+  const cancel = useCancelBooking();
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   if (isLoading) {
     return (
@@ -156,12 +178,58 @@ function BookingStatus() {
         </p>
       )}
 
-      {booking.status === "cancelled" && (
+      {booking.status === "cancelled" && !cancel.isSuccess && (
         <p className="text-sm text-muted-foreground">
           {booking.refundDue
             ? "Te devolvemos la seña."
             : "Si te quedó alguna duda, escribinos y lo vemos."}
         </p>
+      )}
+
+      {/* El backend distingue tres situaciones (seña devuelta, seña perdida,
+          seña nunca abonada). Se muestra fuera del bloque de cancelación
+          porque al refrescar el estado ese bloque deja de existir. */}
+      {cancel.isSuccess && <p className="text-sm text-foreground/80">{cancel.data.message}</p>}
+
+      {/* Cancelar. La regla de 24 h se dice ANTES de decidir, no después:
+          enterarse de que se pierde la seña una vez cancelado es la peor
+          forma de descubrirlo. */}
+      {(booking.status === "confirmed" || booking.status === "pending_payment") && (
+        <div className="mt-8 border-t border-border pt-5">
+          {confirmingCancel ? (
+            <div className="space-y-3">
+              <p className="text-sm text-foreground/80">{cancellationWarning(booking)}</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={cancel.isPending}
+                  onClick={() => cancel.mutate({ token }, { onSuccess: () => void refetch() })}
+                  className="flex-1 rounded-full border border-destructive/40 px-4 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/5 disabled:opacity-60"
+                >
+                  {cancel.isPending ? "Cancelando…" : "Sí, cancelar el turno"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingCancel(false)}
+                  className="flex-1 rounded-full border border-border px-4 py-2.5 text-sm text-foreground transition-colors hover:border-champagne"
+                >
+                  Mejor no
+                </button>
+              </div>
+              {cancel.isError && (
+                <p className="text-sm text-destructive">{(cancel.error as Error).message}</p>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingCancel(true)}
+              className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            >
+              Cancelar mi turno
+            </button>
+          )}
+        </div>
       )}
     </Shell>
   );
