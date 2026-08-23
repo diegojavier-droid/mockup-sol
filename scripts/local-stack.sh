@@ -72,27 +72,56 @@ jwt-secret = "$JWT_SECRET"
 server-port = $PGRST_PORT
 EOF
 
-    cat > "$RUN_DIR/shim.ts" <<EOF
+    # Heredoc citado: el shim no se interpola desde bash. Escapar acentos
+    # graves acá adentro genera TypeScript inválido, así que los puertos
+    # entran por entorno.
+    cat > "$RUN_DIR/shim.ts" <<'EOF'
 // Maps supabase-js /rest/v1/* onto plain PostgREST.
+const SHIM_PORT = Number(Bun.env.SOLMAI_SHIM_PORT ?? "54321");
+const PGRST_PORT = Number(Bun.env.SOLMAI_PGRST_PORT ?? "3010");
+
 Bun.serve({
-  port: $SHIM_PORT,
+  port: SHIM_PORT,
   async fetch(req) {
     const url = new URL(req.url);
     if (!url.pathname.startsWith("/rest/v1")) return new Response("not implemented", { status: 501 });
-    const target = "http://127.0.0.1:$PGRST_PORT" + url.pathname.replace("/rest/v1", "") + url.search;
+    const target =
+      "http://127.0.0.1:" + PGRST_PORT + url.pathname.replace("/rest/v1", "") + url.search;
     const headers = new Headers(req.headers);
     const apikey = headers.get("apikey");
-    if (apikey && !headers.get("authorization")) headers.set("authorization", \\\`Bearer \\\${apikey}\\\`);
+    if (apikey && !headers.get("authorization")) headers.set("authorization", "Bearer " + apikey);
     return fetch(target, { method: req.method, headers, body: req.body, redirect: "manual" });
   },
 });
 EOF
 
+    if ! command -v postgrest >/dev/null 2>&1; then
+      echo "postgrest no está instalado: sin él el stack arranca a medias y" >&2
+      echo "los errores aparecen recién al primer request del API." >&2
+      echo "Instalalo desde https://github.com/PostgREST/postgrest/releases" >&2
+      exit 1
+    fi
+
     pkill -f "[p]ostgrest $RUN_DIR" >/dev/null 2>&1 || true
     pkill -f "[s]him.ts" >/dev/null 2>&1 || true
     (postgrest "$RUN_DIR/postgrest.conf" > "$RUN_DIR/postgrest.log" 2>&1 &)
-    (bun run "$RUN_DIR/shim.ts" > "$RUN_DIR/shim.log" 2>&1 &)
-    sleep 2
+    (SOLMAI_SHIM_PORT="$SHIM_PORT" SOLMAI_PGRST_PORT="$PGRST_PORT" \
+       bun run "$RUN_DIR/shim.ts" > "$RUN_DIR/shim.log" 2>&1 &)
+    for _ in $(seq 1 20); do
+      if curl -fsS "http://127.0.0.1:$SHIM_PORT/rest/v1/categories?select=slug&limit=1" \
+           -H "apikey: $(bun -e 'console.log(JSON.parse(await Bun.file(process.env.RUN_DIR + "/keys.json").text()).anon)' RUN_DIR="$RUN_DIR" 2>/dev/null)" \
+           >/dev/null 2>&1; then
+        break
+      fi
+      sleep 1
+    done
+
+    if ! curl -fsS "http://127.0.0.1:$SHIM_PORT/rest/v1/" >/dev/null 2>&1; then
+      echo "el shim no responde en :$SHIM_PORT — revisá $RUN_DIR/shim.log y $RUN_DIR/postgrest.log" >&2
+      tail -5 "$RUN_DIR/shim.log" "$RUN_DIR/postgrest.log" 2>/dev/null >&2 || true
+      exit 1
+    fi
+
     echo "== stack up · PostgREST :$PGRST_PORT · shim :$SHIM_PORT"
     echo "   eval \"\$(scripts/local-stack.sh env)\" to configure the API"
     ;;
