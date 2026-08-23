@@ -62,21 +62,23 @@ Este documento es la fuente de verdad vigente para alinear producto, diseño y d
 
 Los siguientes elementos existen para simular o validar la experiencia, pero no deben interpretarse como integración productiva real:
 
-- Clientas recurrentes por WhatsApp/email: hay reconocimiento local/mock para probar el comportamiento, no un CRM real.
-- Payload de reserva: se construye y valida localmente como contrato funcional, pero no se envía a un backend real.
-- Estado `pending_payment`: representa el estado esperado del flujo, pero hoy no confirma pagos reales ni persistencia productiva.
 - Datos de catálogo: servicios, categorías, extras, reglas y precios son datos locales/mock hasta validación definitiva con Sol.
 - Los precios base de Depilación se cargan como seed/mock desde el archivo operativo `precios.xlsx` y no deben tratarse como precios hardcodeados definitivos.
-- Disponibilidad: agenda, horarios, bloqueos y turnos existentes son mock/locales.
-- No hay CRM real integrado.
-- No hay backend productivo integrado al flujo público.
-- No hay pago real integrado para cobrar o acreditar la seña.
-- Mercado Pago se muestra con un link ficticio temporal centralizado en configuración; el link real se reemplazará cuando Sol Mai lo tenga.
-- No hay API real de email, WhatsApp ni Mercado Pago: esas integraciones quedan como evolución backend futura.
+- Duraciones, tiempos de proceso y setup fuera de Depilación son `industry_baseline` con `confidence: low`: existen para que el sistema funcione, no porque Sol los haya validado. `GET /admin/pending-values` los lista.
+- Capacidad de Maquillaje y Uñas: sin validar, así que ambas áreas quedan con `is_bookable_online = false`.
+- No hay cobro real de la seña: sin credenciales de Mercado Pago el backend responde `checkoutUrl: null` y el salón coordina la seña, en vez de simular un pago.
+- No hay envío real de confirmaciones ni recordatorios por email o WhatsApp.
+- El deploy a Cloudflare y la migración al Supabase propio siguen pendientes de credenciales del propietario.
 
 ## Infraestructura ya validada
 
 - Existe backend Hono con endpoints de catálogo contra PostgreSQL/Supabase real de desarrollo.
+- El flujo público de reserva persiste en PostgreSQL: `POST /api/v1/bookings` recalcula precio y duración en el backend y crea la reserva por RPC transaccional. El navegador nunca envía importes ni confirma pagos.
+- Precio, duración y disponibilidad se calculan sólo en el backend. El frontend consume el catálogo real por API; el mock quedó fuera del flujo y hay un guard de CI que falla si un componente vuelve a importarlo.
+- La capacidad se controla por concurrencia pico sobre el área, serializada con `pg_advisory_xact_lock` por (área, día).
+- El horario pedido se valida contra la misma grilla que publica `/availability`: el canal público no puede reservar fuera de horario, fuera de grilla ni más allá de la anticipación máxima. El canal `manual` del salón sí puede, porque es su agenda.
+- Reservar no autoriza a editar la ficha de otra clienta: desde el canal público los datos ya cargados no se pisan, sólo se completan los que faltan.
+- Existe panel interno con agenda, ficha de clienta y configuración de precios, tiempos y horarios, protegido por Supabase Auth + lista de acceso + `staff_members` con rol.
 - `supabase/migrations/` es la fuente canónica del schema.
 - El migration ledger fue reconciliado con las versiones canónicas del repo.
 - RLS pública e integridad relacional del catálogo fueron verificadas contra PostgreSQL real.
@@ -119,7 +121,7 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - GitHub gobierna el código versionado y CI.
 - La plataforma de build/hosting objetivo es independiente de Lovable; Cloudflare Workers queda preparada como destino de despliegue para TanStack Start, sujeto a crear/configurar la cuenta del propietario.
 - Supabase debe migrarse a un proyecto propio del propietario usando las migraciones canónicas ya validadas por clean-room CI.
-- La próxima etapa funcional, después de cerrar independencia de plataforma y propiedad de infraestructura, es auth interna mínima, seguida por reservas reales y persistencia confiable.
+- Auth interna, reservas reales y persistencia están implementadas y verificadas contra PostgreSQL. Lo que queda para operar de verdad no es código sino credenciales: cuenta Cloudflare, proyecto Supabase propio, Mercado Pago y proveedor de email.
 - Una reserva `pending_payment` retiene el slot 10 minutos con `payment_required_until = created_at + 10 minutos`.
 - Una reserva `expired` libera el slot y no debe volver a bloquearlo sin decisión manual auditada.
 - Mercado Pago producción será Checkout Pro, con una preference por reserva creada desde backend y confirmación por webhook.
@@ -133,11 +135,9 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - Validar significado de las dos columnas/tarifas, vigencia, largos, duraciones, setup/buffers, combinaciones, segmentos de clienta y taxonomía real de Maquillaje/Uñas.
 - Crear proyecto Supabase propio bajo la cuenta del propietario y aplicar allí las migraciones canónicas.
 - Crear/configurar cuenta Cloudflare del propietario y cargar secretos de deploy en GitHub.
-- Implementar auth interna mínima y permisos owner/admin.
-- Implementar por etapas la administración de precios, duraciones, visibilidad, variantes y reglas sin requerir despliegue.
-- Definir flujo real para clientas recurrentes, incluyendo criterios de identificación, privacidad, recuperación de datos y eventual CRM.
-- Definir integración real de seña/pago, proveedor, confirmación, estados y conciliación operativa.
-- Implementar API/backend real para enviar confirmaciones y recordatorios por email y WhatsApp.
+- Cargar las credenciales de Mercado Pago para que el cobro de la seña deje de ser coordinación manual.
+- Implementar el envío real de confirmaciones y recordatorios por email y WhatsApp (falta el proveedor y su credencial).
+- Validar con Sol la capacidad de Maquillaje y Uñas para poder habilitarlas online.
 - Crear estrategia para futuras categorías sin sobrecargar el catálogo público.
 - Separar formalmente catálogo público, configuración comercial-operativa e historial técnico de clienta.
 
