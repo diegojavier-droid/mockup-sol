@@ -463,3 +463,53 @@ export async function loadReconciliation(
   if (error) throw error;
   return (data ?? []) as ReconciliationRow[];
 }
+
+/** Un área en el desglose de ocupación. */
+export interface DashboardAreaOccupancy {
+  area: string;
+  name: string;
+  sold_minutes: number;
+  capacity_minutes: number;
+  /** NULL cuando el área no abrió: cerrada no es 0 %, es sin dato. */
+  rate_pct: number | null;
+}
+
+export interface DashboardSummary {
+  from: string;
+  to: string;
+  collected_amount: number;
+  invoiced_amount: number;
+  attended_count: number;
+  average_ticket: number;
+  bookings_by_channel: Record<string, number>;
+  bookings_by_status: Record<string, number>;
+  retained_deposits: number;
+  new_customers: number;
+  active_customers: number;
+  occupancy: {
+    basis: "stations";
+    sold_minutes: number;
+    capacity_minutes: number;
+    rate_pct: number | null;
+    by_area: DashboardAreaOccupancy[];
+  };
+  /**
+   * `available: false` significa NO DISPONIBLE, no cero. `coverage` dice
+   * sobre cuántas atenciones se calculó: un margen sobre 2 de 40 no es
+   * el margen del mes y la pantalla tiene que poder decirlo.
+   */
+  margin: { available: boolean; coverage: number; amount: number | null };
+  top_services: Array<{ name: string; count: number }>;
+}
+
+export async function loadDashboardSummary(
+  admin: SupabaseAdminClient,
+  params: { from: Date; to: Date },
+): Promise<DashboardSummary> {
+  const { data, error } = await admin.rpc("dashboard_summary", {
+    p_from: params.from.toISOString(),
+    p_to: params.to.toISOString(),
+  });
+  if (error) throw error;
+  return data as DashboardSummary;
+}

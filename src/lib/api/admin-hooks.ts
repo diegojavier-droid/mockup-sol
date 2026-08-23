@@ -198,3 +198,43 @@ export function useCloseService() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "agenda"] }),
   });
 }
+
+export interface DashboardAreaOccupancy {
+  area: string;
+  name: string;
+  sold_minutes: number;
+  capacity_minutes: number;
+  rate_pct: number | null;
+}
+
+export interface DashboardSummary {
+  from: string;
+  to: string;
+  collected_amount: number;
+  invoiced_amount: number;
+  attended_count: number;
+  average_ticket: number;
+  bookings_by_channel: Record<string, number>;
+  bookings_by_status: Record<string, number>;
+  retained_deposits: number;
+  new_customers: number;
+  active_customers: number;
+  occupancy: {
+    basis: "stations";
+    sold_minutes: number;
+    capacity_minutes: number;
+    rate_pct: number | null;
+    by_area: DashboardAreaOccupancy[];
+  };
+  margin: { available: boolean; coverage: number; amount: number | null };
+  top_services: Array<{ name: string; count: number }>;
+}
+
+export function useDashboard(params: { from: string; to: string }) {
+  const search = new URLSearchParams({ from: params.from, to: params.to });
+  return useQuery({
+    queryKey: ["admin", "dashboard", search.toString()],
+    queryFn: () => adminApi.get<DashboardSummary>(`/dashboard?${search.toString()}`),
+    staleTime: 60_000,
+  });
+}

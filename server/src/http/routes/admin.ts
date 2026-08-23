@@ -22,7 +22,7 @@ import {
   TransitionError,
   updateBookingStatus,
 } from "../../lib/admin/repository";
-import { closeService, loadReconciliation } from "../../lib/admin/repository";
+import { closeService, loadDashboardSummary, loadReconciliation } from "../../lib/admin/repository";
 import { listPendingLinks, resolvePendingLink } from "../../lib/identity/repository";
 import {
   createBooking,
@@ -257,82 +257,6 @@ export function createAdminRoute(env: ServerEnv) {
       }
       throw error;
     }
-  });
-
-  /**
-   * Conciliación con el Excel. Dos meses comparando totales, no
-   * recargando datos a mano.
-   */
-  route.get("/reconciliation", async (c) => {
-    const schema = z.object({
-      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      format: z.enum(["json", "csv"]).default("json"),
-    });
-    const parsed = schema.safeParse(c.req.query());
-    if (!parsed.success) throw new HTTPException(400, { message: "Indicá desde y hasta." });
-
-    const from = new Date(`${parsed.data.from}T00:00:00${SALON_TZ}`);
-    const to = new Date(`${parsed.data.to}T00:00:00${SALON_TZ}`);
-    to.setUTCDate(to.getUTCDate() + 1);
-
-    const rows = await loadReconciliation(createSupabaseAdminClient(env), { from, to });
-
-    if (parsed.data.format === "csv") {
-      const cols = [
-        "starts_at",
-        "area",
-        "channel",
-        "customer",
-        "customer_phone",
-        "status",
-        "estimated_amount",
-        "final_amount",
-        "collected_amount",
-        "outstanding_amount",
-        "payment_methods",
-        "cost_amount",
-        "margin_amount",
-        "deposit_status",
-        "attended_by",
-      ] as const;
-      const esc = (v: unknown) =>
-        v === null || v === undefined ? "" : `"${String(v).replace(/"/g, '""')}"`;
-      const csv = [
-        cols.join(","),
-        ...rows.map((r) => cols.map((k) => esc(r[k as keyof typeof r])).join(",")),
-      ].join("\n");
-      return c.body(csv, 200, {
-        "content-type": "text/csv; charset=utf-8",
-        "content-disposition": `attachment; filename="sol-mai-${parsed.data.from}_${parsed.data.to}.csv"`,
-      });
-    }
-
-    const totals = rows.reduce(
-      (acc, r) => ({
-        estimated: acc.estimated + (r.estimated_amount ?? 0),
-        final: acc.final + (r.final_amount ?? 0),
-        collected: acc.collected + (r.collected_amount ?? 0),
-        outstanding: acc.outstanding + (r.outstanding_amount ?? 0),
-      }),
-      { estimated: 0, final: 0, collected: 0, outstanding: 0 },
-    );
-    // El margen sólo se informa sobre las atenciones que tienen costo.
-    const withCost = rows.filter((r) => r.margin_amount !== null);
-    return c.json({
-      data: {
-        rows,
-        totals,
-        margin:
-          withCost.length === 0
-            ? { available: false, coverage: 0, amount: null }
-            : {
-                available: true,
-                coverage: withCost.length,
-                amount: withCost.reduce((a, r) => a + (r.margin_amount ?? 0), 0),
-              },
-      },
-    });
   });
 
   /**
@@ -601,6 +525,111 @@ export function createAdminRoute(env: ServerEnv) {
   // ------------------------------------------------- configuración (owner)
   const owner = new Hono<{ Variables: StaffVars }>();
   owner.use("*", requireOwner());
+
+  // Plata del salón: cuánto entró, cuánto se facturó y con qué margen.
+  // Va detrás de `owner` por mínimo privilegio — quien atiende no
+  // necesita ver la facturación total ni el margen para trabajar.
+  /**
+   * Seis indicadores, no cincuenta. El criterio de inclusión fue cuál
+   * cambia una decisión de Sol y cuál tiene su insumo garantizado.
+   *
+   * El margen viaja con `available` y `coverage` porque sin costos
+   * cargados no existe: la pantalla dice NO DISPONIBLE en vez de $0.
+   */
+  owner.get("/dashboard", async (c) => {
+    const schema = z.object({
+      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    });
+    const parsed = schema.safeParse(c.req.query());
+    if (!parsed.success) throw new HTTPException(400, { message: "Indicá desde y hasta." });
+
+    const from = new Date(`${parsed.data.from}T00:00:00${SALON_TZ}`);
+    const to = new Date(`${parsed.data.to}T00:00:00${SALON_TZ}`);
+    // `to` es inclusivo para quien mira la pantalla: del 1 al 31 incluye
+    // el 31 entero.
+    to.setUTCDate(to.getUTCDate() + 1);
+    if (to <= from) throw new HTTPException(400, { message: "El período está al revés." });
+
+    const data = await loadDashboardSummary(createSupabaseAdminClient(env), { from, to });
+    return c.json({ data });
+  });
+
+  /**
+   * Conciliación con el Excel. Dos meses comparando totales, no
+   * recargando datos a mano.
+   */
+  owner.get("/reconciliation", async (c) => {
+    const schema = z.object({
+      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      format: z.enum(["json", "csv"]).default("json"),
+    });
+    const parsed = schema.safeParse(c.req.query());
+    if (!parsed.success) throw new HTTPException(400, { message: "Indicá desde y hasta." });
+
+    const from = new Date(`${parsed.data.from}T00:00:00${SALON_TZ}`);
+    const to = new Date(`${parsed.data.to}T00:00:00${SALON_TZ}`);
+    to.setUTCDate(to.getUTCDate() + 1);
+
+    const rows = await loadReconciliation(createSupabaseAdminClient(env), { from, to });
+
+    if (parsed.data.format === "csv") {
+      const cols = [
+        "starts_at",
+        "area",
+        "channel",
+        "customer",
+        "customer_phone",
+        "status",
+        "estimated_amount",
+        "final_amount",
+        "collected_amount",
+        "outstanding_amount",
+        "payment_methods",
+        "cost_amount",
+        "margin_amount",
+        "deposit_status",
+        "attended_by",
+      ] as const;
+      const esc = (v: unknown) =>
+        v === null || v === undefined ? "" : `"${String(v).replace(/"/g, '""')}"`;
+      const csv = [
+        cols.join(","),
+        ...rows.map((r) => cols.map((k) => esc(r[k as keyof typeof r])).join(",")),
+      ].join("\n");
+      return c.body(csv, 200, {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": `attachment; filename="sol-mai-${parsed.data.from}_${parsed.data.to}.csv"`,
+      });
+    }
+
+    const totals = rows.reduce(
+      (acc, r) => ({
+        estimated: acc.estimated + (r.estimated_amount ?? 0),
+        final: acc.final + (r.final_amount ?? 0),
+        collected: acc.collected + (r.collected_amount ?? 0),
+        outstanding: acc.outstanding + (r.outstanding_amount ?? 0),
+      }),
+      { estimated: 0, final: 0, collected: 0, outstanding: 0 },
+    );
+    // El margen sólo se informa sobre las atenciones que tienen costo.
+    const withCost = rows.filter((r) => r.margin_amount !== null);
+    return c.json({
+      data: {
+        rows,
+        totals,
+        margin:
+          withCost.length === 0
+            ? { available: false, coverage: 0, amount: null }
+            : {
+                available: true,
+                coverage: withCost.length,
+                amount: withCost.reduce((a, r) => a + (r.margin_amount ?? 0), 0),
+              },
+      },
+    });
+  });
 
   owner.get("/settings", async (c) => {
     const { data, error } = await createSupabaseAdminClient(env)

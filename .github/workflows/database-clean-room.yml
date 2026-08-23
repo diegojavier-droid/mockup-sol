@@ -572,6 +572,127 @@ jobs:
 
           echo "V4.1 resource invariants OK"
 
+      - name: Verify V4.1 dashboard
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_day date; v_svc text; v_items jsonb;
+            v_b1 uuid; v_b2 uuid; v_b3 uuid; r jsonb;
+            v_from timestamptz; v_to timestamptz;
+          begin
+            -- Un lunes futuro y limpio, en hora del SALÓN.
+            v_day  := (date_trunc('week', current_date) + interval '14 days')::date;
+            v_from := (v_day::text     || ' 00:00:00-03')::timestamptz;
+            v_to   := ((v_day+1)::text || ' 00:00:00-03')::timestamptz;
+
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules r2
+                 join public.personalization_fields f on f.id = r2.field_id
+                where r2.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+
+            v_items := jsonb_build_array(jsonb_build_object(
+              'role','main','service_slug',v_svc,'name','Servicio de prueba',
+              'price_amount',20000,'duration_min',60,'process_min',0,'setup_min',0));
+
+            v_b1 := (public.create_booking('peluqueria',
+              (v_day::text||' 10:00-03')::timestamptz, (v_day::text||' 11:00-03')::timestamptz,
+              60,'fixed',20000,20000,0.30,6000,
+              '{"first_name":"Ana","phone_e164":"+5493425900101"}'::jsonb, v_items, null, 'online')->>'id')::uuid;
+            v_b2 := (public.create_booking('peluqueria',
+              (v_day::text||' 12:00-03')::timestamptz, (v_day::text||' 13:00-03')::timestamptz,
+              60,'fixed',20000,20000,0.30,6000,
+              '{"first_name":"Bru","phone_e164":"+5493425900102"}'::jsonb, v_items, null, 'walk_in')->>'id')::uuid;
+            v_b3 := (public.create_booking('peluqueria',
+              (v_day::text||' 14:00-03')::timestamptz, (v_day::text||' 15:00-03')::timestamptz,
+              60,'fixed',20000,20000,0.30,6000,
+              '{"first_name":"Car","phone_e164":"+5493425900103"}'::jsonb, v_items, null, 'whatsapp')->>'id')::uuid;
+
+            perform public.close_service(v_b1, 22000, 'Corte y color', null, 75, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',22000,'method','efectivo','kind','balance')));
+            perform public.close_service(v_b2, 18000, 'Corte', null, 55, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',18000,'method','mercado_pago','kind','balance')));
+            update public.bookings set deposit_status = 'paid' where id = v_b3;
+            perform public.mark_no_show(v_b3, null, 'ci');
+
+            r := public.dashboard_summary(v_from, v_to);
+
+            if (r->>'invoiced_amount')::bigint <> 40000 then
+              raise exception 'facturado esperado 40000, dio %', r->>'invoiced_amount';
+            end if;
+            if (r->>'average_ticket')::int <> 20000 then
+              raise exception 'ticket esperado 20000, dio %', r->>'average_ticket';
+            end if;
+            -- El efectivo cuenta igual que Mercado Pago.
+            if (r->>'collected_amount')::bigint <> 40000 then
+              raise exception 'cobrado esperado 40000, dio %', r->>'collected_amount';
+            end if;
+            if (r->>'retained_deposits')::bigint <> 6000 then
+              raise exception 'seña retenida esperada 6000, dio %', r->>'retained_deposits';
+            end if;
+
+            -- LA regla del bloque: sin costos cargados el margen NO existe.
+            -- available=false y amount NULL; jamás $0, que parecería un dato.
+            if (r->'margin'->>'available')::boolean is not false then
+              raise exception 'el margen se declaró disponible sin costos cargados';
+            end if;
+            if r->'margin'->>'amount' is not null then
+              raise exception 'el margen devolvió un número sin costos: %', r->'margin';
+            end if;
+
+            -- Con UN costo aparece, y declara sobre cuántas atenciones.
+            update public.service_execution_records set cost_amount = 7000 where booking_id = v_b1;
+            r := public.dashboard_summary(v_from, v_to);
+            if (r->'margin'->>'available')::boolean is not true then
+              raise exception 'con un costo cargado el margen debería estar disponible';
+            end if;
+            if (r->'margin'->>'amount')::bigint <> 15000 then
+              raise exception 'margen esperado 15000, dio %', r->'margin'->>'amount';
+            end if;
+            if (r->'margin'->>'coverage')::int <> 1 then
+              raise exception 'cobertura esperada 1, dio %', r->'margin'->>'coverage';
+            end if;
+
+            -- Un día del SALÓN cuenta un día, no dos fechas UTC.
+            if (r->'occupancy'->>'capacity_minutes')::bigint <> 4320 then
+              raise exception 'un día del salón debe dar 4320 min (8 estaciones x 9 h), dio %',
+                r->'occupancy'->>'capacity_minutes';
+            end if;
+            -- La ausencia no suma ocupación; la atendida sí.
+            if (r->'occupancy'->>'sold_minutes')::bigint <> 120 then
+              raise exception 'vendidos esperados 120 min, dio %', r->'occupancy'->>'sold_minutes';
+            end if;
+
+            -- Un feriado sale del DENOMINADOR en vez de hundir la ocupación.
+            insert into public.schedule_exceptions (area_id, starts_at, ends_at, reason, capacity_delta)
+            values (null, v_from, v_to, 'Feriado CI', null);
+            r := public.dashboard_summary(v_from, v_to);
+            if (r->'occupancy'->>'capacity_minutes')::bigint <> 0 then
+              raise exception 'un día cerrado no debería aportar capacidad, dio %',
+                r->'occupancy'->>'capacity_minutes';
+            end if;
+
+            -- Un ajuste de cupos NO es un cierre.
+            update public.schedule_exceptions set capacity_delta = -2
+             where starts_at = v_from and reason = 'Feriado CI';
+            r := public.dashboard_summary(v_from, v_to);
+            if (r->'occupancy'->>'capacity_minutes')::bigint <> 4320 then
+              raise exception 'un ajuste de cupos no debe leerse como cierre, dio %',
+                r->'occupancy'->>'capacity_minutes';
+            end if;
+
+            delete from public.schedule_exceptions where reason = 'Feriado CI';
+            delete from public.payments where booking_id in (v_b1, v_b2, v_b3);
+            delete from public.bookings where id in (v_b1, v_b2, v_b3);
+          end $$;
+          SQL
+
+          echo "V4.1 dashboard invariants OK"
+
       - name: Verify field-option composite FK
         run: |
           set -euo pipefail
