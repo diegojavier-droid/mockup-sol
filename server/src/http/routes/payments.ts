@@ -16,6 +16,7 @@ import type { ServerEnv } from "../../config/env";
 import { createSupabaseAdminClient } from "../../lib/supabase";
 import { createMercadoPagoProvider } from "../../lib/payments/mercadoPago";
 import { PaymentsNotConfiguredError } from "../../lib/payments/provider";
+import { verifyMercadoPagoSignature } from "../../lib/payments/signature";
 import { getBookingByToken } from "../../lib/booking/repository";
 
 export function createPaymentsRoute(env: ServerEnv) {
@@ -120,11 +121,33 @@ export function createPaymentsRoute(env: ServerEnv) {
   });
 
   route.post("/webhook", async (c) => {
-    const payload = await c.req.json().catch(() => null);
+    const payload = (await c.req.json().catch(() => null)) as {
+      data?: { id?: string | number };
+      id?: string | number;
+    } | null;
     if (!payload) return c.json({ received: true, handled: false }, 200);
 
+    // El webhook es la ÚNICA autoridad que confirma un turno. Que una
+    // notificación llegue desde internet no prueba quién la mandó: sin
+    // firma válida no se toca nada.
+    const dataId = payload.data?.id ?? payload.id;
+    const check = await verifyMercadoPagoSignature({
+      secret: env.MERCADO_PAGO_WEBHOOK_SECRET,
+      signatureHeader: c.req.header("x-signature"),
+      requestId: c.req.header("x-request-id"),
+      dataId: dataId === undefined ? undefined : String(dataId),
+    });
+
+    if (!check.valid) {
+      // 401 y no 200: un emisor legítimo tiene que enterarse de que su
+      // notificación fue rechazada, no creer que se procesó.
+      console.warn("[sol-mai-api] webhook rechazado:", check.reason);
+      throw new HTTPException(401, { message: "Invalid webhook signature" });
+    }
+
     // Sin lookup explícito el proveedor consulta el pago en su propia API:
-    // el webhook sólo trae un id, nunca el estado.
+    // el webhook sólo trae un id, nunca el estado. Confiar en el cuerpo
+    // sería dejar que quien firma también decida el importe.
     const event = await provider.parseWebhook(payload);
 
     if (!event) return c.json({ received: true, handled: false }, 200);
@@ -134,6 +157,35 @@ export function createPaymentsRoute(env: ServerEnv) {
     }
 
     const admin = createSupabaseAdminClient(env);
+
+    // El importe tiene que corresponder con la seña de ESA reserva. Un
+    // pago de $1 no confirma un turno de $8.000.
+    const { data: expected } = await admin
+      .from("bookings")
+      .select("deposit_amount")
+      .eq("id", event.bookingId)
+      .maybeSingle();
+
+    if (!expected) {
+      console.warn("[sol-mai-api] webhook para una reserva inexistente", event.bookingId);
+      return c.json({ received: true, handled: false }, 200);
+    }
+
+    const due = (expected as { deposit_amount: number }).deposit_amount;
+    if (event.status === "approved" && event.amount !== null && event.amount < due) {
+      console.warn(`[sol-mai-api] importe insuficiente: llegó ${event.amount}, la seña es ${due}`);
+      // Se registra el pago pero NO confirma: queda como excepción manual.
+      await admin.rpc("confirm_booking_payment", {
+        p_booking_id: event.bookingId,
+        p_provider: provider.name,
+        p_provider_ref: event.providerRef,
+        p_amount: event.amount,
+        p_status: "underpaid",
+        p_raw: event.raw ?? {},
+      });
+      return c.json({ received: true, handled: false, outcome: "underpaid" }, 200);
+    }
+
     const { data, error } = await admin.rpc("confirm_booking_payment", {
       p_booking_id: event.bookingId,
       p_provider: provider.name,
