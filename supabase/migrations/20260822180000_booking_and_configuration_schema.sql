@@ -590,6 +590,13 @@ begin
   end if;
 
   -- Alta / actualización de clienta por teléfono normalizado.
+  --
+  -- Reservar NO autoriza a editar la ficha de otra persona. Cualquiera
+  -- puede escribir el teléfono de una clienta en el formulario público,
+  -- así que desde `online` los datos ya cargados no se pisan: sólo se
+  -- completan los que faltan. Corregir un nombre, un mail o el consen-
+  -- timiento de marketing es una acción del salón (`manual`), donde hay
+  -- una persona identificada del otro lado.
   insert into public.customers (first_name, last_name, phone_e164, email, accepts_marketing)
   values (
     p_customer->>'first_name',
@@ -599,10 +606,22 @@ begin
     coalesce((p_customer->>'accepts_marketing')::boolean, false)
   )
   on conflict (phone_e164) do update set
-    first_name        = excluded.first_name,
-    last_name         = coalesce(excluded.last_name, public.customers.last_name),
-    email             = coalesce(excluded.email, public.customers.email),
-    accepts_marketing = excluded.accepts_marketing or public.customers.accepts_marketing
+    first_name = case
+      when p_source = 'manual' then excluded.first_name
+      else public.customers.first_name
+    end,
+    last_name = case
+      when p_source = 'manual' then coalesce(excluded.last_name, public.customers.last_name)
+      else coalesce(public.customers.last_name, excluded.last_name)
+    end,
+    email = case
+      when p_source = 'manual' then coalesce(excluded.email, public.customers.email)
+      else coalesce(public.customers.email, excluded.email)
+    end,
+    accepts_marketing = case
+      when p_source = 'manual' then excluded.accepts_marketing
+      else public.customers.accepts_marketing
+    end
   returning id into v_customer_id;
 
   if p_source = 'manual' or p_deposit_amount = 0 then
