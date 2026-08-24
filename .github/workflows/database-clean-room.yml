@@ -822,6 +822,93 @@ jobs:
 
           echo "V4.1 dashboard invariants OK"
 
+      - name: Verify service closure is idempotent
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_svc text; v_items jsonb; d date := current_date + 120;
+            v_b uuid; n int; total bigint; r jsonb;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','Corte','price_amount',20000,'duration_min',60,'process_min',0,'setup_min',0));
+
+            v_b := (public.create_booking('peluqueria',
+              (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+              60,'fixed',20000,20000,0,0,
+              '{"first_name":"Idem","phone_e164":"+5493425661001"}'::jsonb,
+              v_items, null, 'manual')->>'id')::uuid;
+
+            -- Cerrar dos veces cobra UNA vez. Antes, el `provider_ref`
+            -- llevaba el reloj y `provider` quedaba NULL: el UNIQUE nunca
+            -- mordía y $24.000 quedaban registrados como $48.000.
+            perform public.close_service(v_b, 24000, 'Corte', null, 60, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',24000,'method','efectivo','kind','balance')));
+            r := public.close_service(v_b, 24000, 'Corte', null, 60, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',24000,'method','efectivo','kind','balance')));
+
+            select count(*), coalesce(sum(amount),0) into n, total
+              from public.payments where booking_id = v_b and status = 'approved';
+            if n <> 1 or total <> 24000 then
+              raise exception 'doble cobro: % lineas, total %', n, total;
+            end if;
+            if (r->>'reclosed')::boolean is not true then
+              raise exception 'el segundo cierre no se reconoció como corrección';
+            end if;
+
+            -- Un cierre con menos líneas es una corrección: las que
+            -- sobran se van. Si no, un cobro mal cargado quedaría para
+            -- siempre inflando el total.
+            perform public.close_service(v_b, 26000, 'x', null, 70, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',20000,'method','efectivo','kind','balance'),
+                                jsonb_build_object('amount',6000,'method','transferencia','kind','balance')));
+            select count(*), coalesce(sum(amount),0) into n, total
+              from public.payments where booking_id = v_b and status = 'approved';
+            if n <> 2 or total <> 26000 then
+              raise exception 'esperaba 2 lineas y 26000, dio % y %', n, total;
+            end if;
+
+            perform public.close_service(v_b, 20000, 'x', null, 70, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',20000,'method','efectivo','kind','balance')));
+            select count(*), coalesce(sum(amount),0) into n, total
+              from public.payments where booking_id = v_b and status = 'approved';
+            if n <> 1 or total <> 20000 then
+              raise exception 'quedaron lineas huerfanas: % lineas, total %', n, total;
+            end if;
+
+            -- Un pago externo no se toca nunca desde el cierre.
+            perform public.confirm_booking_payment(v_b,'mercado_pago','mp:CI-CLOSE',5000,'approved','{}'::jsonb);
+            perform public.close_service(v_b, 20000, 'x', null, 70, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',20000,'method','efectivo','kind','balance')));
+            select count(*) into n from public.payments
+             where booking_id = v_b and provider = 'mercado_pago';
+            if n <> 1 then raise exception 'el cierre borró un pago externo'; end if;
+
+            -- El UNIQUE tiene que morder aunque el proveedor sea NULL.
+            begin
+              insert into public.payments (booking_id, provider, provider_ref, amount, status, method, kind)
+              values (v_b, null, 'dup-null-ref', 1, 'approved', 'efectivo', 'balance');
+              insert into public.payments (booking_id, provider, provider_ref, amount, status, method, kind)
+              values (v_b, null, 'dup-null-ref', 1, 'approved', 'efectivo', 'balance');
+              raise exception 'GATE ROTO: dos pagos iguales sin proveedor convivieron';
+            exception when unique_violation then null;
+            end;
+
+            delete from public.payments where booking_id = v_b;
+            delete from public.bookings where id = v_b;
+          end $$;
+          SQL
+
+          echo "service closure idempotency OK"
+
       - name: Verify field-option composite FK
         run: |
           set -euo pipefail
