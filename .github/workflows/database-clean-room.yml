@@ -981,6 +981,45 @@ jobs:
 
           echo "consent / override-reason / salon-lock OK"
 
+      - name: Verify standard costs are not public
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          begin
+            -- El costo por servicio es la base del margen. La clave
+            -- pública se publica por diseño, así que dejar la columna
+            -- bajo la política de lectura pública era publicar la
+            -- estructura de costos del salón.
+            if has_column_privilege('anon','public.service_parameters','standard_cost_amount','SELECT') then
+              raise exception 'anon puede leer el costo estándar';
+            end if;
+            if has_column_privilege('authenticated','public.service_parameters','standard_cost_amount','SELECT') then
+              raise exception 'authenticated puede leer el costo estándar';
+            end if;
+
+            -- Un revoke de columna NO recorta un grant de tabla: si el
+            -- de tabla vuelve, el costo vuelve a quedar expuesto.
+            if has_table_privilege('anon','public.service_parameters','SELECT') then
+              raise exception 'anon conserva SELECT de tabla: el revoke de columna no protege nada';
+            end if;
+
+            -- Y lo que el catálogo necesita tiene que seguir saliendo.
+            if not has_column_privilege('anon','public.service_parameters','price_display_mode','SELECT') then
+              raise exception 'se rompió la lectura pública del catálogo';
+            end if;
+            if not has_column_privilege('anon','public.service_parameters','length_affects_price','SELECT') then
+              raise exception 'se rompió la lectura pública del catálogo';
+            end if;
+            if not has_column_privilege('service_role','public.service_parameters','standard_cost_amount','SELECT') then
+              raise exception 'el backend perdió acceso al costo';
+            end if;
+          end $$;
+          SQL
+
+          echo "standard cost protection OK"
+
       - name: Verify service closure is idempotent
         run: |
           set -euo pipefail
