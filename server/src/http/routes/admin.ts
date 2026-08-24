@@ -41,6 +41,7 @@ import {
   type CapacityCheck,
 } from "../../lib/booking/repository";
 import { normalizePhoneAr } from "../../domain/phone";
+import { logBookingFailure, requestId } from "../../lib/observability";
 import { computeQuote } from "../../domain/quote";
 import { QuoteError } from "../../domain/types";
 import { loadQuoteContext } from "../../lib/quote/repository";
@@ -486,6 +487,15 @@ export function createAdminRoute(env: ServerEnv) {
       return c.json({ data: booking }, 201);
     } catch (error) {
       if (error instanceof BookingError) {
+        logBookingFailure({
+          code: error.code,
+          channel: body.source,
+          serviceSlug: body.serviceSlug,
+          areaSlug: context.areaSlug,
+          startsAt: body.startsAt,
+          lengthTier: body.lengthTier ?? null,
+          requestId: requestId(c.req),
+        });
         // El motor no dice "no": dice qué pasa y deja decidir. El detalle
         // numérico permite al frontend ofrecer [Crear igualmente].
         if (error.code === "capacity_full" || error.code === "area_closed") {
