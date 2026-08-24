@@ -976,6 +976,53 @@ jobs:
             exit 1
           fi
 
+          # Y la costura de MEDIANOCHE DEL SALÓN, que es donde se había
+          # mudado el defecto al cambiar la clave de UTC a hora local.
+          # Cualquier clave con fecha tiene una costura: una reserva puede
+          # empezar de un lado y terminar del otro. Ocho transacciones
+          # simultáneas, 23:30→01:30 contra 00:30→02:30, capacidad 1.
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 -c \
+            "delete from public.payments where booking_id in (select id from public.bookings where starts_at::date >= (current_date + 140));
+             delete from public.bookings where starts_at::date >= (current_date + 140);"
+
+          cat > /tmp/seam.sql <<'SQLSEAM'
+          do $$
+          declare v_svc text; v_items jsonb; d date := current_date + 175;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','X','price_amount',10000,'duration_min',120,'process_min',0,'setup_min',0));
+            perform public.create_booking('depilacion',
+              (d::text || ' 23:30-03')::timestamptz, ((d+1)::text || ' 01:30-03')::timestamptz,
+              120,'fixed',10000,10000,0,0,
+              format('{"first_name":"S","phone_e164":"+54934258899%s"}', floor(random()*100000)::int)::jsonb,
+              v_items, null, 'manual');
+          end $$;
+          SQLSEAM
+          sed 's/23:30-03/00:30-03/; s/(d::text || .00:30-03.)/((d+1)::text || '"'"' 00:30-03'"'"')/; s/01:30-03/02:30-03/' \
+            /tmp/seam.sql > /tmp/seam-b.sql
+
+          for i in 1 2 3 4; do
+            psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/seam.sql   > /dev/null 2>&1 &
+            psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/seam-b.sql > /dev/null 2>&1 &
+          done
+          wait
+
+          SEAM=$(psql "$SUPABASE_LOCAL_DB_URL" -Atc "
+            select count(*) from public.bookings b
+              join public.areas a on a.id = b.area_id
+             where a.slug = 'depilacion'
+               and b.starts_at >= (current_date + 175)::timestamptz")
+          if [ "$SEAM" != "1" ]; then
+            echo "::error::overbooking cruzando medianoche del salón: $SEAM reservas solapadas"
+            exit 1
+          fi
+
           psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 -c             "delete from public.payments where booking_id in (select id from public.bookings where starts_at::date >= (current_date + 140));
              delete from public.bookings where starts_at::date >= (current_date + 140);"
 
