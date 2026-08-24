@@ -172,18 +172,43 @@ export function createPaymentsRoute(env: ServerEnv) {
     }
 
     const due = (expected as { deposit_amount: number }).deposit_amount;
-    if (event.status === "approved" && event.amount !== null && event.amount < due) {
-      console.warn(`[sol-mai-api] importe insuficiente: llegó ${event.amount}, la seña es ${due}`);
+
+    // Un importe que no se puede verificar no confirma nada. Antes, si el
+    // proveedor no devolvía `transaction_amount`, el guard se salteaba y
+    // el turno quedaba confirmado sin que nadie supiera cuánto entró:
+    // fallar abierto es lo peor que puede hacer un control de dinero.
+    const unverifiable = event.status === "approved" && event.amount === null;
+    const underpaid = event.status === "approved" && event.amount !== null && event.amount < due;
+
+    if (unverifiable || underpaid) {
+      console.warn(
+        JSON.stringify({
+          evento: "pago_no_confirmado",
+          motivo: unverifiable ? "importe_no_verificable" : "importe_insuficiente",
+          bookingId: event.bookingId,
+          providerRef: event.providerRef,
+          llego: event.amount,
+          seña: due,
+          ts: new Date().toISOString(),
+        }),
+      );
       // Se registra el pago pero NO confirma: queda como excepción manual.
       await admin.rpc("confirm_booking_payment", {
         p_booking_id: event.bookingId,
         p_provider: provider.name,
         p_provider_ref: event.providerRef,
         p_amount: event.amount,
-        p_status: "underpaid",
+        p_status: unverifiable ? "unverified_amount" : "underpaid",
         p_raw: event.raw ?? {},
       });
-      return c.json({ received: true, handled: false, outcome: "underpaid" }, 200);
+      return c.json(
+        {
+          received: true,
+          handled: false,
+          outcome: unverifiable ? "unverified_amount" : "underpaid",
+        },
+        200,
+      );
     }
 
     const { data, error } = await admin.rpc("confirm_booking_payment", {
