@@ -26,13 +26,17 @@ import {
   loadRecentServices,
   type IdentityResolution,
 } from "../../lib/identity/repository";
+import { rejectionMessage, verifyIdentity } from "../../lib/identity/verify";
 
-interface AuthedUser {
-  subject: string;
-  email: string;
-  firstName: string | null;
-  lastName: string | null;
-}
+/**
+ * Proveedores admitidos para la identidad de la clienta.
+ *
+ * Uno solo, y a propósito: es el que la política de identidad supone
+ * cuando vincula automáticamente por email coincidente. Agregar acá un
+ * proveedor que no verifique el email convertiría esa vinculación en
+ * una vía de acceso a fichas ajenas.
+ */
+const CUSTOMER_PROVIDERS = ["google"] as const;
 
 /** Identidad probada por Supabase Auth. Nunca se confía en el cuerpo. */
 async function authenticate(
@@ -49,23 +53,18 @@ async function authenticate(
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
   const { data, error } = await auth.auth.getUser(token);
-  const email = data?.user?.email;
-  if (error || !email || !data.user) {
+  if (error || !data?.user) {
     throw new HTTPException(401, { message: "Tu sesión venció. Volvé a entrar." });
   }
 
-  const meta = (data.user.user_metadata ?? {}) as {
-    full_name?: string;
-    given_name?: string;
-    family_name?: string;
-  };
-  const full = meta.full_name?.trim().split(/\s+/) ?? [];
-  return {
-    subject: data.user.id,
-    email,
-    firstName: meta.given_name ?? full[0] ?? null,
-    lastName: meta.family_name ?? (full.length > 1 ? full.slice(1).join(" ") : null),
-  } satisfies AuthedUser;
+  // Que el token sea válido sólo prueba que lo emitió este proyecto de
+  // Supabase. Con quién entró y si ese email es suyo lo decide esto.
+  const check = verifyIdentity(data.user, CUSTOMER_PROVIDERS);
+  if (!check.ok) {
+    console.warn("[sol-mai-api] identidad rechazada:", check.reason);
+    throw new HTTPException(403, { message: rejectionMessage(check.reason) });
+  }
+  return check.identity;
 }
 
 function toPublicResolution(r: IdentityResolution) {
@@ -102,7 +101,7 @@ export function createIdentityRoute(env: ServerEnv) {
     }
 
     const resolution = await resolveCustomerIdentity(createSupabaseAdminClient(env), {
-      provider: "google",
+      provider: user.provider,
       subject: user.subject,
       email: user.email,
       firstName: user.firstName,
@@ -118,7 +117,7 @@ export function createIdentityRoute(env: ServerEnv) {
     const admin = createSupabaseAdminClient(env);
 
     const resolution = await resolveCustomerIdentity(admin, {
-      provider: "google",
+      provider: user.provider,
       subject: user.subject,
       email: user.email,
       firstName: user.firstName,

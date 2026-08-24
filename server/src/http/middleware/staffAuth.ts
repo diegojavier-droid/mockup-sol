@@ -15,6 +15,15 @@ import { HTTPException } from "hono/http-exception";
 import { createClient } from "@supabase/supabase-js";
 import type { ServerEnv } from "../../config/env";
 import { createSupabaseAdminClient } from "../../lib/supabase";
+import { rejectionMessage, verifyIdentity } from "../../lib/identity/verify";
+
+/**
+ * Con qué se entra al panel. Google, igual que la clienta: el panel da
+ * acceso a la agenda y a las fichas, así que un token emitido por un
+ * alta de email y clave con el correo de la dueña no puede alcanzar.
+ * La lista de acceso sigue siendo la segunda condición, no la única.
+ */
+const STAFF_PROVIDERS = ["google"] as const;
 
 export interface StaffIdentity {
   email: string;
@@ -31,8 +40,17 @@ async function resolveIdentity(env: ServerEnv, token: string): Promise<StaffIden
   });
 
   const { data, error } = await auth.auth.getUser(token);
-  const email = data?.user?.email;
-  if (error || !email) return null;
+  if (error || !data?.user) return null;
+
+  // Mismo criterio que la identidad de la clienta: el token prueba que
+  // lo emitió este proyecto, no con qué proveedor ni que el email sea
+  // suyo. Sin esto, la lista de acceso quedaba como única barrera.
+  const check = verifyIdentity(data.user, STAFF_PROVIDERS);
+  if (!check.ok) {
+    console.warn("[sol-mai-api] acceso al panel rechazado:", check.reason);
+    throw new HTTPException(403, { message: rejectionMessage(check.reason) });
+  }
+  const email = check.identity.email;
 
   const allowed = env.INTERNAL_AUTH_ALLOWED_EMAILS.some(
     (e) => e.toLowerCase() === email.toLowerCase(),
@@ -58,8 +76,9 @@ async function resolveIdentity(env: ServerEnv, token: string): Promise<StaffIden
       "provision_initial_owner",
       {
         p_email: email,
-        p_display_name:
-          (data?.user?.user_metadata as { full_name?: string } | undefined)?.full_name ?? null,
+        p_display_name: check.identity.firstName
+          ? [check.identity.firstName, check.identity.lastName].filter(Boolean).join(" ")
+          : null,
       },
     );
     if (provisionError) throw provisionError;

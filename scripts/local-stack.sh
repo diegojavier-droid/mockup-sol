@@ -112,10 +112,17 @@ Bun.serve({
       const token = auth.replace(/^Bearer\s+/i, "").trim();
       let email = "";
       let sub = "00000000-0000-4000-8000-000000000001";
+      // El servidor exige proveedor y email verificado, así que el shim
+      // tiene que poder emitir también tokens que NO cumplen: si sólo
+      // supiera emitir los buenos, la prueba negativa sería imposible.
+      let provider = "google";
+      let verified = true;
       try {
         const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
         email = payload.email ?? "";
         sub = payload.sub ?? sub;
+        if (typeof payload.provider === "string") provider = payload.provider;
+        if (payload.email_verified === false) verified = false;
       } catch {
         email = "";
       }
@@ -126,7 +133,17 @@ Bun.serve({
         });
       }
       return new Response(
-        JSON.stringify({ id: sub, aud: "authenticated", role: "authenticated", email, user_metadata: {} }),
+        JSON.stringify({
+          id: sub,
+          aud: "authenticated",
+          role: "authenticated",
+          email,
+          email_confirmed_at: verified ? "2026-01-01T00:00:00Z" : null,
+          confirmed_at: verified ? "2026-01-01T00:00:00Z" : null,
+          app_metadata: { provider, providers: [provider] },
+          identities: [{ provider }],
+          user_metadata: {},
+        }),
         { headers: { "content-type": "application/json" } },
       );
     }
@@ -178,11 +195,16 @@ EOF
     ;;
 
   token)
-    # scripts/local-stack.sh token <email>  → JWT de desarrollo
+    # scripts/local-stack.sh token <email> [proveedor] [verified]
+    #   token ana@x.ar                  → google, verificado
+    #   token ana@x.ar email            → alta por email y clave
+    #   token ana@x.ar google false     → google sin verificar
     JWT_SECRET="$JWT_SECRET" bun -e '
       const { createHmac } = require("crypto");
       const secret = process.env.JWT_SECRET;
       const email = process.argv[1];
+      const provider = process.argv[2] || "google";
+      const emailVerified = (process.argv[3] || "true") !== "false";
       const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
       const h = b64({ alg: "HS256", typ: "JWT" });
       // Un `sub` distinto por email: en Supabase real cada cuenta tiene el
@@ -191,9 +213,10 @@ EOF
       const { createHash } = require("crypto");
       const h32 = createHash("sha256").update(email).digest("hex").slice(0, 32);
       const sub = `${h32.slice(0,8)}-${h32.slice(8,12)}-4${h32.slice(13,16)}-8${h32.slice(17,20)}-${h32.slice(20,32)}`;
-      const p = b64({ sub, email, role: "authenticated", exp: Math.floor(Date.now()/1000)+86400 });
+      const p = b64({ sub, email, provider, email_verified: emailVerified,
+                      role: "authenticated", exp: Math.floor(Date.now()/1000)+86400 });
       console.log(`${h}.${p}.${createHmac("sha256", secret).update(`${h}.${p}`).digest("base64url")}`);
-    ' "${2:-sol@solmai.ar}"
+    ' "${2:-sol@solmai.ar}" "${3:-google}" "${4:-true}"
     ;;
 
   env)
