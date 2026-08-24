@@ -88,7 +88,7 @@ export function NewBookingDialog({
         note: note.trim() || undefined,
         source,
         override: withOverride,
-        overrideReason: withOverride ? overrideReason.trim() || undefined : undefined,
+        overrideReason: withOverride ? overrideReason.trim() : undefined,
       },
       {
         onSuccess: (r) =>
@@ -244,16 +244,23 @@ export function NewBookingDialog({
         {conflict && (
           <div className="mt-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
             <p className="text-sm text-foreground/90">{conflict}</p>
+            {/* El motivo no es opcional: dentro de un mes, "por qué hay
+                seis turnos donde entran cinco" tiene que poder
+                responderse sin adivinar. */}
             <input
               value={overrideReason}
               onChange={(e) => setOverrideReason(e.target.value)}
-              placeholder="Motivo (opcional)"
+              placeholder="¿Por qué lo tomás igualmente?"
+              aria-label="Motivo de la excepción"
               className="mt-2.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <div className="mt-2.5 flex flex-wrap gap-2">
               <button
                 type="button"
-                disabled={create.isPending}
+                disabled={create.isPending || overrideReason.trim().length === 0}
+                title={
+                  overrideReason.trim().length === 0 ? "Contá por qué antes de tomarlo" : undefined
+                }
                 onClick={() => submit(true)}
                 className="rounded-full border border-amber-600/50 px-4 py-1.5 text-xs text-amber-800 transition-colors hover:bg-amber-500/15 disabled:opacity-50 dark:text-amber-300"
               >

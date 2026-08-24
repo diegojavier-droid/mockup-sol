@@ -380,27 +380,41 @@ export function createAdminRoute(env: ServerEnv) {
 
   // Turno interno: el salón toma turnos por mostrador, teléfono y WhatsApp.
   route.post("/bookings", async (c) => {
-    const schema = z.object({
-      serviceSlug: z.string().min(1).max(64),
-      lengthTier: z.enum(["corto", "medio", "largo", "xl", "unico"]).nullish(),
-      personalization: z.record(z.string().max(64), z.string().max(64)).optional(),
-      extraCodes: z.array(z.string().min(1).max(64)).max(10).default([]),
-      startsAt: z.string().datetime({ offset: true }),
-      customer: z.object({
-        firstName: z.string().min(1).max(80),
-        lastName: z.string().max(80).optional(),
-        phone: z.string().min(6).max(30),
-        email: z.string().email().max(160).optional(),
-      }),
-      note: z.string().max(500).optional(),
-      // El canal es un dato del negocio: por dónde llegó la clienta.
-      source: z.enum(["manual", "phone", "whatsapp", "walk_in"]).default("manual"),
-      // Crear aunque el motor diga que no entra. Nunca silencioso.
-      override: z.boolean().default(false),
-      overrideReason: z.string().max(300).optional(),
-    });
+    const schema = z
+      .object({
+        serviceSlug: z.string().min(1).max(64),
+        lengthTier: z.enum(["corto", "medio", "largo", "xl", "unico"]).nullish(),
+        personalization: z.record(z.string().max(64), z.string().max(64)).optional(),
+        extraCodes: z.array(z.string().min(1).max(64)).max(10).default([]),
+        startsAt: z.string().datetime({ offset: true }),
+        customer: z.object({
+          firstName: z.string().min(1).max(80),
+          lastName: z.string().max(80).optional(),
+          phone: z.string().min(6).max(30),
+          email: z.string().email().max(160).optional(),
+        }),
+        note: z.string().max(500).optional(),
+        // El canal es un dato del negocio: por dónde llegó la clienta.
+        source: z.enum(["manual", "phone", "whatsapp", "walk_in"]).default("manual"),
+        // Crear aunque el motor diga que no entra. Nunca silencioso.
+        override: z.boolean().default(false),
+        overrideReason: z.string().max(300).optional(),
+      })
+      // Una excepción sin motivo no es auditable, y auditarla es la
+      // única razón por la que se permite saltar la disponibilidad.
+      .refine((v) => !v.override || (v.overrideReason ?? "").trim().length > 0, {
+        path: ["overrideReason"],
+        message: "override_reason_required",
+      });
     const parsed = schema.safeParse(await c.req.json().catch(() => null));
-    if (!parsed.success) throw new HTTPException(400, { message: "Revisá los datos del turno." });
+    if (!parsed.success) {
+      const needsReason = parsed.error.issues.some((i) => i.message === "override_reason_required");
+      throw new HTTPException(400, {
+        message: needsReason
+          ? "Para tomar el turno igualmente, contá por qué."
+          : "Revisá los datos del turno.",
+      });
+    }
     const body = parsed.data;
 
     const phone = normalizePhoneAr(body.customer.phone);
