@@ -349,21 +349,57 @@ jobs:
               raise exception 'late payment re-blocked the slot';
             end if;
 
-            -- cancelación: reembolsable a >=24h, no reembolsable el mismo día
-            select b.public_token into v_tok from public.bookings b
-             where b.status = 'confirmed' and b.starts_at > now() + interval '24 hours' limit 1;
+            -- Cancelación. Sólo se devuelve dinero REALMENTE cobrado: el
+            -- fixture arma cada caso en vez de tomar la primera reserva
+            -- confirmada que aparezca. Un `limit 1` sin orden caía sobre
+            -- una reserva interna (confirmada pero sin seña paga) y
+            -- convertía esta prueba en una lotería.
+
+            -- A) online + seña ACREDITADA + más de 24 h → se devuelve.
+            select public.create_booking('depilacion', now() + interval '30 days',
+              now() + interval '30 days 30 minutes', 30, 'fixed', 30000, null, 20, 6000,
+              '{"first_name":"Refund","phone_e164":"+5493420005101"}'::jsonb, '[]'::jsonb, null, 'online')
+              ->> 'id' into v_id;
+            v_r := public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-REFUND-A', 6000, 'approved', '{}'::jsonb);
+            if v_r <> 'confirmed' then raise exception 'fixture roto: la seña no confirmó (%)', v_r; end if;
+            select public_token into v_tok from public.bookings where id = v_id;
+            if (select deposit_status from public.bookings where id = v_id) <> 'paid' then
+              raise exception 'fixture roto: deposit_status no quedó en paid';
+            end if;
             v_res := public.cancel_booking(v_tok, 'ci');
             if (v_res->>'refund_due')::boolean is distinct from true then
-              raise exception 'expected refund_due=true, got %', v_res;
+              raise exception 'esperaba refund_due=true con seña paga y >24h, dio %', v_res;
+            end if;
+            if v_res->>'deposit_status' <> 'refunded' then
+              raise exception 'esperaba deposit_status=refunded, dio %', v_res;
             end if;
 
+            -- B) online + seña ACREDITADA + menos de 24 h → NO se devuelve.
+            --    Aísla la regla de las 24 h: acá sí había dinero cobrado.
             select public.create_booking('depilacion', now() + interval '5 hours',
               now() + interval '5 hours 30 minutes', 30, 'fixed', 30000, null, 20, 6000,
+              '{"first_name":"Late","phone_e164":"+5493420005102"}'::jsonb, '[]'::jsonb, null, 'online')
+              ->> 'id' into v_id;
+            v_r := public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-REFUND-B', 6000, 'approved', '{}'::jsonb);
+            if v_r <> 'confirmed' then raise exception 'fixture roto: la seña B no confirmó (%)', v_r; end if;
+            select public_token into v_tok from public.bookings where id = v_id;
+            v_res := public.cancel_booking(v_tok, null);
+            if (v_res->>'refund_due')::boolean is distinct from false then
+              raise exception 'esperaba refund_due=false dentro de las 24 h, dio %', v_res;
+            end if;
+            if v_res->>'deposit_status' <> 'retained' then
+              raise exception 'esperaba deposit_status=retained, dio %', v_res;
+            end if;
+
+            -- C) interna, nunca pagada → NO se devuelve, aunque falten días.
+            --    Devolver acá sería prometer plata que nunca entró.
+            select public.create_booking('depilacion', now() + interval '31 days',
+              now() + interval '31 days 30 minutes', 30, 'fixed', 30000, null, 20, 6000,
               '{"first_name":"Soon","phone_e164":"+5493420005001"}'::jsonb, '[]'::jsonb, null, 'manual')
               ->> 'public_token' into v_tok;
             v_res := public.cancel_booking(v_tok, null);
             if (v_res->>'refund_due')::boolean is distinct from false then
-              raise exception 'expected refund_due=false, got %', v_res;
+              raise exception 'una reserva interna sin seña no puede generar reembolso, dio %', v_res;
             end if;
             if v_res->>'previous_status' <> 'confirmed' then
               raise exception 'previous_status missing from cancel result';
@@ -410,7 +446,7 @@ jobs:
 
           psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
           do $$
-          declare v jsonb; v_id uuid; v_n int; i int;
+          declare v jsonb; v_id uuid; v_id2 uuid; v_n int; i int;
           begin
             -- Los cuatro canales internos confirman SIN seña. Antes la
             -- condición era `p_source = 'manual'` y los otros tres habrían
@@ -494,13 +530,21 @@ jobs:
             v := public.create_booking('peluqueria', now() + interval '6 days',
               now() + interval '6 days 1 hour', 60, 'fixed', 40000, null, 20, 8000,
               '{"first_name":"NS2","phone_e164":"+5493425920002"}'::jsonb, '[]'::jsonb, null, 'phone');
-            v := public.mark_no_show((v->>'id')::uuid, null, 'ci@sol-mai.test');
+            v_id2 := (v->>'id')::uuid;
+            v := public.mark_no_show(v_id2, null, 'ci@sol-mai.test');
             if v->>'deposit_status' = 'retained' or (v->>'deposit_amount')::int <> 0 then
               raise exception 'retuvo una seña inexistente';
             end if;
 
-            -- no_show y cancelled no se mezclan.
-            select count(*) into v_n from public.bookings where status = 'cancelled';
+            -- no_show y cancelled no se mezclan. Se mide sobre LAS DOS
+            -- reservas que este bloque marcó, no sobre toda la tabla: un
+            -- conteo global depende de lo que hicieron los pasos previos
+            -- y sólo daba cero mientras el paso anterior venía fallando.
+            select count(*) into v_n from public.bookings
+             where id in (v_id, v_id2) and status = 'no_show';
+            if v_n <> 2 then raise exception 'esperaba 2 ausencias, hay %', v_n; end if;
+            select count(*) into v_n from public.bookings
+             where id in (v_id, v_id2) and status = 'cancelled';
             if v_n <> 0 then raise exception 'un no_show se contó como cancelled'; end if;
 
             -- Las cuatro áreas quedan reservables online (D-13).
