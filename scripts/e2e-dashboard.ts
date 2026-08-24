@@ -22,6 +22,57 @@ function check(label: string, ok: boolean, detail?: string) {
   if (!ok) failures += 1;
 }
 
+/**
+ * Sembrar dos atenciones de HOY: una con costo y otra sin.
+ *
+ * Sin esto la prueba depende de qué haya en la base y de la hora: un
+ * lunes temprano "esta semana" es un solo día y la rama que importa —
+ * margen parcial, que tiene que declarar su cobertura — no se ejercita.
+ */
+async function seedToday(token: string): Promise<boolean> {
+  const salonNow = new Date(Date.now() - 180 * 60_000);
+  const day = salonNow.toISOString().slice(0, 10);
+  const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
+
+  const created: string[] = [];
+  for (const [i, name] of ["Emilia", "Florencia"].entries()) {
+    const res = await fetch(`${BASE}/api/v1/admin/bookings`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        serviceSlug: "corte-fem",
+        lengthTier: "medio",
+        startsAt: `${day}T${String(10 + i * 2).padStart(2, "0")}:00:00-03:00`,
+        source: "manual",
+        customer: { firstName: name, phone: `342470010${i}` },
+      }),
+    });
+    if (!res.ok) return false;
+    created.push(((await res.json()) as { data: { id: string } }).data.id);
+  }
+
+  // La primera con costo, la segunda sin: el margen tiene que salir
+  // "sobre 1 de 2", nunca como si fuera el margen del período.
+  const closes = [
+    { id: created[0], finalPrice: 22000, costAmount: 9000 },
+    { id: created[1], finalPrice: 18000 },
+  ];
+  for (const c of closes) {
+    const res = await fetch(`${BASE}/api/v1/admin/bookings/${c.id}/close`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        finalPrice: c.finalPrice,
+        costAmount: c.costAmount,
+        servicesDone: "Corte",
+        payments: [{ amount: c.finalPrice, method: "efectivo", kind: "balance" }],
+      }),
+    });
+    if (!res.ok) return false;
+  }
+  return true;
+}
+
 async function signIn(page: Page, token: string) {
   await page.goto(`${BASE}/agenda`, { waitUntil: "networkidle" });
   await page.evaluate((t) => sessionStorage.setItem("sol-mai-staff-token", t), token);
@@ -34,6 +85,8 @@ async function main() {
     process.exit(2);
   }
 
+  const seeded = await seedToday(OWNER_TOKEN);
+
   const browser = await chromium.launch({ executablePath: CHROME });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 
@@ -45,6 +98,7 @@ async function main() {
   });
 
   console.log(`\nE2E · los números · ${BASE}\n`);
+  check("se pudieron sembrar dos atenciones de hoy (una con costo)", seeded);
 
   // --- quien atiende no ve la plata del salón -------------------------
   await signIn(page, STAFF_TOKEN);
@@ -82,20 +136,18 @@ async function main() {
     .textContent()
     .catch(() => "");
   const shown = marginBlock ?? "";
-  const hasCost = /Calculado sobre/i.test(shown);
-  if (hasCost) {
-    check(
-      "con costos parciales dice sobre cuántas atenciones se calculó",
-      /Calculado sobre \d+ de \d+/i.test(shown),
-      shown.slice(0, 160),
-    );
-  } else {
-    check(
-      "sin costos el margen dice NO DISPONIBLE, no $0",
-      /No disponible/i.test(shown),
-      shown.slice(0, 160),
-    );
-  }
+  // Con una atención con costo y otra sin, el margen TIENE que decir
+  // sobre cuántas se calculó: un margen sobre 1 de 2 no es el del período.
+  check(
+    "con costos parciales dice sobre cuántas atenciones se calculó",
+    /Calculado sobre 1 de 2/i.test(shown),
+    shown.slice(0, 200),
+  );
+  check(
+    "y avisa que todavía no es el margen del período",
+    /todav[íi]a no es el margen/i.test(shown),
+    shown.slice(0, 200),
+  );
   check("el margen nunca se muestra como $0", !/^\s*\$0\s*$/m.test(shown), shown.slice(0, 160));
 
   // --- período vacío no rompe ni miente -------------------------------
