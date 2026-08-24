@@ -14,6 +14,21 @@ import { z } from "zod";
 
 const nonEmpty = z.string().min(1, "must not be empty");
 
+/**
+ * Proveedores en los que se puede confiar el email en PRODUCCIÓN.
+ *
+ * La política de identidad vincula automáticamente por email
+ * coincidente. Eso sólo es seguro si el proveedor VERIFICA que el email
+ * es de quien entra. Con el alta por email y clave —el default de
+ * Supabase— cualquiera se registra con el correo de otra persona, así
+ * que admitirlo en producción reabriría el acceso a fichas ajenas.
+ *
+ * CI lo abre a `email` a propósito, porque Supabase local sólo emite
+ * esos tokens; por eso el guard mira `APP_ENV` en vez de prohibirlo
+ * siempre.
+ */
+const TRUSTED_PRODUCTION_PROVIDERS = ["google"] as const;
+
 const csvEmails = z
   .string()
   .min(1, "must contain at least one email")
@@ -44,6 +59,28 @@ const serverEnvSchema = z.object({
   // Internal auth (staff/owner console access via JWT)
   INTERNAL_AUTH_JWT_AUDIENCE: nonEmpty,
   INTERNAL_AUTH_ALLOWED_EMAILS: csvEmails,
+  /**
+   * Proveedores de identidad admitidos, separados por coma.
+   *
+   * El default es `google` y así queda en producción: la vinculación
+   * automática por email coincidente supone un proveedor que verifica el
+   * email, y admitir uno que no lo verifique convierte esa vinculación
+   * en una vía de acceso a fichas ajenas.
+   *
+   * Existe como variable para que CI pueda ejercitar el flujo real con
+   * el proveedor que Supabase le permite crear. Vacío NO significa
+   * "cualquiera": el schema exige al menos un valor.
+   */
+  INTERNAL_AUTH_ALLOWED_PROVIDERS: z
+    .string()
+    .default("google")
+    .transform((raw) =>
+      raw
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.string().min(1)).min(1)),
 
   // ---- Reserved for future phases (optional now) ----------------------
   MERCADO_PAGO_ACCESS_TOKEN: z.string().min(1).optional(),
@@ -85,6 +122,26 @@ export function loadServerEnv(source: NodeJS.ProcessEnv = process.env): ServerEn
         `See docs/backend-env.md for the required variables.`,
     );
   }
+  // Producción no arranca con una política de identidad insegura. Una
+  // variable mal puesta es un error de despliegue silencioso: preferimos
+  // que el servidor no levante antes que servir fichas ajenas.
+  if (parsed.data.APP_ENV === "production") {
+    const untrusted = parsed.data.INTERNAL_AUTH_ALLOWED_PROVIDERS.filter(
+      (p) =>
+        !TRUSTED_PRODUCTION_PROVIDERS.includes(p as (typeof TRUSTED_PRODUCTION_PROVIDERS)[number]),
+    );
+    if (untrusted.length > 0) {
+      throw new Error(
+        `Invalid server environment configuration:\n` +
+          `  - INTERNAL_AUTH_ALLOWED_PROVIDERS: ${untrusted.join(", ")} no verifica el email y ` +
+          `no puede usarse con APP_ENV=production.\n` +
+          `    En producción sólo se admite: ${TRUSTED_PRODUCTION_PROVIDERS.join(", ")}.\n` +
+          `    La vinculación automática por email coincidente supone un proveedor que ` +
+          `verifica el email; con uno que no lo hace, cualquiera entra a la ficha de otra persona.`,
+      );
+    }
+  }
+
   cached = parsed.data;
   return cached;
 }

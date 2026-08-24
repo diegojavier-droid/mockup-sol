@@ -1,4 +1,5 @@
 import type { Personalization } from "@/lib/booking-data";
+import type { ApiQuote } from "@/lib/api/catalog-types";
 import { computeTotals } from "@/lib/booking-totals";
 import type { SummaryData } from "../SummaryPanel";
 import { StepShell } from "../wizard/StepShell";
@@ -11,16 +12,21 @@ export function ReviewStep({
   personal: _personal,
   error,
   onConfirm,
+  quote,
 }: {
   customer: CustomerFormState;
   data: SummaryData;
   personal: Personalization;
   error: string | null;
   onConfirm: () => void;
+  /** Cotización del backend: es la autoridad sobre el porcentaje de seña. */
+  quote?: ApiQuote | null;
 }) {
   const { categories } = useCatalog();
   const category = categories.find((currentCategory) => currentCategory.id === data.category);
-  const { price, depositPrice, remainingPrice } = computeTotals(data);
+  const { price, depositPrice, remainingPrice, depositRate } = computeTotals(data);
+  // El porcentaje lo fija Sol desde el panel: si lo cambia, cambia acá.
+  const shownRate = quote ? quote.depositRatePct : Math.round(depositRate * 100);
 
   return (
     <StepShell title="Revisá tu solicitud">
@@ -62,7 +68,7 @@ export function ReviewStep({
           <section className="rounded-2xl border border-champagne-deep/30 bg-gradient-to-b from-champagne/45 to-cream/50 p-4">
             <ReviewAmount label="Total estimado" value={price} />
             <div className="mt-3 border-t border-champagne-deep/20 pt-3">
-              <ReviewAmount label="Seña 20%" value={depositPrice} emphasize />
+              <ReviewAmount label={`Seña ${shownRate}%`} value={depositPrice} emphasize />
             </div>
             <div className="mt-3 border-t border-champagne-deep/20 pt-3">
               <ReviewAmount label="Saldo en salón" value={remainingPrice} />
@@ -76,6 +82,19 @@ export function ReviewStep({
           {error}
         </p>
       )}
+
+      {/* Lo que pasa si no viene se dice ANTES de confirmar, con el mismo
+          peso que la regla de cancelación. Esconderlo en un enlace legal
+          sería enterarse cuando ya no se puede hacer nada. */}
+      <section className="mt-4 rounded-2xl border border-border bg-cream/40 px-4 py-3">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          Antes de confirmar
+        </p>
+        <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-foreground/80">
+          <li>Cancelando con más de 24 horas de anticipación, te devolvemos la seña.</li>
+          <li>Si no venís y no cancelaste antes, la seña no se devuelve.</li>
+        </ul>
+      </section>
 
       <button
         type="button"

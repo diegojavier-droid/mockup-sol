@@ -36,6 +36,23 @@ mint_keys() {
   ' > "$RUN_DIR/keys.json"
 }
 
+# Matar por patrón no alcanza: un proceso que sobrevive deja el puerto
+# tomado y el siguiente arranque falla con "Address in use", que es
+# justo el síntoma que este stack debe evitar.
+stop_services() {
+  # Por nombre exacto: `ss` y `lsof` no están garantizados en todos los
+  # entornos, y un proceso que sobrevive deja el puerto tomado — que es
+  # el "Address in use" que rompe el arranque siguiente.
+  pkill -x postgrest       >/dev/null 2>&1 || true
+  pkill -f "[s]him\.ts"    >/dev/null 2>&1 || true
+  for _ in 1 2 3 4 5; do
+    pgrep -x postgrest >/dev/null 2>&1 || break
+    sleep 1
+  done
+  pkill -9 -x postgrest    >/dev/null 2>&1 || true
+  pkill -9 -f "[s]him\.ts" >/dev/null 2>&1 || true
+}
+
 reset_db() {
   su postgres -c "psql -Atc \"select pg_terminate_backend(pid) from pg_stat_activity where datname='$DB'\"" >/dev/null 2>&1 || true
   su postgres -c "dropdb --if-exists $DB" >/dev/null
@@ -76,7 +93,9 @@ EOF
     # graves acá adentro genera TypeScript inválido, así que los puertos
     # entran por entorno.
     cat > "$RUN_DIR/shim.ts" <<'EOF'
-// Maps supabase-js /rest/v1/* onto plain PostgREST.
+// Maps supabase-js /rest/v1/* onto plain PostgREST, and stands in for
+// Supabase Auth on /auth/v1/user so the internal panel can be exercised
+// locally. SOLO DESARROLLO: el token de dev es literalmente el email.
 const SHIM_PORT = Number(Bun.env.SOLMAI_SHIM_PORT ?? "54321");
 const PGRST_PORT = Number(Bun.env.SOLMAI_PGRST_PORT ?? "3010");
 
@@ -84,6 +103,51 @@ Bun.serve({
   port: SHIM_PORT,
   async fetch(req) {
     const url = new URL(req.url);
+
+    if (url.pathname === "/auth/v1/user") {
+      // supabase-js valida la forma del JWT antes de llamar, así que el
+      // token de dev tiene que ser un JWT de verdad. El email sale del
+      // payload; la firma no se verifica: esto es sólo desarrollo.
+      const auth = req.headers.get("authorization") ?? "";
+      const token = auth.replace(/^Bearer\s+/i, "").trim();
+      let email = "";
+      let sub = "00000000-0000-4000-8000-000000000001";
+      // El servidor exige proveedor y email verificado, así que el shim
+      // tiene que poder emitir también tokens que NO cumplen: si sólo
+      // supiera emitir los buenos, la prueba negativa sería imposible.
+      let provider = "google";
+      let verified = true;
+      try {
+        const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
+        email = payload.email ?? "";
+        sub = payload.sub ?? sub;
+        if (typeof payload.provider === "string") provider = payload.provider;
+        if (payload.email_verified === false) verified = false;
+      } catch {
+        email = "";
+      }
+      if (!email.includes("@")) {
+        return new Response(JSON.stringify({ error: "invalid token" }), {
+          status: 401,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(
+        JSON.stringify({
+          id: sub,
+          aud: "authenticated",
+          role: "authenticated",
+          email,
+          email_confirmed_at: verified ? "2026-01-01T00:00:00Z" : null,
+          confirmed_at: verified ? "2026-01-01T00:00:00Z" : null,
+          app_metadata: { provider, providers: [provider] },
+          identities: [{ provider }],
+          user_metadata: {},
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    }
+
     if (!url.pathname.startsWith("/rest/v1")) return new Response("not implemented", { status: 501 });
     const target =
       "http://127.0.0.1:" + PGRST_PORT + url.pathname.replace("/rest/v1", "") + url.search;
@@ -102,8 +166,7 @@ EOF
       exit 1
     fi
 
-    pkill -f "[p]ostgrest $RUN_DIR" >/dev/null 2>&1 || true
-    pkill -f "[s]him.ts" >/dev/null 2>&1 || true
+    stop_services
     (postgrest "$RUN_DIR/postgrest.conf" > "$RUN_DIR/postgrest.log" 2>&1 &)
     (SOLMAI_SHIM_PORT="$SHIM_PORT" SOLMAI_PGRST_PORT="$PGRST_PORT" \
        bun run "$RUN_DIR/shim.ts" > "$RUN_DIR/shim.log" 2>&1 &)
@@ -127,9 +190,33 @@ EOF
     ;;
 
   down)
-    pkill -f "[p]ostgrest $RUN_DIR" >/dev/null 2>&1 || true
-    pkill -f "[s]him.ts" >/dev/null 2>&1 || true
+    stop_services
     echo "== stack down"
+    ;;
+
+  token)
+    # scripts/local-stack.sh token <email> [proveedor] [verified]
+    #   token ana@x.ar                  → google, verificado
+    #   token ana@x.ar email            → alta por email y clave
+    #   token ana@x.ar google false     → google sin verificar
+    JWT_SECRET="$JWT_SECRET" bun -e '
+      const { createHmac } = require("crypto");
+      const secret = process.env.JWT_SECRET;
+      const email = process.argv[1];
+      const provider = process.argv[2] || "google";
+      const emailVerified = (process.argv[3] || "true") !== "false";
+      const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+      const h = b64({ alg: "HS256", typ: "JWT" });
+      // Un `sub` distinto por email: en Supabase real cada cuenta tiene el
+      // suyo, y un sub compartido haría que todas las identidades de
+      // desarrollo resolvieran a la misma persona.
+      const { createHash } = require("crypto");
+      const h32 = createHash("sha256").update(email).digest("hex").slice(0, 32);
+      const sub = `${h32.slice(0,8)}-${h32.slice(8,12)}-4${h32.slice(13,16)}-8${h32.slice(17,20)}-${h32.slice(20,32)}`;
+      const p = b64({ sub, email, provider, email_verified: emailVerified,
+                      role: "authenticated", exp: Math.floor(Date.now()/1000)+86400 });
+      console.log(`${h}.${p}.${createHmac("sha256", secret).update(`${h}.${p}`).digest("base64url")}`);
+    ' "${2:-sol@solmai.ar}" "${3:-google}" "${4:-true}"
     ;;
 
   env)

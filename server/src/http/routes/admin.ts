@@ -22,8 +22,26 @@ import {
   TransitionError,
   updateBookingStatus,
 } from "../../lib/admin/repository";
-import { createBooking, BookingError } from "../../lib/booking/repository";
+import {
+  assignStation,
+  blockStation,
+  closeService,
+  listStations,
+  loadDashboardSummary,
+  loadReconciliation,
+  StationError,
+  unblockStation,
+} from "../../lib/admin/repository";
+import { listPendingLinks, resolvePendingLink } from "../../lib/identity/repository";
+import {
+  createBooking,
+  checkCapacity,
+  markNoShow,
+  BookingError,
+  type CapacityCheck,
+} from "../../lib/booking/repository";
 import { normalizePhoneAr } from "../../domain/phone";
+import { logBookingFailure, requestId } from "../../lib/observability";
 import { computeQuote } from "../../domain/quote";
 import { QuoteError } from "../../domain/types";
 import { loadQuoteContext } from "../../lib/quote/repository";
@@ -31,6 +49,38 @@ import { createCatalogRepository } from "../../lib/catalog/repository";
 import { createSupabaseAnonClient } from "../../lib/supabase";
 
 const SALON_TZ = "-03:00";
+
+/**
+ * Qué se le dice a la persona cuando el turno no entra.
+ *
+ * Nunca "no disponible": eso obliga a adivinar. Se dicen los números
+ * concretos, porque son los que permiten decidir si vale la pena crear
+ * la excepción.
+ */
+function capacityConflictMessage(check: CapacityCheck): string {
+  if (check.area_closed) {
+    return `Ese horario está marcado como cerrado${check.area_name ? ` para ${check.area_name}` : ""}. Podés crear el turno igualmente.`;
+  }
+  if (check.capacity !== undefined && check.peak !== undefined) {
+    const donde = check.area_name ? ` en ${check.area_name}` : "";
+    return `Ese horario ya está completo${donde}: ${check.peak} de ${check.capacity} lugares ocupados. Podés crear el turno igualmente.`;
+  }
+  return "Ese horario supera la disponibilidad configurada. Podés crear el turno igualmente.";
+}
+
+/**
+ * Qué falta, dicho por su nombre. "Falta un dato" obliga a adivinar cuál,
+ * y quien lo lee está con una clienta enfrente.
+ */
+function quoteErrorMessage(code: string): string {
+  const messages: Record<string, string> = {
+    length_required: "Este servicio cobra según el largo del pelo: elegí uno.",
+    tier_not_found: "No tenemos precio cargado para ese largo. Revisalo en Configuración.",
+    unknown_option: "Una de las opciones elegidas ya no existe en el catálogo.",
+    service_not_quotable: "Ese servicio todavía no tiene precio cargado.",
+  };
+  return messages[code] ?? "Falta un dato para calcular el turno.";
+}
 
 export function createAdminRoute(env: ServerEnv) {
   const route = new Hono<{ Variables: StaffVars }>();
@@ -95,24 +145,277 @@ export function createAdminRoute(env: ServerEnv) {
     }
   });
 
-  // Turno manual: el salón sigue tomando turnos por teléfono (§14.12).
-  route.post("/bookings", async (c) => {
+  /**
+   * Ausencia sin aviso. No es una variante de cancelar: nadie avisó y la
+   * hora se perdió. Si había seña acreditada se retiene; si no la había,
+   * no se inventa ninguna consecuencia económica.
+   */
+  route.post("/bookings/:id/no-show", async (c) => {
+    const staff = c.get("staff");
+    try {
+      const result = await markNoShow(createSupabaseAdminClient(env), {
+        bookingId: c.req.param("id"),
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      });
+      const message =
+        result.deposit_status === "retained"
+          ? `Registrado como ausencia. La seña de $${result.deposit_amount.toLocaleString("es-AR")} queda retenida.`
+          : "Registrado como ausencia. No había seña abonada, así que no hay nada que retener.";
+      return c.json({ data: { ...result, message } });
+    } catch (error) {
+      if (error instanceof BookingError || error instanceof Error) {
+        const code = error instanceof BookingError ? error.code : error.message;
+        if (code === "booking_not_found") {
+          throw new HTTPException(404, { message: "No encontramos ese turno." });
+        }
+        if (code === "not_markable") {
+          throw new HTTPException(409, {
+            message: "Sólo se puede marcar ausencia en un turno que estaba tomado.",
+          });
+        }
+      }
+      throw error;
+    }
+  });
+
+  /**
+   * Vínculos de identidad esperando confirmación.
+   *
+   * Aparecen cuando alguien entra con Google y sólo coincide el teléfono
+   * con una ficha existente. Hasta que el salón confirme, esa persona
+   * puede reservar pero no ve el historial: el teléfono no autentica.
+   */
+  route.get("/pending-links", async (c) => {
+    const links = await listPendingLinks(createSupabaseAdminClient(env));
+    return c.json({ data: links });
+  });
+
+  route.post("/pending-links/:id", async (c) => {
+    const schema = z.object({ approve: z.boolean() });
+    const parsed = schema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) throw new HTTPException(400, { message: "Indicá si se aprueba." });
+    const staff = c.get("staff");
+    const result = await resolvePendingLink(createSupabaseAdminClient(env), {
+      identityId: c.req.param("id"),
+      approve: parsed.data.approve,
+      actorId: staff.staffId,
+      actorLabel: staff.email,
+    });
+    return c.json({
+      data: {
+        ...result,
+        message: parsed.data.approve
+          ? "Vinculado. Ahora ve su historial."
+          : "Rechazado. La cuenta queda sin acceso a esa ficha.",
+      },
+    });
+  });
+
+  /**
+   * Cerrar la atención. Pasa con la clienta todavía en el salón, así que
+   * sólo tres cosas son obligatorias: qué se hizo, cuánto se acordó y
+   * cuánto entró. Todo lo demás es opcional.
+   */
+  route.post("/bookings/:id/close", async (c) => {
     const schema = z.object({
-      serviceSlug: z.string().min(1).max(64),
-      lengthTier: z.enum(["corto", "medio", "largo", "xl", "unico"]).nullish(),
-      personalization: z.record(z.string().max(64), z.string().max(64)).optional(),
-      extraCodes: z.array(z.string().min(1).max(64)).max(10).default([]),
-      startsAt: z.string().datetime({ offset: true }),
-      customer: z.object({
-        firstName: z.string().min(1).max(80),
-        lastName: z.string().max(80).optional(),
-        phone: z.string().min(6).max(30),
-        email: z.string().email().max(160).optional(),
-      }),
-      note: z.string().max(500).optional(),
+      finalPrice: z.number().int().min(0),
+      servicesDone: z.string().max(400).optional(),
+      staffId: z.string().uuid().nullish(),
+      durationMin: z.number().int().min(1).max(1440).nullish(),
+      formula: z.string().max(2000).optional(),
+      // NULL es un valor válido y significa "no sabemos". Nunca se estima.
+      costAmount: z.number().int().min(0).nullish(),
+      observation: z.string().max(1000).optional(),
+      payments: z
+        .array(
+          z.object({
+            amount: z.number().int().min(1),
+            method: z.enum(["efectivo", "transferencia", "mercado_pago", "otro"]),
+            kind: z.enum(["deposit", "balance", "adjustment"]).default("balance"),
+            note: z.string().max(200).optional(),
+          }),
+        )
+        .max(10)
+        .default([]),
     });
     const parsed = schema.safeParse(await c.req.json().catch(() => null));
-    if (!parsed.success) throw new HTTPException(400, { message: "Revisá los datos del turno." });
+    if (!parsed.success) throw new HTTPException(400, { message: "Revisá los datos del cierre." });
+    const staff = c.get("staff");
+
+    try {
+      const result = await closeService(createSupabaseAdminClient(env), {
+        bookingId: c.req.param("id"),
+        ...parsed.data,
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      });
+      const parts = [`Atención cerrada por $${result.final_price.toLocaleString("es-AR")}.`];
+      if (result.outstanding > 0) {
+        parts.push(`Queda un saldo de $${result.outstanding.toLocaleString("es-AR")}.`);
+      }
+      return c.json({ data: { ...result, message: parts.join(" ") } });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      if (code.includes("booking_not_found")) {
+        throw new HTTPException(404, { message: "No encontramos ese turno." });
+      }
+      if (code.includes("not_closable")) {
+        throw new HTTPException(409, {
+          message: "Ese turno no se puede cerrar: fue cancelado o marcado como ausencia.",
+        });
+      }
+      throw error;
+    }
+  });
+
+  // ------------------------------------------------------------ estaciones
+  // ÁREA != ESTACIÓN: el mostrador necesita poder decir "a qué sillón" y
+  // "cuál está fuera de servicio". La asignación sigue siendo OPCIONAL
+  // (D-06): obligarla rompería el alta rápida.
+
+  route.get("/stations", async (c) => {
+    const schema = z.object({
+      area: z.string().min(1).max(64).optional(),
+      at: z.string().datetime({ offset: true }).optional(),
+    });
+    const parsed = schema.safeParse(c.req.query());
+    if (!parsed.success) throw new HTTPException(400, { message: "Consulta inválida." });
+
+    const stations = await listStations(createSupabaseAdminClient(env), {
+      area: parsed.data.area,
+      at: parsed.data.at ? new Date(parsed.data.at) : undefined,
+    });
+    return c.json({ data: stations });
+  });
+
+  route.post("/bookings/:id/station", async (c) => {
+    const schema = z.object({ stationId: z.string().uuid().nullable() });
+    const parsed = schema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) throw new HTTPException(400, { message: "Elegí una estación válida." });
+
+    try {
+      await assignStation(createSupabaseAdminClient(env), {
+        bookingId: c.req.param("id"),
+        stationId: parsed.data.stationId,
+      });
+    } catch (error) {
+      if (error instanceof StationError) {
+        throw new HTTPException(error.code === "not_found" ? 404 : 409, {
+          message:
+            error.code === "not_found"
+              ? "No encontramos ese turno o esa estación."
+              : error.code === "blocked"
+                ? "Esa estación está fuera de servicio en ese horario."
+                : "Esa estación no es del área del turno.",
+        });
+      }
+      throw error;
+    }
+    return c.json({ data: { ok: true } });
+  });
+
+  route.post("/stations/:id/block", async (c) => {
+    const schema = z.object({
+      startsAt: z.string().datetime({ offset: true }),
+      endsAt: z.string().datetime({ offset: true }),
+      reason: z.string().min(1).max(200),
+    });
+    const parsed = schema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) throw new HTTPException(400, { message: "Faltan datos del bloqueo." });
+
+    const startsAt = new Date(parsed.data.startsAt);
+    const endsAt = new Date(parsed.data.endsAt);
+    if (endsAt <= startsAt) throw new HTTPException(400, { message: "El rango está al revés." });
+
+    const result = await blockStation(createSupabaseAdminClient(env), {
+      stationId: c.req.param("id"),
+      startsAt,
+      endsAt,
+      reason: parsed.data.reason,
+      createdBy: c.get("staff").staffId,
+    });
+
+    return c.json({
+      data: {
+        ...result,
+        // Que el mostrador sepa a cuántas personas hay que reubicar: el
+        // turno no se cancela, se queda sin estación.
+        message:
+          result.displacedBookings === 0
+            ? null
+            : `${result.displacedBookings} ${
+                result.displacedBookings === 1 ? "turno quedó" : "turnos quedaron"
+              } sin estación asignada. Siguen en la agenda: hay que reubicarlos.`,
+      },
+    });
+  });
+
+  route.post("/stations/blocks/:blockId/remove", async (c) => {
+    await unblockStation(createSupabaseAdminClient(env), c.req.param("blockId"));
+    return c.json({ data: { ok: true } });
+  });
+
+  /**
+   * Qué pasa si se crea un turno en este horario. Se consulta ANTES de
+   * intentar, para poder advertir con números en vez de fallar.
+   */
+  route.get("/capacity", async (c) => {
+    const schema = z.object({
+      area: z.string().min(1).max(64),
+      startsAt: z.string().datetime({ offset: true }),
+      endsAt: z.string().datetime({ offset: true }),
+    });
+    const parsed = schema.safeParse(c.req.query());
+    if (!parsed.success) throw new HTTPException(400, { message: "Consulta inválida." });
+    const check = await checkCapacity(createSupabaseAdminClient(env), {
+      areaSlug: parsed.data.area,
+      startsAt: new Date(parsed.data.startsAt),
+      endsAt: new Date(parsed.data.endsAt),
+    });
+    if (!check.found) throw new HTTPException(404, { message: "No encontramos esa área." });
+    return c.json({
+      data: { ...check, message: check.fits ? null : capacityConflictMessage(check) },
+    });
+  });
+
+  // Turno interno: el salón toma turnos por mostrador, teléfono y WhatsApp.
+  route.post("/bookings", async (c) => {
+    const schema = z
+      .object({
+        serviceSlug: z.string().min(1).max(64),
+        lengthTier: z.enum(["corto", "medio", "largo", "xl", "unico"]).nullish(),
+        personalization: z.record(z.string().max(64), z.string().max(64)).optional(),
+        extraCodes: z.array(z.string().min(1).max(64)).max(10).default([]),
+        startsAt: z.string().datetime({ offset: true }),
+        customer: z.object({
+          firstName: z.string().min(1).max(80),
+          lastName: z.string().max(80).optional(),
+          phone: z.string().min(6).max(30),
+          email: z.string().email().max(160).optional(),
+        }),
+        note: z.string().max(500).optional(),
+        // El canal es un dato del negocio: por dónde llegó la clienta.
+        source: z.enum(["manual", "phone", "whatsapp", "walk_in"]).default("manual"),
+        // Crear aunque el motor diga que no entra. Nunca silencioso.
+        override: z.boolean().default(false),
+        overrideReason: z.string().max(300).optional(),
+      })
+      // Una excepción sin motivo no es auditable, y auditarla es la
+      // única razón por la que se permite saltar la disponibilidad.
+      .refine((v) => !v.override || (v.overrideReason ?? "").trim().length > 0, {
+        path: ["overrideReason"],
+        message: "override_reason_required",
+      });
+    const parsed = schema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) {
+      const needsReason = parsed.error.issues.some((i) => i.message === "override_reason_required");
+      throw new HTTPException(400, {
+        message: needsReason
+          ? "Para tomar el turno igualmente, contá por qué."
+          : "Revisá los datos del turno.",
+      });
+    }
     const body = parsed.data;
 
     const phone = normalizePhoneAr(body.customer.phone);
@@ -136,15 +439,16 @@ export function createAdminRoute(env: ServerEnv) {
       });
     } catch (error) {
       if (error instanceof QuoteError) {
-        throw new HTTPException(422, { message: "Falta un dato para calcular el turno." });
+        throw new HTTPException(422, { message: quoteErrorMessage(error.code) });
       }
       throw error;
     }
 
     const startsAt = new Date(body.startsAt);
+    const staff = c.get("staff");
     try {
-      // source=manual: nace confirmado y sin seña — el compromiso ahí es
-      // la conversación, no el pago.
+      // Cualquier canal interno nace confirmado y sin seña: el compromiso
+      // ahí es la conversación, no el pago.
       const booking = await createBooking(createSupabaseAdminClient(env), {
         areaSlug: context.areaSlug,
         startsAt,
@@ -174,18 +478,38 @@ export function createAdminRoute(env: ServerEnv) {
           setup_min: item.setupMin,
         })),
         customerNote: body.note ?? null,
-        source: "manual",
+        source: body.source,
+        createdBy: staff.staffId,
+        actorLabel: staff.email,
+        override: body.override,
+        overrideReason: body.overrideReason ?? null,
       });
       return c.json({ data: booking }, 201);
     } catch (error) {
       if (error instanceof BookingError) {
-        const messages: Record<string, string> = {
-          capacity_full: "No hay lugar en ese horario. Elegí otro o liberá capacidad.",
-          area_closed: "Ese día está cerrado. Sacá el bloqueo o elegí otra fecha.",
-        };
-        throw new HTTPException(409, {
-          message: messages[error.code] ?? "No se pudo crear el turno.",
+        logBookingFailure({
+          code: error.code,
+          channel: body.source,
+          serviceSlug: body.serviceSlug,
+          areaSlug: context.areaSlug,
+          startsAt: body.startsAt,
+          lengthTier: body.lengthTier ?? null,
+          requestId: requestId(c.req),
         });
+        // El motor no dice "no": dice qué pasa y deja decidir. El detalle
+        // numérico permite al frontend ofrecer [Crear igualmente].
+        if (error.code === "capacity_full" || error.code === "area_closed") {
+          const check = await checkCapacity(createSupabaseAdminClient(env), {
+            areaSlug: context.areaSlug,
+            startsAt,
+            endsAt: new Date(startsAt.getTime() + quote.blockingMin * 60_000),
+          });
+          throw new HTTPException(409, {
+            message: capacityConflictMessage(check),
+            cause: { code: error.code, capacity: check },
+          });
+        }
+        throw new HTTPException(409, { message: "No se pudo crear el turno." });
       }
       throw error;
     }
@@ -321,6 +645,111 @@ export function createAdminRoute(env: ServerEnv) {
   // ------------------------------------------------- configuración (owner)
   const owner = new Hono<{ Variables: StaffVars }>();
   owner.use("*", requireOwner());
+
+  // Plata del salón: cuánto entró, cuánto se facturó y con qué margen.
+  // Va detrás de `owner` por mínimo privilegio — quien atiende no
+  // necesita ver la facturación total ni el margen para trabajar.
+  /**
+   * Seis indicadores, no cincuenta. El criterio de inclusión fue cuál
+   * cambia una decisión de Sol y cuál tiene su insumo garantizado.
+   *
+   * El margen viaja con `available` y `coverage` porque sin costos
+   * cargados no existe: la pantalla dice NO DISPONIBLE en vez de $0.
+   */
+  owner.get("/dashboard", async (c) => {
+    const schema = z.object({
+      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    });
+    const parsed = schema.safeParse(c.req.query());
+    if (!parsed.success) throw new HTTPException(400, { message: "Indicá desde y hasta." });
+
+    const from = new Date(`${parsed.data.from}T00:00:00${SALON_TZ}`);
+    const to = new Date(`${parsed.data.to}T00:00:00${SALON_TZ}`);
+    // `to` es inclusivo para quien mira la pantalla: del 1 al 31 incluye
+    // el 31 entero.
+    to.setUTCDate(to.getUTCDate() + 1);
+    if (to <= from) throw new HTTPException(400, { message: "El período está al revés." });
+
+    const data = await loadDashboardSummary(createSupabaseAdminClient(env), { from, to });
+    return c.json({ data });
+  });
+
+  /**
+   * Conciliación con el Excel. Dos meses comparando totales, no
+   * recargando datos a mano.
+   */
+  owner.get("/reconciliation", async (c) => {
+    const schema = z.object({
+      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      format: z.enum(["json", "csv"]).default("json"),
+    });
+    const parsed = schema.safeParse(c.req.query());
+    if (!parsed.success) throw new HTTPException(400, { message: "Indicá desde y hasta." });
+
+    const from = new Date(`${parsed.data.from}T00:00:00${SALON_TZ}`);
+    const to = new Date(`${parsed.data.to}T00:00:00${SALON_TZ}`);
+    to.setUTCDate(to.getUTCDate() + 1);
+
+    const rows = await loadReconciliation(createSupabaseAdminClient(env), { from, to });
+
+    if (parsed.data.format === "csv") {
+      const cols = [
+        "starts_at",
+        "area",
+        "channel",
+        "customer",
+        "customer_phone",
+        "status",
+        "estimated_amount",
+        "final_amount",
+        "collected_amount",
+        "outstanding_amount",
+        "payment_methods",
+        "cost_amount",
+        "margin_amount",
+        "deposit_status",
+        "attended_by",
+      ] as const;
+      const esc = (v: unknown) =>
+        v === null || v === undefined ? "" : `"${String(v).replace(/"/g, '""')}"`;
+      const csv = [
+        cols.join(","),
+        ...rows.map((r) => cols.map((k) => esc(r[k as keyof typeof r])).join(",")),
+      ].join("\n");
+      return c.body(csv, 200, {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": `attachment; filename="sol-mai-${parsed.data.from}_${parsed.data.to}.csv"`,
+      });
+    }
+
+    const totals = rows.reduce(
+      (acc, r) => ({
+        estimated: acc.estimated + (r.estimated_amount ?? 0),
+        final: acc.final + (r.final_amount ?? 0),
+        collected: acc.collected + (r.collected_amount ?? 0),
+        outstanding: acc.outstanding + (r.outstanding_amount ?? 0),
+      }),
+      { estimated: 0, final: 0, collected: 0, outstanding: 0 },
+    );
+    // El margen sólo se informa sobre las atenciones que tienen costo.
+    const withCost = rows.filter((r) => r.margin_amount !== null);
+    return c.json({
+      data: {
+        rows,
+        totals,
+        margin:
+          withCost.length === 0
+            ? { available: false, coverage: 0, amount: null }
+            : {
+                available: true,
+                coverage: withCost.length,
+                amount: withCost.reduce((a, r) => a + (r.margin_amount ?? 0), 0),
+              },
+      },
+    });
+  });
 
   owner.get("/settings", async (c) => {
     const { data, error } = await createSupabaseAdminClient(env)
@@ -508,6 +937,7 @@ function describeStatus(status: string): string {
     attended: "atendido",
     cancelled: "cancelado",
     expired: "vencido",
+    no_show: "marcado como ausencia",
   };
   return labels[status] ?? status;
 }

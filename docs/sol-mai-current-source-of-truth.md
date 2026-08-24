@@ -54,9 +54,25 @@ Este documento es la fuente de verdad vigente para alinear producto, diseño y d
 - El vencimiento operativo de pago debe calcularse como `payment_required_until = created_at + 10 minutos`.
 - Si la clienta no abona la seña dentro de esos 10 minutos, la reserva pasa a `expired` y el slot se libera.
 - Solo un pago aprobado antes de `payment_required_until` puede pasar una reserva de `pending_payment` a `confirmed`.
+- El webhook de Mercado Pago valida la firma HMAC-SHA256 antes de tocar nada, con comparación en tiempo constante y ventana de replay de 15 minutos. Sin firma válida responde 401: que una notificación llegue desde internet no prueba quién la mandó, y el webhook es la única autoridad que confirma un turno.
+- El importe se coteja contra la seña de esa reserva. Un pago insuficiente se registra pero no confirma: queda como excepción manual.
 - Un pago aprobado después de que la reserva ya expiró debe tratarse como excepción manual: no debe confirmar automáticamente la reserva ni volver a bloquear el slot sin revisión operativa.
 - La confirmación queda preparada para enviarse por email y WhatsApp cuando exista backend real.
 - El recordatorio queda preparado para enviarse 30 minutos antes del turno por email y WhatsApp cuando exista backend real.
+
+### Canales y agenda interna
+
+- El turno tiene canal explícito: `online`, `manual` (mostrador), `phone`, `whatsapp` y `walk_in`. El canal es un dato del negocio, no una etiqueta cosmética: responde cuánto empuja lo online de verdad.
+- Sólo el canal `online` exige seña. Los cuatro canales internos nacen `confirmed` y sin seña: ahí el compromiso es la conversación, no el pago.
+- La agenda interna permite ver Hoy, Mañana, Semana o una fecha arbitraria, filtrar por área, dar de alta un turno, asignarle estación, cerrar la atención y marcar una ausencia.
+- Una ausencia (`no_show`) es un estado terminal y retiene la seña **sólo si estaba paga**. Revertirla sería reescribir lo que pasó, no corregir un estado.
+- El salón puede crear un turno superando la disponibilidad, siempre de forma explícita y con motivo: queda marcado como excepción y registrado en `audit_log`. Nunca silencioso.
+
+### Cierre de atención y dinero
+
+- El cierre registra el precio **final** (que puede diferir del estimado), lo que efectivamente se cobró, el medio de pago (`efectivo`, `transferencia`, `mercado_pago`, `otro`) y el saldo pendiente.
+- El efectivo cuenta igual que Mercado Pago en lo cobrado: el sistema no privilegia el canal digital al medir.
+- El costo de la atención es opcional y su ausencia significa "no sabemos", no cero.
 
 ## Qué es mock/local hoy
 
@@ -65,7 +81,7 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - Datos de catálogo: servicios, categorías, extras, reglas y precios son datos locales/mock hasta validación definitiva con Sol.
 - Los precios base de Depilación se cargan como seed/mock desde el archivo operativo `precios.xlsx` y no deben tratarse como precios hardcodeados definitivos.
 - Duraciones, tiempos de proceso y setup fuera de Depilación son `industry_baseline` con `confidence: low`: existen para que el sistema funcione, no porque Sol los haya validado. `GET /admin/pending-values` los lista.
-- Capacidad de Maquillaje y Uñas: sin validar, así que ambas áreas quedan con `is_bookable_online = false`.
+- Capacidad de Maquillaje y Uñas: fijada en 1 y habilitadas online por decisión de negocio (V4.1). El valor sigue siendo provisional hasta que Sol lo valide; lo que cambió es que ya no bloquea la reserva online.
 - No hay cobro real de la seña: sin credenciales de Mercado Pago el backend responde `checkoutUrl: null` y el salón coordina la seña, en vez de simular un pago.
 - No hay envío real de confirmaciones ni recordatorios por email o WhatsApp.
 - El deploy a Cloudflare y la migración al Supabase propio siguen pendientes de credenciales del propietario.
@@ -76,9 +92,14 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - El flujo público de reserva persiste en PostgreSQL: `POST /api/v1/bookings` recalcula precio y duración en el backend y crea la reserva por RPC transaccional. El navegador nunca envía importes ni confirma pagos.
 - Precio, duración y disponibilidad se calculan sólo en el backend. El frontend consume el catálogo real por API; el mock quedó fuera del flujo y hay un guard de CI que falla si un componente vuelve a importarlo.
 - La capacidad se controla por concurrencia pico sobre el área, serializada con `pg_advisory_xact_lock` por (área, día).
+- ÁREA ≠ ESTACIÓN ≠ PERSONA. La capacidad de un área se **deriva** de sus estaciones físicas activas (`resources`): crece agregando filas, no editando un número. `areas.capacity` se mantiene sincronizada por trigger y no debe editarse a mano.
+- Una estación fuera de servicio (`resource_blocks`) reduce la capacidad que el motor exige durante ese rango, tanto al crear una reserva como al consultar disponibilidad. Sacar un puesto de servicio NO cancela los turnos que ya estaban ahí: quedan sin estación y siguen en la agenda para reubicarlos.
+- La asignación de estación es **opcional** a propósito: obligarla rompería el alta rápida de mostrador. Mientras no haya asignación, el motor razona por capacidad de área.
 - El horario pedido se valida contra la misma grilla que publica `/availability`: el canal público no puede reservar fuera de horario, fuera de grilla ni más allá de la anticipación máxima. El canal `manual` del salón sí puede, porque es su agenda.
 - Reservar no autoriza a editar la ficha de otra clienta: desde el canal público los datos ya cargados no se pisan, sólo se completan los que faltan.
 - Existe panel interno con agenda, ficha de clienta y configuración de precios, tiempos y horarios, protegido por Supabase Auth + lista de acceso + `staff_members` con rol.
+- El teléfono NO es autenticación. Una coincidencia sólo por teléfono no habilita ver el historial: el sistema saluda sin nombre y no muestra atenciones anteriores hasta que la identidad esté probada por un proveedor de identidad.
+- Los números del salón (`/admin/dashboard` y `/admin/reconciliation`) exigen rol `owner`: quien atiende no necesita ver la facturación total ni el margen para trabajar.
 - La clienta recibe al confirmar el enlace a su propia reserva (`/reserva/:token`), desde donde ve el estado, paga la seña y cancela. La regla de 24 h se le explica antes de decidir, no después.
 - El porcentaje de seña que se muestra es el aplicado de verdad: si la dueña lo cambia, cambia el cartel.
 - `supabase/migrations/` es la fuente canónica del schema.
@@ -87,6 +108,13 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - El bootstrap fue probado dos veces en un entorno Supabase local limpio y mantuvo los conteos esperados.
 - `Database clean-room CI` reconstruye Supabase desde cero, valida ledger, bootstrap, RLS, FK compuesta, typecheck, build, routeTree, guards y endpoints Hono.
 - El frontend no conserva la integración Supabase/Auth autogenerada por Lovable; Auth interna sigue fuera de alcance hasta su bloque específico.
+
+### Los números del salón
+
+- Seis indicadores, no cincuenta: cobrado, facturado, ticket promedio, ocupación, reservas por canal y clientas nuevas. El criterio de inclusión es cuál cambia una decisión de Sol y cuál tiene su insumo garantizado.
+- **El margen no se muestra mientras no haya costos cargados.** `available: false` significa NO DISPONIBLE, no cero. Con costos parciales, la pantalla dice explícitamente sobre cuántas atenciones se calculó: un margen sobre 2 de 40 no es el margen del mes.
+- La ocupación se mide sobre **estaciones** y descuenta los cierres del denominador: un feriado no puede bajar la ocupación, porque esas horas-estación nunca estuvieron disponibles. Se abre por área además del global, porque un número que mezcla sillones con camilla puede esconder un área llena.
+- Los días se recorren en hora del salón (UTC-3), no del servidor.
 
 ## Decisiones vigentes
 
@@ -139,7 +167,9 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - Crear/configurar cuenta Cloudflare del propietario y cargar secretos de deploy en GitHub.
 - Cargar las credenciales de Mercado Pago para que el cobro de la seña deje de ser coordinación manual.
 - Implementar el envío real de confirmaciones y recordatorios por email y WhatsApp (falta el proveedor y su credencial).
-- Validar con Sol la capacidad de Maquillaje y Uñas para poder habilitarlas online.
+- Cargar los costos estándar por servicio para que el margen deje de ser NO DISPONIBLE. Es el único insumo que le falta al dashboard, y no debe inventarse.
+- Cargar las credenciales de Google OAuth para que el ingreso al panel y la identidad de la clienta dejen de depender del token de Supabase.
+- Definir con Sol los horarios por profesional (`staff_schedules`): vacío significa "sigue el horario del salón", y no se inventa una jornada que Sol no definió.
 - Crear estrategia para futuras categorías sin sobrecargar el catálogo público.
 - Separar formalmente catálogo público, configuración comercial-operativa e historial técnico de clienta.
 

@@ -20,6 +20,7 @@ import { loadQuoteContext } from "../../lib/quote/repository";
 import { computeQuote } from "../../domain/quote";
 import { QuoteError } from "../../domain/types";
 import { normalizePhoneAr } from "../../domain/phone";
+import { logBookingFailure, requestId } from "../../lib/observability";
 import {
   BookingError,
   cancelBooking,
@@ -115,6 +116,20 @@ function bookingHttpError(code: string): HTTPException {
   return new HTTPException(mapped.status, { message: mapped.message });
 }
 
+/**
+ * Qué falta, dicho por su nombre. "Falta un dato" obliga a adivinar cuál,
+ * y quien lo lee está con una clienta enfrente.
+ */
+function quoteErrorMessage(code: string): string {
+  const messages: Record<string, string> = {
+    length_required: "Este servicio cobra según el largo del pelo: elegí uno.",
+    tier_not_found: "No tenemos precio cargado para ese largo. Revisalo en Configuración.",
+    unknown_option: "Una de las opciones elegidas ya no existe en el catálogo.",
+    service_not_quotable: "Ese servicio todavía no tiene precio cargado.",
+  };
+  return messages[code] ?? "Falta un dato para calcular el turno.";
+}
+
 export function createBookingsRoute(env: ServerEnv) {
   const route = new Hono();
 
@@ -143,7 +158,25 @@ export function createBookingsRoute(env: ServerEnv) {
       serviceSlug: body.serviceSlug,
       extraCodes: body.extraCodes,
     });
-    if (!context) throw bookingHttpError("unknown_service");
+    /**
+     * Rechazo del canal público: se registra antes de responder.
+     * Devuelve la excepción en vez de lanzarla para que TypeScript siga
+     * estrechando los tipos después del `throw`.
+     */
+    const reject = (code: string): HTTPException => {
+      logBookingFailure({
+        code,
+        channel: "online",
+        serviceSlug: body.serviceSlug,
+        areaSlug: context?.areaSlug ?? null,
+        startsAt: body.startsAt,
+        lengthTier: body.lengthTier ?? null,
+        requestId: requestId(c.req),
+      });
+      return bookingHttpError(code);
+    };
+
+    if (!context) throw reject("unknown_service");
 
     // Autoridad de precio y duración: se recalcula, no se recibe.
     let quote;
@@ -157,7 +190,16 @@ export function createBookingsRoute(env: ServerEnv) {
       });
     } catch (error) {
       if (error instanceof QuoteError) {
-        throw new HTTPException(422, { message: "Falta un dato para calcular el turno." });
+        logBookingFailure({
+          code: error.code,
+          channel: "online",
+          serviceSlug: body.serviceSlug,
+          areaSlug: context.areaSlug,
+          startsAt: body.startsAt,
+          lengthTier: body.lengthTier ?? null,
+          requestId: requestId(c.req),
+        });
+        throw new HTTPException(422, { message: quoteErrorMessage(error.code) });
       }
       throw error;
     }
@@ -169,8 +211,8 @@ export function createBookingsRoute(env: ServerEnv) {
     // las 03:00 salteando `/availability`.
     const admin = createSupabaseAdminClient(env);
     const area = await loadArea(admin, context.areaSlug);
-    if (!area) throw bookingHttpError("area_not_found");
-    if (!area.isBookableOnline) throw bookingHttpError("area_not_bookable_online");
+    if (!area) throw reject("area_not_found");
+    if (!area.isBookableOnline) throw reject("area_not_bookable_online");
 
     const now = new Date();
     const settings = await loadAvailabilitySettings(anon);
@@ -197,7 +239,7 @@ export function createBookingsRoute(env: ServerEnv) {
         tzOffsetMin: SALON_TZ_OFFSET_MIN,
       },
     });
-    if (rejection) throw bookingHttpError(rejection);
+    if (rejection) throw reject(rejection);
 
     const items: CreateBookingItem[] = quote.items.map((item) => ({
       ...(item.role === "main"
@@ -255,7 +297,18 @@ export function createBookingsRoute(env: ServerEnv) {
         201,
       );
     } catch (error) {
-      if (error instanceof BookingError) throw bookingHttpError(error.code);
+      if (error instanceof BookingError) {
+        logBookingFailure({
+          code: error.code,
+          channel: "online",
+          serviceSlug: body.serviceSlug,
+          areaSlug: context.areaSlug,
+          startsAt: body.startsAt,
+          lengthTier: body.lengthTier ?? null,
+          requestId: requestId(c.req),
+        });
+        throw bookingHttpError(error.code);
+      }
       throw error;
     }
   });

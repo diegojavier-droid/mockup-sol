@@ -20,7 +20,10 @@
     "test:e2e": "bun run scripts/e2e-booking.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "stack:up": "bash scripts/local-stack.sh up",
-    "stack:down": "bash scripts/local-stack.sh down"
+    "stack:down": "bash scripts/local-stack.sh down",
+    "test:e2e:flow": "bash scripts/e2e-flow.sh",
+    "test:e2e:stations": "bash scripts/e2e-stations.sh",
+    "test:e2e:dashboard": "bun run scripts/e2e-dashboard.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",

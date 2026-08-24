@@ -170,6 +170,7 @@ export function BookingWizard({
                 personal={wizard.personal}
                 error={wizard.bookingRequestError}
                 onConfirm={wizard.confirmBookingRequest}
+                quote={wizard.quote}
               />
             )}
           </div>

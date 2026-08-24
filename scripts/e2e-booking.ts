@@ -170,15 +170,32 @@ async function main() {
   await page.waitForTimeout(1400);
   await shot(page, "07-revision");
 
-  const clicked = await tryClick(page, ["Confirmar", "Reservar turno", "Pagar seña"], 3000);
+  // Por ROL, no por texto suelto: la tarjeta de aviso dice "Antes de
+  // confirmar" y un match de texto le pegaba a ese encabezado en vez de
+  // al botón, con lo que la prueba creía haber confirmado sin reservar.
+  const clicked = await (async () => {
+    for (const name of [/Confirmar solicitud/i, /Confirmar/i, /Reservar turno/i, /Pagar seña/i]) {
+      const button = page.getByRole("button", { name }).first();
+      if (await button.isVisible().catch(() => false)) {
+        await button.scrollIntoViewIfNeeded();
+        await button.click();
+        return name.source;
+      }
+    }
+    return null;
+  })();
   await page.waitForTimeout(3000);
   await shot(page, "08-cierre");
   check("hay una acción de confirmación", Boolean(clicked), clicked ?? "");
 
   const finalText = (await page.textContent("body")) ?? "";
+  // "Revisá tu solicitud" seguía en pantalla cuando la reserva fallaba, y
+  // el regex anterior matcheaba igual: la prueba pasaba sin reservar.
   check(
     "el flujo cierra con un mensaje para la clienta",
-    /se[ñn]a|turno|confirmad|pendiente/i.test(finalText),
+    !/Revis[áa] tu solicitud/i.test(finalText) &&
+      /se[ñn]a|turno|confirmad|pendiente/i.test(finalText),
+    finalText.slice(0, 120),
   );
   // Sin este enlace la clienta no tiene forma de volver a su reserva:
   // todavía no hay email de confirmación.

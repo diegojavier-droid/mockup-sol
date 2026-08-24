@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as OperacionesRouteImport } from './routes/operaciones'
+import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReservaTokenRouteImport } from './routes/reserva.$token'
 
 const OperacionesRoute = OperacionesRouteImport.update({
   id: '/operaciones',
   path: '/operaciones',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgendaRoute = AgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,30 +37,34 @@ const ReservaTokenRoute = ReservaTokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agenda': typeof AgendaRoute
   '/operaciones': typeof OperacionesRoute
   '/reserva/$token': typeof ReservaTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agenda': typeof AgendaRoute
   '/operaciones': typeof OperacionesRoute
   '/reserva/$token': typeof ReservaTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agenda': typeof AgendaRoute
   '/operaciones': typeof OperacionesRoute
   '/reserva/$token': typeof ReservaTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/operaciones' | '/reserva/$token'
+  fullPaths: '/' | '/agenda' | '/operaciones' | '/reserva/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/operaciones' | '/reserva/$token'
-  id: '__root__' | '/' | '/operaciones' | '/reserva/$token'
+  to: '/' | '/agenda' | '/operaciones' | '/reserva/$token'
+  id: '__root__' | '/' | '/agenda' | '/operaciones' | '/reserva/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgendaRoute: typeof AgendaRoute
   OperacionesRoute: typeof OperacionesRoute
   ReservaTokenRoute: typeof ReservaTokenRoute
 }
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/operaciones'
       fullPath: '/operaciones'
       preLoaderRoute: typeof OperacionesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agenda': {
+      id: '/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AgendaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgendaRoute: AgendaRoute,
   OperacionesRoute: OperacionesRoute,
   ReservaTokenRoute: ReservaTokenRoute,
 }

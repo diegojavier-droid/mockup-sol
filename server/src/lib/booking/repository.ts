@@ -78,18 +78,31 @@ export interface CreateBookingParams {
   };
   items: CreateBookingItem[];
   customerNote?: string | null;
-  source: "online" | "manual";
+  /** Canal. Sólo `online` es autogestionado por la clienta. */
+  source: BookingSource;
+  /** Persona del salón que la creó. Null en el canal público. */
+  createdBy?: string | null;
+  /** Email o nombre del actor, para que la bitácora sobreviva a una baja. */
+  actorLabel?: string | null;
+  /** Crear superando la disponibilidad configurada. Nunca desde `online`. */
+  override?: boolean;
+  overrideReason?: string | null;
 }
+
+export const BOOKING_SOURCES = ["online", "manual", "phone", "whatsapp", "walk_in"] as const;
+export type BookingSource = (typeof BOOKING_SOURCES)[number];
 
 export interface CreatedBooking {
   id: string;
   public_token: string;
   status: string;
+  source: BookingSource;
+  deposit_status: string;
   starts_at: string;
   ends_at: string;
   payment_required_until: string | null;
   deposit_amount: number;
-  customer_id: string;
+  created_via_override: boolean;
 }
 
 export async function createBooking(
@@ -110,6 +123,10 @@ export async function createBooking(
     p_items: params.items,
     p_customer_note: params.customerNote ?? null,
     p_source: params.source,
+    p_created_by: params.createdBy ?? null,
+    p_actor_label: params.actorLabel ?? null,
+    p_override: params.override ?? false,
+    p_override_reason: params.overrideReason ?? null,
   });
   if (error) rethrow(error);
   return data as CreatedBooking;
@@ -135,6 +152,46 @@ export async function cancelBooking(
     previous_status: string;
     deposit_amount: number;
   };
+}
+
+export interface CapacityCheck {
+  found: boolean;
+  area?: string;
+  area_name?: string;
+  capacity?: number;
+  peak?: number;
+  area_closed?: boolean;
+  fits?: boolean;
+}
+
+/**
+ * Qué va a pasar si se crea este turno. Devuelve los números, no un
+ * veredicto: sin ellos la persona tiene que adivinar por qué no entra.
+ */
+export async function checkCapacity(
+  admin: SupabaseAdminClient,
+  params: { areaSlug: string; startsAt: Date; endsAt: Date },
+): Promise<CapacityCheck> {
+  const { data, error } = await admin.rpc("check_capacity", {
+    p_area_slug: params.areaSlug,
+    p_starts_at: params.startsAt.toISOString(),
+    p_ends_at: params.endsAt.toISOString(),
+  });
+  if (error) rethrow(error);
+  return data as CapacityCheck;
+}
+
+export async function markNoShow(
+  admin: SupabaseAdminClient,
+  params: { bookingId: string; actorId?: string | null; actorLabel?: string | null },
+): Promise<{ status: string; deposit_status: string; deposit_amount: number }> {
+  const { data, error } = await admin.rpc("mark_no_show", {
+    p_booking_id: params.bookingId,
+    p_actor_id: params.actorId ?? null,
+    p_actor_label: params.actorLabel ?? null,
+  });
+  if (error) rethrow(error);
+  return data as { status: string; deposit_status: string; deposit_amount: number };
 }
 
 export async function expireStaleBookings(admin: SupabaseAdminClient): Promise<number> {

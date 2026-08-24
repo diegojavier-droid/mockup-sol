@@ -349,21 +349,57 @@ jobs:
               raise exception 'late payment re-blocked the slot';
             end if;
 
-            -- cancelación: reembolsable a >=24h, no reembolsable el mismo día
-            select b.public_token into v_tok from public.bookings b
-             where b.status = 'confirmed' and b.starts_at > now() + interval '24 hours' limit 1;
+            -- Cancelación. Sólo se devuelve dinero REALMENTE cobrado: el
+            -- fixture arma cada caso en vez de tomar la primera reserva
+            -- confirmada que aparezca. Un `limit 1` sin orden caía sobre
+            -- una reserva interna (confirmada pero sin seña paga) y
+            -- convertía esta prueba en una lotería.
+
+            -- A) online + seña ACREDITADA + más de 24 h → se devuelve.
+            select public.create_booking('depilacion', now() + interval '30 days',
+              now() + interval '30 days 30 minutes', 30, 'fixed', 30000, null, 20, 6000,
+              '{"first_name":"Refund","phone_e164":"+5493420005101"}'::jsonb, '[]'::jsonb, null, 'online')
+              ->> 'id' into v_id;
+            v_r := public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-REFUND-A', 6000, 'approved', '{}'::jsonb);
+            if v_r <> 'confirmed' then raise exception 'fixture roto: la seña no confirmó (%)', v_r; end if;
+            select public_token into v_tok from public.bookings where id = v_id;
+            if (select deposit_status from public.bookings where id = v_id) <> 'paid' then
+              raise exception 'fixture roto: deposit_status no quedó en paid';
+            end if;
             v_res := public.cancel_booking(v_tok, 'ci');
             if (v_res->>'refund_due')::boolean is distinct from true then
-              raise exception 'expected refund_due=true, got %', v_res;
+              raise exception 'esperaba refund_due=true con seña paga y >24h, dio %', v_res;
+            end if;
+            if v_res->>'deposit_status' <> 'refunded' then
+              raise exception 'esperaba deposit_status=refunded, dio %', v_res;
             end if;
 
+            -- B) online + seña ACREDITADA + menos de 24 h → NO se devuelve.
+            --    Aísla la regla de las 24 h: acá sí había dinero cobrado.
             select public.create_booking('depilacion', now() + interval '5 hours',
               now() + interval '5 hours 30 minutes', 30, 'fixed', 30000, null, 20, 6000,
+              '{"first_name":"Late","phone_e164":"+5493420005102"}'::jsonb, '[]'::jsonb, null, 'online')
+              ->> 'id' into v_id;
+            v_r := public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-REFUND-B', 6000, 'approved', '{}'::jsonb);
+            if v_r <> 'confirmed' then raise exception 'fixture roto: la seña B no confirmó (%)', v_r; end if;
+            select public_token into v_tok from public.bookings where id = v_id;
+            v_res := public.cancel_booking(v_tok, null);
+            if (v_res->>'refund_due')::boolean is distinct from false then
+              raise exception 'esperaba refund_due=false dentro de las 24 h, dio %', v_res;
+            end if;
+            if v_res->>'deposit_status' <> 'retained' then
+              raise exception 'esperaba deposit_status=retained, dio %', v_res;
+            end if;
+
+            -- C) interna, nunca pagada → NO se devuelve, aunque falten días.
+            --    Devolver acá sería prometer plata que nunca entró.
+            select public.create_booking('depilacion', now() + interval '31 days',
+              now() + interval '31 days 30 minutes', 30, 'fixed', 30000, null, 20, 6000,
               '{"first_name":"Soon","phone_e164":"+5493420005001"}'::jsonb, '[]'::jsonb, null, 'manual')
               ->> 'public_token' into v_tok;
             v_res := public.cancel_booking(v_tok, null);
             if (v_res->>'refund_due')::boolean is distinct from false then
-              raise exception 'expected refund_due=false, got %', v_res;
+              raise exception 'una reserva interna sin seña no puede generar reembolso, dio %', v_res;
             end if;
             if v_res->>'previous_status' <> 'confirmed' then
               raise exception 'previous_status missing from cancel result';
@@ -403,6 +439,761 @@ jobs:
             fi
           done
           echo "booking domain invariants OK"
+
+      - name: Verify V4.1 channels, no-show and overrides
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare v jsonb; v_id uuid; v_id2 uuid; v_n int; i int;
+          begin
+            -- Los cuatro canales internos confirman SIN seña. Antes la
+            -- condición era `p_source = 'manual'` y los otros tres habrían
+            -- caído en pending_payment.
+            for i in 1..4 loop
+              v := public.create_booking('peluqueria',
+                now() + interval '3 days' + (i || ' hours')::interval,
+                now() + interval '3 days' + (i || ' hours')::interval + interval '1 hour',
+                60, 'fixed', 40000, null, 20, 8000,
+                format('{"first_name":"C%s","phone_e164":"+54934259000%s"}', i, i)::jsonb,
+                '[]'::jsonb, null,
+                (array['manual','phone','whatsapp','walk_in'])[i], null, null, false, null);
+              if v->>'status' <> 'confirmed' or v->>'deposit_status' <> 'none' then
+                raise exception 'canal % exigió pago: % / %',
+                  (array['manual','phone','whatsapp','walk_in'])[i], v->>'status', v->>'deposit_status';
+              end if;
+            end loop;
+
+            -- El canal público sí retiene contra pago.
+            v := public.create_booking('peluqueria', now() + interval '3 days 9 hours',
+              now() + interval '3 days 10 hours', 60, 'fixed', 40000, null, 20, 8000,
+              '{"first_name":"On","phone_e164":"+5493425900099"}'::jsonb, '[]'::jsonb, null, 'online');
+            if v->>'status' <> 'pending_payment' then
+              raise exception 'el canal online no exigió seña';
+            end if;
+
+            -- Override: sin él bloquea, con él entra y deja bitácora.
+            perform public.create_booking('depilacion', now() + interval '4 days',
+              now() + interval '4 days' + interval '30 minutes', 30, 'fixed', 12000, null, 20, 2400,
+              '{"first_name":"A","phone_e164":"+5493425910001"}'::jsonb, '[]'::jsonb, null, 'manual');
+            begin
+              perform public.create_booking('depilacion', now() + interval '4 days',
+                now() + interval '4 days' + interval '30 minutes', 30, 'fixed', 12000, null, 20, 2400,
+                '{"first_name":"B","phone_e164":"+5493425910002"}'::jsonb, '[]'::jsonb, null, 'manual');
+              raise exception 'sin override no debería entrar';
+            exception when others then
+              if sqlerrm <> 'capacity_full' then raise; end if;
+            end;
+
+            v := public.create_booking('depilacion', now() + interval '4 days',
+              now() + interval '4 days' + interval '30 minutes', 30, 'fixed', 12000, null, 20, 2400,
+              '{"first_name":"B","phone_e164":"+5493425910002"}'::jsonb, '[]'::jsonb, null,
+              'manual', null, 'ci@sol-mai.test', true, 'excepción de prueba');
+            if (v->>'created_via_override')::boolean is not true then
+              raise exception 'el override no quedó marcado';
+            end if;
+            select count(*) into v_n from public.audit_log
+             where action = 'capacity_override' and entity_id = (v->>'id')::uuid;
+            if v_n <> 1 then raise exception 'el override no dejó bitácora'; end if;
+
+            -- El override NO toca la configuración global.
+            select capacity into v_n from public.areas where slug = 'depilacion';
+            if v_n <> 1 then raise exception 'el override cambió la capacidad del área'; end if;
+
+            -- El canal público no puede pedir override.
+            begin
+              perform public.create_booking('depilacion', now() + interval '4 days',
+                now() + interval '4 days' + interval '30 minutes', 30, 'fixed', 12000, null, 20, 2400,
+                '{"first_name":"X","phone_e164":"+5493425910003"}'::jsonb, '[]'::jsonb, null,
+                'online', null, null, true, 'colarse');
+              raise exception 'online consiguió un override';
+            exception when others then
+              if sqlerrm <> 'override_not_allowed_online' then raise; end if;
+            end;
+
+            -- No-show con seña acreditada: se retiene.
+            v := public.create_booking('peluqueria', now() + interval '5 days',
+              now() + interval '5 days 1 hour', 60, 'fixed', 40000, null, 20, 8000,
+              '{"first_name":"NS","phone_e164":"+5493425920001"}'::jsonb, '[]'::jsonb, null, 'online');
+            v_id := (v->>'id')::uuid;
+            perform public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-NS', 8000, 'approved', '{}'::jsonb);
+            v := public.mark_no_show(v_id, null, 'ci@sol-mai.test');
+            if v->>'deposit_status' <> 'retained' then
+              raise exception 'la seña no se retuvo: %', v->>'deposit_status';
+            end if;
+            if (v->>'deposit_amount')::int <> 8000 then
+              raise exception 'importe retenido incorrecto';
+            end if;
+
+            -- No-show sin seña: sin consecuencia económica inventada.
+            v := public.create_booking('peluqueria', now() + interval '6 days',
+              now() + interval '6 days 1 hour', 60, 'fixed', 40000, null, 20, 8000,
+              '{"first_name":"NS2","phone_e164":"+5493425920002"}'::jsonb, '[]'::jsonb, null, 'phone');
+            v_id2 := (v->>'id')::uuid;
+            v := public.mark_no_show(v_id2, null, 'ci@sol-mai.test');
+            if v->>'deposit_status' = 'retained' or (v->>'deposit_amount')::int <> 0 then
+              raise exception 'retuvo una seña inexistente';
+            end if;
+
+            -- no_show y cancelled no se mezclan. Se mide sobre LAS DOS
+            -- reservas que este bloque marcó, no sobre toda la tabla: un
+            -- conteo global depende de lo que hicieron los pasos previos
+            -- y sólo daba cero mientras el paso anterior venía fallando.
+            select count(*) into v_n from public.bookings
+             where id in (v_id, v_id2) and status = 'no_show';
+            if v_n <> 2 then raise exception 'esperaba 2 ausencias, hay %', v_n; end if;
+            select count(*) into v_n from public.bookings
+             where id in (v_id, v_id2) and status = 'cancelled';
+            if v_n <> 0 then raise exception 'un no_show se contó como cancelled'; end if;
+
+            -- Las cuatro áreas quedan reservables online (D-13).
+            select count(*) into v_n from public.areas where is_bookable_online;
+            if v_n <> 4 then raise exception 'esperaba 4 áreas online, hay %', v_n; end if;
+          end $$;
+          SQL
+
+          echo "V4.1 channel/no-show/override invariants OK"
+
+      - name: Verify V4.1 resources
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_area uuid; v_n int; v_cap int; v_res uuid; v_staff uuid;
+            v jsonb; v_day date; v_svc text; v_items jsonb; v_b1 uuid; v_b2 uuid; v_b3 uuid;
+          begin
+            select id into v_area from public.areas where slug = 'peluqueria';
+
+            -- ÁREA != ESTACIÓN: la capacidad se deriva de las estaciones.
+            select count(*) into v_n from public.resources
+             where kind = 'physical' and is_active;
+            if v_n <> 8 then raise exception 'esperaba 8 estaciones, hay %', v_n; end if;
+
+            select capacity into v_cap from public.areas where id = v_area;
+            if v_cap <> 5 then raise exception 'Peluquería debería tener capacidad 5, tiene %', v_cap; end if;
+
+            -- Agregar una estación sube la capacidad sin tocar el área a mano.
+            insert into public.resources (area_id, kind, code, name)
+            values (v_area, 'physical', 'P6', 'Estación 6') returning id into v_res;
+            select capacity into v_cap from public.areas where id = v_area;
+            if v_cap <> 6 then raise exception 'agregar una estación no subió la capacidad: %', v_cap; end if;
+
+            update public.resources set is_active = false where id = v_res;
+            select capacity into v_cap from public.areas where id = v_area;
+            if v_cap <> 5 then raise exception 'desactivar una estación no bajó la capacidad: %', v_cap; end if;
+
+            -- Fuera de servicio: baja la capacidad EFECTIVA sólo en su rango.
+            select id into v_res from public.resources
+             where area_id = v_area and code = 'P1';
+            insert into public.resource_blocks (resource_id, starts_at, ends_at, reason)
+            values (v_res, now() + interval '10 days', now() + interval '11 days', 'Reparación');
+
+            v_cap := public.effective_area_capacity(v_area,
+                       now() + interval '10 days' + interval '2 hours',
+                       now() + interval '10 days' + interval '3 hours');
+            if v_cap <> 4 then raise exception 'una estación fuera de servicio debería dejar 4, dejó %', v_cap; end if;
+
+            v_cap := public.effective_area_capacity(v_area,
+                       now() + interval '20 days', now() + interval '20 days' + interval '1 hour');
+            if v_cap <> 5 then raise exception 'fuera del rango la capacidad debe volver a 5, dio %', v_cap; end if;
+
+            -- Un recurso humano sin persona no significa nada.
+            begin
+              insert into public.resources (area_id, kind, code, name)
+              values (v_area, 'human', 'X1', 'Sin persona');
+              raise exception 'gate roto: se aceptó un recurso humano sin staff';
+            exception when check_violation then null;
+            end;
+
+            -- El paso tiene que poder repetirse: no dejar rastros.
+            delete from public.resource_blocks where resource_id = v_res;
+            delete from public.resources where area_id = v_area and code = 'P6';
+          end $$;
+          SQL
+
+          echo "V4.1 resource invariants OK"
+
+      - name: Verify out-of-service stations reduce enforced capacity
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_day date := (current_date + 30);
+            v_svc text; v_items jsonb; v_res uuid; v_area uuid; r jsonb; i int; v_id uuid;
+            v_from timestamptz; v_to timestamptz;
+          begin
+            select id into v_area from public.areas where slug = 'peluqueria';
+            v_from := (v_day::text || ' 10:00-03')::timestamptz;
+            v_to   := (v_day::text || ' 11:00-03')::timestamptz;
+
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules r2
+                 join public.personalization_fields f on f.id = r2.field_id
+                where r2.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','Prueba','price_amount',20000,'duration_min',60,'process_min',0,'setup_min',0));
+
+            r := public.check_capacity('peluqueria', v_from, v_to);
+            if (r->>'capacity')::int <> 5 then
+              raise exception 'sin bloqueos la capacidad debe ser 5, dio %', r->>'capacity';
+            end if;
+
+            -- `effective_area_capacity` existía y no la llamaba nadie: sin
+            -- esto, un sillón roto no reducía la disponibilidad y el salón
+            -- seguía tomando 5 turnos simultáneos con 4 puestos usables.
+            select id into v_res from public.resources where area_id = v_area and code = 'P1';
+            insert into public.resource_blocks (resource_id, starts_at, ends_at, reason)
+            values (v_res, v_from - interval '1 hour', v_to + interval '1 hour', 'Sillón roto');
+
+            r := public.check_capacity('peluqueria', v_from, v_to);
+            if (r->>'capacity')::int <> 4 then
+              raise exception 'una estación fuera de servicio debe dejar capacidad 4, dio %',
+                r->>'capacity';
+            end if;
+
+            for i in 1..4 loop
+              perform public.create_booking('peluqueria', v_from, v_to, 60,
+                'fixed', 20000, 20000, 0.30, 6000,
+                format('{"first_name":"K%s","phone_e164":"+54934259100%s"}', i, i)::jsonb,
+                v_items, null, 'manual');
+            end loop;
+
+            -- El quinto NO entra: no hay sillón libre.
+            begin
+              perform public.create_booking('peluqueria', v_from, v_to, 60,
+                'fixed', 20000, 20000, 0.30, 6000,
+                '{"first_name":"K5","phone_e164":"+5493425910099"}'::jsonb,
+                v_items, null, 'manual');
+              raise exception 'GATE ROTO: entró un quinto turno con sólo cuatro puestos usables';
+            exception when raise_exception then
+              if position('GATE ROTO' in sqlerrm) > 0 then raise; end if;
+            end;
+
+            -- La excepción explícita sigue siendo posible, y queda registrada.
+            v_id := (public.create_booking('peluqueria', v_from, v_to, 60,
+              'fixed', 20000, 20000, 0.30, 6000,
+              '{"first_name":"K6","phone_e164":"+5493425910088"}'::jsonb,
+              v_items, null, 'manual', null, 'ci', true, 'La clienta ya está en el salón')->>'id')::uuid;
+            if not (select created_via_override from public.bookings where id = v_id) then
+              raise exception 'el override debería quedar registrado';
+            end if;
+
+            -- Reparada la estación, la capacidad vuelve sola.
+            delete from public.resource_blocks where resource_id = v_res;
+            r := public.check_capacity('peluqueria', v_from, v_to);
+            if (r->>'capacity')::int <> 5 then
+              raise exception 'al reparar la estación la capacidad debe volver a 5, dio %',
+                r->>'capacity';
+            end if;
+
+            delete from public.payments where booking_id in
+              (select id from public.bookings where starts_at = v_from);
+            delete from public.bookings where starts_at = v_from;
+          end $$;
+          SQL
+
+          echo "effective-capacity invariants OK"
+
+      - name: Verify V4.1 dashboard
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_day date; v_svc text; v_items jsonb;
+            v_b1 uuid; v_b2 uuid; v_b3 uuid; r jsonb;
+            v_from timestamptz; v_to timestamptz;
+          begin
+            -- Un lunes futuro y limpio, en hora del SALÓN.
+            v_day  := (date_trunc('week', current_date) + interval '14 days')::date;
+            v_from := (v_day::text     || ' 00:00:00-03')::timestamptz;
+            v_to   := ((v_day+1)::text || ' 00:00:00-03')::timestamptz;
+
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules r2
+                 join public.personalization_fields f on f.id = r2.field_id
+                where r2.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+
+            v_items := jsonb_build_array(jsonb_build_object(
+              'role','main','service_slug',v_svc,'name','Servicio de prueba',
+              'price_amount',20000,'duration_min',60,'process_min',0,'setup_min',0));
+
+            v_b1 := (public.create_booking('peluqueria',
+              (v_day::text||' 10:00-03')::timestamptz, (v_day::text||' 11:00-03')::timestamptz,
+              60,'fixed',20000,20000,0.30,6000,
+              '{"first_name":"Ana","phone_e164":"+5493425900101"}'::jsonb, v_items, null, 'online')->>'id')::uuid;
+            v_b2 := (public.create_booking('peluqueria',
+              (v_day::text||' 12:00-03')::timestamptz, (v_day::text||' 13:00-03')::timestamptz,
+              60,'fixed',20000,20000,0.30,6000,
+              '{"first_name":"Bru","phone_e164":"+5493425900102"}'::jsonb, v_items, null, 'walk_in')->>'id')::uuid;
+            v_b3 := (public.create_booking('peluqueria',
+              (v_day::text||' 14:00-03')::timestamptz, (v_day::text||' 15:00-03')::timestamptz,
+              60,'fixed',20000,20000,0.30,6000,
+              '{"first_name":"Car","phone_e164":"+5493425900103"}'::jsonb, v_items, null, 'whatsapp')->>'id')::uuid;
+
+            perform public.close_service(v_b1, 22000, 'Corte y color', null, 75, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',22000,'method','efectivo','kind','balance')));
+            perform public.close_service(v_b2, 18000, 'Corte', null, 55, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',18000,'method','mercado_pago','kind','balance')));
+            update public.bookings set deposit_status = 'paid' where id = v_b3;
+            perform public.mark_no_show(v_b3, null, 'ci');
+
+            r := public.dashboard_summary(v_from, v_to);
+
+            if (r->>'invoiced_amount')::bigint <> 40000 then
+              raise exception 'facturado esperado 40000, dio %', r->>'invoiced_amount';
+            end if;
+            if (r->>'average_ticket')::int <> 20000 then
+              raise exception 'ticket esperado 20000, dio %', r->>'average_ticket';
+            end if;
+            -- El efectivo cuenta igual que Mercado Pago.
+            if (r->>'collected_amount')::bigint <> 40000 then
+              raise exception 'cobrado esperado 40000, dio %', r->>'collected_amount';
+            end if;
+            if (r->>'retained_deposits')::bigint <> 6000 then
+              raise exception 'seña retenida esperada 6000, dio %', r->>'retained_deposits';
+            end if;
+
+            -- LA regla del bloque: sin costos cargados el margen NO existe.
+            -- available=false y amount NULL; jamás $0, que parecería un dato.
+            if (r->'margin'->>'available')::boolean is not false then
+              raise exception 'el margen se declaró disponible sin costos cargados';
+            end if;
+            if r->'margin'->>'amount' is not null then
+              raise exception 'el margen devolvió un número sin costos: %', r->'margin';
+            end if;
+
+            -- Con UN costo aparece, y declara sobre cuántas atenciones.
+            update public.service_execution_records set cost_amount = 7000 where booking_id = v_b1;
+            r := public.dashboard_summary(v_from, v_to);
+            if (r->'margin'->>'available')::boolean is not true then
+              raise exception 'con un costo cargado el margen debería estar disponible';
+            end if;
+            if (r->'margin'->>'amount')::bigint <> 15000 then
+              raise exception 'margen esperado 15000, dio %', r->'margin'->>'amount';
+            end if;
+            if (r->'margin'->>'coverage')::int <> 1 then
+              raise exception 'cobertura esperada 1, dio %', r->'margin'->>'coverage';
+            end if;
+
+            -- Un día del SALÓN cuenta un día, no dos fechas UTC.
+            if (r->'occupancy'->>'capacity_minutes')::bigint <> 4320 then
+              raise exception 'un día del salón debe dar 4320 min (8 estaciones x 9 h), dio %',
+                r->'occupancy'->>'capacity_minutes';
+            end if;
+            -- La ausencia no suma ocupación; la atendida sí.
+            if (r->'occupancy'->>'sold_minutes')::bigint <> 120 then
+              raise exception 'vendidos esperados 120 min, dio %', r->'occupancy'->>'sold_minutes';
+            end if;
+
+            -- Un feriado sale del DENOMINADOR en vez de hundir la ocupación.
+            insert into public.schedule_exceptions (area_id, starts_at, ends_at, reason, capacity_delta)
+            values (null, v_from, v_to, 'Feriado CI', null);
+            r := public.dashboard_summary(v_from, v_to);
+            if (r->'occupancy'->>'capacity_minutes')::bigint <> 0 then
+              raise exception 'un día cerrado no debería aportar capacidad, dio %',
+                r->'occupancy'->>'capacity_minutes';
+            end if;
+
+            -- Un ajuste de cupos NO es un cierre.
+            update public.schedule_exceptions set capacity_delta = -2
+             where starts_at = v_from and reason = 'Feriado CI';
+            r := public.dashboard_summary(v_from, v_to);
+            if (r->'occupancy'->>'capacity_minutes')::bigint <> 4320 then
+              raise exception 'un ajuste de cupos no debe leerse como cierre, dio %',
+                r->'occupancy'->>'capacity_minutes';
+            end if;
+
+            delete from public.schedule_exceptions where reason = 'Feriado CI';
+            delete from public.payments where booking_id in (v_b1, v_b2, v_b3);
+            delete from public.bookings where id in (v_b1, v_b2, v_b3);
+          end $$;
+          SQL
+
+          echo "V4.1 dashboard invariants OK"
+
+      - name: Verify consent, override reason and salon-timezone lock
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_svc text; v_items jsonb; d date := current_date + 130;
+            v_am boolean; v_b uuid;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','X','price_amount',10000,'duration_min',60,'process_min',0,'setup_min',0));
+
+            -- CONSENTIMIENTO: un turno de mostrador no puede revocarlo.
+            perform public.create_booking('peluqueria',
+              (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+              60,'fixed',10000,10000,0.20,2000,
+              '{"first_name":"Rosa","phone_e164":"+5493425550001","email":"rosa@x.ar","accepts_marketing":true}'::jsonb,
+              v_items, null, 'online');
+            perform public.create_booking('peluqueria',
+              (d::text || ' 12:00-03')::timestamptz, (d::text || ' 13:00-03')::timestamptz,
+              60,'fixed',10000,10000,0,0,
+              '{"first_name":"Rosa","phone_e164":"+5493425550001"}'::jsonb,
+              v_items, null, 'walk_in');
+            select accepts_marketing into v_am from public.customers where phone_e164 = '+5493425550001';
+            if v_am is not true then
+              raise exception 'un turno interno revocó el consentimiento';
+            end if;
+
+            -- Un valor EXPLÍCITO sí manda.
+            perform public.create_booking('peluqueria',
+              (d::text || ' 14:00-03')::timestamptz, (d::text || ' 15:00-03')::timestamptz,
+              60,'fixed',10000,10000,0,0,
+              '{"first_name":"Rosa","phone_e164":"+5493425550001","accepts_marketing":false}'::jsonb,
+              v_items, null, 'walk_in');
+            select accepts_marketing into v_am from public.customers where phone_e164 = '+5493425550001';
+            if v_am is not false then
+              raise exception 'no respetó un consentimiento negado explícitamente';
+            end if;
+
+            -- Y una clienta nueva sin el campo no estrena un "sí".
+            perform public.create_booking('peluqueria',
+              (d::text || ' 09:30-03')::timestamptz, (d::text || ' 10:00-03')::timestamptz,
+              30,'fixed',10000,10000,0,0,
+              '{"first_name":"Nueva","phone_e164":"+5493425550099"}'::jsonb,
+              v_items, null, 'manual');
+            select accepts_marketing into v_am from public.customers where phone_e164 = '+5493425550099';
+            if v_am is not false then raise exception 'inventó un consentimiento'; end if;
+
+            -- MOTIVO DEL OVERRIDE: una excepción sin justificación no es
+            -- auditable, y auditarla es la única razón por la que existe.
+            perform public.create_booking('depilacion',
+              (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+              60,'fixed',10000,10000,0,0,
+              '{"first_name":"A","phone_e164":"+5493425556001"}'::jsonb, v_items, null, 'manual');
+
+            begin
+              perform public.create_booking('depilacion',
+                (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+                60,'fixed',10000,10000,0,0,
+                '{"first_name":"B","phone_e164":"+5493425556002"}'::jsonb, v_items, null, 'manual',
+                null, 'ci', true, null);
+              raise exception 'GATE ROTO: override sin motivo';
+            exception when others then
+              if position('GATE ROTO' in sqlerrm) > 0 then raise; end if;
+              if sqlerrm <> 'override_reason_required' then raise; end if;
+            end;
+
+            begin
+              perform public.create_booking('depilacion',
+                (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+                60,'fixed',10000,10000,0,0,
+                '{"first_name":"C","phone_e164":"+5493425556003"}'::jsonb, v_items, null, 'manual',
+                null, 'ci', true, '   ');
+              raise exception 'GATE ROTO: override con motivo en blanco';
+            exception when others then
+              if position('GATE ROTO' in sqlerrm) > 0 then raise; end if;
+              if sqlerrm <> 'override_reason_required' then raise; end if;
+            end;
+
+            v_b := (public.create_booking('depilacion',
+              (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+              60,'fixed',10000,10000,0,0,
+              '{"first_name":"D","phone_e164":"+5493425556004"}'::jsonb, v_items, null, 'manual',
+              null, 'ci', true, 'Cliente habitual, solicita excepción')->>'id')::uuid;
+            if (select override_reason from public.bookings where id = v_b) is null then
+              raise exception 'el motivo no quedó guardado';
+            end if;
+
+            delete from public.payments where booking_id in
+              (select id from public.bookings where starts_at::date = d);
+            delete from public.bookings where starts_at::date = d;
+          end $$;
+          SQL
+
+          # LOCK POR DÍA DEL SALÓN. 20:30 y 21:30 ART se solapan, y con la
+          # fecha en UTC caían en días distintos (21:00 ART es medianoche
+          # UTC), tomaban locks diferentes y ambas entraban con capacidad 1.
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare k_a text; k_b text;
+          begin
+            k_a := to_char((current_date + 140 || ' 20:30-03')::timestamptz
+                     at time zone 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD');
+            k_b := to_char((current_date + 140 || ' 21:30-03')::timestamptz
+                     at time zone 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD');
+            if k_a <> k_b then
+              raise exception 'dos reservas de la misma noche tomarían locks distintos: % vs %', k_a, k_b;
+            end if;
+          end $$;
+          SQL
+
+          cat > /tmp/lock-a.sql <<'SQLA'
+          do $$
+          declare v_svc text; v_items jsonb; d date := current_date + 140;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','X','price_amount',10000,'duration_min',120,'process_min',0,'setup_min',0));
+            perform public.create_booking('depilacion',
+              (d::text || ' 20:30-03')::timestamptz, (d::text || ' 22:30-03')::timestamptz,
+              120,'fixed',10000,10000,0,0,
+              '{"first_name":"A","phone_e164":"+5493425888001"}'::jsonb, v_items, null, 'manual');
+          end $$;
+          SQLA
+          sed 's/20:30-03/21:30-03/; s/22:30-03/23:30-03/; s/"A"/"B"/; s/888001/888002/'             /tmp/lock-a.sql > /tmp/lock-b.sql
+
+          # En paralelo: una entra, la otra rebota.
+          psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/lock-a.sql > /tmp/lock-a.log 2>&1 &
+          psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/lock-b.sql > /tmp/lock-b.log 2>&1 &
+          wait
+
+          OVERLAPPING=$(psql "$SUPABASE_LOCAL_DB_URL" -Atc "
+            select count(*) from public.bookings b
+              join public.areas a on a.id = b.area_id
+             where a.slug = 'depilacion'
+               and b.starts_at::date >= (current_date + 140)")
+          if [ "$OVERLAPPING" != "1" ]; then
+            echo "::error::overbooking cruzando medianoche UTC: $OVERLAPPING reservas solapadas"
+            cat /tmp/lock-a.log /tmp/lock-b.log
+            exit 1
+          fi
+
+          # Y la costura de MEDIANOCHE DEL SALÓN, que es donde se había
+          # mudado el defecto al cambiar la clave de UTC a hora local.
+          # Cualquier clave con fecha tiene una costura: una reserva puede
+          # empezar de un lado y terminar del otro. Ocho transacciones
+          # simultáneas, 23:30→01:30 contra 00:30→02:30, capacidad 1.
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 -c \
+            "delete from public.payments where booking_id in (select id from public.bookings where starts_at::date >= (current_date + 140));
+             delete from public.bookings where starts_at::date >= (current_date + 140);"
+
+          # Dos ventanas escritas a mano, no derivadas con sed: la B
+          # empieza el día SIGUIENTE del salón. Con una clave de lock por
+          # fecha caen en llaves distintas y no se serializan; ése es el
+          # caso que hay que cubrir, y un sed mal aplicado lo convertía
+          # en un solape cualquiera dentro del mismo día.
+          #   A: día d   23:30 → d+1 01:30   (fecha de salón d)
+          #   B: día d+1 00:30 → d+1 02:30   (fecha de salón d+1)
+          cat > /tmp/seam-a.sql <<'SQLA'
+          do $$
+          declare v_svc text; v_items jsonb; d date := current_date + 175;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','X','price_amount',10000,'duration_min',120,'process_min',0,'setup_min',0));
+            perform public.create_booking('depilacion',
+              (d::text || ' 23:30-03')::timestamptz, ((d+1)::text || ' 01:30-03')::timestamptz,
+              120,'fixed',10000,10000,0,0,
+              format('{"first_name":"SA","phone_e164":"+54934258891%s"}', floor(random()*100000)::int)::jsonb,
+              v_items, null, 'manual');
+          end $$;
+          SQLA
+
+          cat > /tmp/seam-b.sql <<'SQLB'
+          do $$
+          declare v_svc text; v_items jsonb; d date := current_date + 175;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','X','price_amount',10000,'duration_min',120,'process_min',0,'setup_min',0));
+            perform public.create_booking('depilacion',
+              ((d+1)::text || ' 00:30-03')::timestamptz, ((d+1)::text || ' 02:30-03')::timestamptz,
+              120,'fixed',10000,10000,0,0,
+              format('{"first_name":"SB","phone_e164":"+54934258892%s"}', floor(random()*100000)::int)::jsonb,
+              v_items, null, 'manual');
+          end $$;
+          SQLB
+
+          # Las dos ventanas tienen que caer en fechas de salón distintas:
+          # si no, la prueba mira otra cosa.
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare d date := current_date + 175; k_a text; k_b text;
+          begin
+            k_a := to_char((d::text || ' 23:30-03')::timestamptz
+                     at time zone 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD');
+            k_b := to_char(((d+1)::text || ' 00:30-03')::timestamptz
+                     at time zone 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD');
+            if k_a = k_b then
+              raise exception 'fixture roto: las dos ventanas caen el mismo día del salón (%)', k_a;
+            end if;
+          end $$;
+          SQL
+
+          for i in 1 2 3 4; do
+            psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/seam-a.sql > /dev/null 2>&1 &
+            psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/seam-b.sql > /dev/null 2>&1 &
+          done
+          wait
+
+          SEAM=$(psql "$SUPABASE_LOCAL_DB_URL" -Atc "
+            select count(*) from public.bookings b
+              join public.areas a on a.id = b.area_id
+             where a.slug = 'depilacion'
+               and b.starts_at >= (current_date + 175)::timestamptz")
+          if [ "$SEAM" != "1" ]; then
+            echo "::error::overbooking cruzando medianoche del salón: $SEAM reservas solapadas"
+            exit 1
+          fi
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 -c             "delete from public.payments where booking_id in (select id from public.bookings where starts_at::date >= (current_date + 140));
+             delete from public.bookings where starts_at::date >= (current_date + 140);"
+
+          echo "consent / override-reason / salon-lock OK"
+
+      - name: Verify standard costs are not public
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          begin
+            -- El costo por servicio es la base del margen. La clave
+            -- pública se publica por diseño, así que dejar la columna
+            -- bajo la política de lectura pública era publicar la
+            -- estructura de costos del salón.
+            if has_column_privilege('anon','public.service_parameters','standard_cost_amount','SELECT') then
+              raise exception 'anon puede leer el costo estándar';
+            end if;
+            if has_column_privilege('authenticated','public.service_parameters','standard_cost_amount','SELECT') then
+              raise exception 'authenticated puede leer el costo estándar';
+            end if;
+
+            -- Un revoke de columna NO recorta un grant de tabla: si el
+            -- de tabla vuelve, el costo vuelve a quedar expuesto.
+            if has_table_privilege('anon','public.service_parameters','SELECT') then
+              raise exception 'anon conserva SELECT de tabla: el revoke de columna no protege nada';
+            end if;
+
+            -- Y lo que el catálogo necesita tiene que seguir saliendo.
+            if not has_column_privilege('anon','public.service_parameters','price_display_mode','SELECT') then
+              raise exception 'se rompió la lectura pública del catálogo';
+            end if;
+            if not has_column_privilege('anon','public.service_parameters','length_affects_price','SELECT') then
+              raise exception 'se rompió la lectura pública del catálogo';
+            end if;
+            if not has_column_privilege('service_role','public.service_parameters','standard_cost_amount','SELECT') then
+              raise exception 'el backend perdió acceso al costo';
+            end if;
+          end $$;
+          SQL
+
+          echo "standard cost protection OK"
+
+      - name: Verify service closure is idempotent
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_svc text; v_items jsonb; d date := current_date + 120;
+            v_b uuid; n int; total bigint; r jsonb;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','Corte','price_amount',20000,'duration_min',60,'process_min',0,'setup_min',0));
+
+            v_b := (public.create_booking('peluqueria',
+              (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+              60,'fixed',20000,20000,0,0,
+              '{"first_name":"Idem","phone_e164":"+5493425661001"}'::jsonb,
+              v_items, null, 'manual')->>'id')::uuid;
+
+            -- Cerrar dos veces cobra UNA vez. Antes, el `provider_ref`
+            -- llevaba el reloj y `provider` quedaba NULL: el UNIQUE nunca
+            -- mordía y $24.000 quedaban registrados como $48.000.
+            perform public.close_service(v_b, 24000, 'Corte', null, 60, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',24000,'method','efectivo','kind','balance')));
+            r := public.close_service(v_b, 24000, 'Corte', null, 60, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',24000,'method','efectivo','kind','balance')));
+
+            select count(*), coalesce(sum(amount),0) into n, total
+              from public.payments where booking_id = v_b and status = 'approved';
+            if n <> 1 or total <> 24000 then
+              raise exception 'doble cobro: % lineas, total %', n, total;
+            end if;
+            if (r->>'reclosed')::boolean is not true then
+              raise exception 'el segundo cierre no se reconoció como corrección';
+            end if;
+
+            -- Un cierre con menos líneas es una corrección: las que
+            -- sobran se van. Si no, un cobro mal cargado quedaría para
+            -- siempre inflando el total.
+            perform public.close_service(v_b, 26000, 'x', null, 70, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',20000,'method','efectivo','kind','balance'),
+                                jsonb_build_object('amount',6000,'method','transferencia','kind','balance')));
+            select count(*), coalesce(sum(amount),0) into n, total
+              from public.payments where booking_id = v_b and status = 'approved';
+            if n <> 2 or total <> 26000 then
+              raise exception 'esperaba 2 lineas y 26000, dio % y %', n, total;
+            end if;
+
+            perform public.close_service(v_b, 20000, 'x', null, 70, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',20000,'method','efectivo','kind','balance')));
+            select count(*), coalesce(sum(amount),0) into n, total
+              from public.payments where booking_id = v_b and status = 'approved';
+            if n <> 1 or total <> 20000 then
+              raise exception 'quedaron lineas huerfanas: % lineas, total %', n, total;
+            end if;
+
+            -- Un pago externo no se toca nunca desde el cierre.
+            perform public.confirm_booking_payment(v_b,'mercado_pago','mp:CI-CLOSE',5000,'approved','{}'::jsonb);
+            perform public.close_service(v_b, 20000, 'x', null, 70, null, null, null,
+              jsonb_build_array(jsonb_build_object('amount',20000,'method','efectivo','kind','balance')));
+            select count(*) into n from public.payments
+             where booking_id = v_b and provider = 'mercado_pago';
+            if n <> 1 then raise exception 'el cierre borró un pago externo'; end if;
+
+            -- El UNIQUE tiene que morder aunque el proveedor sea NULL.
+            begin
+              insert into public.payments (booking_id, provider, provider_ref, amount, status, method, kind)
+              values (v_b, null, 'dup-null-ref', 1, 'approved', 'efectivo', 'balance');
+              insert into public.payments (booking_id, provider, provider_ref, amount, status, method, kind)
+              values (v_b, null, 'dup-null-ref', 1, 'approved', 'efectivo', 'balance');
+              raise exception 'GATE ROTO: dos pagos iguales sin proveedor convivieron';
+            exception when unique_violation then null;
+            end;
+
+            delete from public.payments where booking_id = v_b;
+            delete from public.bookings where id = v_b;
+          end $$;
+          SQL
+
+          echo "service closure idempotency OK"
 
       - name: Verify field-option composite FK
         run: |
@@ -600,6 +1391,74 @@ jobs:
 
           test "$STATUS_404" = "404"
           test "$STATUS_400" = "400"
+
+      - name: Run end-to-end booking flow against clean-room stack
+        run: |
+          set -euo pipefail
+
+          export SUPABASE_URL="$SUPABASE_LOCAL_API_URL"
+          export SUPABASE_PUBLISHABLE_KEY="$SUPABASE_LOCAL_ANON_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_LOCAL_SERVICE_ROLE_KEY"
+          export SUPABASE_SECRET_KEY="$SUPABASE_LOCAL_SERVICE_ROLE_KEY"
+          export INTERNAL_AUTH_ALLOWED_EMAILS="ci@sol-mai.test"
+          # Supabase local sólo puede emitir tokens de email+clave. La
+          # política de producción sigue siendo `google` por defecto;
+          # acá se abre a propósito para poder ejercitar el panel.
+          export INTERNAL_AUTH_ALLOWED_PROVIDERS="email"
+
+          # Una persona del salón, con su email CONFIRMADO: sin eso el
+          # servidor la rechaza, que es justo lo que tiene que hacer.
+          CREATED=$(curl -sS -X POST "$SUPABASE_LOCAL_API_URL/auth/v1/admin/users" \
+            -H "apikey: $SUPABASE_LOCAL_SERVICE_ROLE_KEY" \
+            -H "authorization: Bearer $SUPABASE_LOCAL_SERVICE_ROLE_KEY" \
+            -H "content-type: application/json" \
+            -d '{"email":"ci@sol-mai.test","password":"ci-password-1234","email_confirm":true}')
+          echo "$CREATED" | head -c 200
+
+          TOKEN=$(curl -sS -X POST "$SUPABASE_LOCAL_API_URL/auth/v1/token?grant_type=password" \
+            -H "apikey: $SUPABASE_LOCAL_ANON_KEY" \
+            -H "content-type: application/json" \
+            -d '{"email":"ci@sol-mai.test","password":"ci-password-1234"}' \
+            | bun -e 'const j=JSON.parse(await Bun.stdin.text()); console.log(j.access_token ?? "")')
+
+          if [ -z "$TOKEN" ]; then
+            echo "::error::no se pudo obtener un token de staff en CI"
+            exit 1
+          fi
+
+          bunx tsx server/src/index.ts > /tmp/hono-e2e.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 30); do
+            curl -fsS "http://localhost:${PORT}/api/v1/health" >/dev/null 2>&1 && break
+            sleep 1
+          done
+          if ! curl -fsS "http://localhost:${PORT}/api/v1/health" >/dev/null 2>&1; then
+            echo "::error::el servidor no levantó para el E2E"
+            cat /tmp/hono-e2e.log || true
+            exit 1
+          fi
+
+          # Que el panel responda ANTES de correr las suites: si el token
+          # no sirviera, los E2E fallarían por la razón equivocada y el
+          # diagnóstico sería otro.
+          ME=$(curl -sS -o /tmp/me.json -w '%{http_code}' \
+            -H "authorization: Bearer $TOKEN" \
+            "http://localhost:${PORT}/api/v1/admin/me")
+          if [ "$ME" != "200" ]; then
+            echo "::error::el token de staff no abre el panel (HTTP $ME)"
+            cat /tmp/me.json || true
+            cat /tmp/hono-e2e.log || true
+            exit 1
+          fi
+
+          export SOLMAI_E2E_BASE="http://localhost:${PORT}"
+          export SOLMAI_E2E_STAFF_TOKEN="$TOKEN"
+          export SOLMAI_E2E_DB_URL="$SUPABASE_LOCAL_DB_URL"
+
+          bash scripts/e2e-flow.sh
+          bash scripts/e2e-stations.sh
 
       - name: Stop local Supabase
         if: always()
