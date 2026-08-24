@@ -137,17 +137,23 @@ begin
   -- que borrar las que sobran. Si no, quitar un cobro mal cargado sería
   -- imposible y el total quedaría inflado para siempre.
   --
-  -- Sólo alcanza a las líneas de ESTE cierre (`provider = 'salon'`): un
-  -- pago de Mercado Pago no se toca nunca desde acá.
+  -- El alcance incluye las referencias VIEJAS (`local:<reserva>:<epoch>`).
+  -- Una base que ya cerró atenciones con el código anterior tiene esas
+  -- líneas, y sin esto el primer re-cierre las dejaba vivas junto a las
+  -- nuevas: 24.000 pasaban a 48.000 en la primera corrección posterior
+  -- a la migración.
+  --
+  -- Un pago de Mercado Pago no se toca nunca desde acá: la condición
+  -- exige `provider = 'salon'`.
   delete from public.payments
    where booking_id = p_booking_id
      and provider = 'salon'
-     and provider_ref like 'close:' || p_booking_id || ':%'
+     and (provider_ref like 'close:' || p_booking_id || ':%'
+          or provider_ref like 'local:' || p_booking_id || ':%')
      and provider_ref <> all (
        select format('close:%s:%s', p_booking_id, g)
          from generate_series(0, greatest(v_i - 1, 0)) g
-     )
-     and v_i >= 0;
+     );
 
   -- Con cero líneas nuevas, `generate_series(0,0)` deja viva la línea 0.
   -- Se limpia aparte para no complicar la condición de arriba.
@@ -155,7 +161,8 @@ begin
     delete from public.payments
      where booking_id = p_booking_id
        and provider = 'salon'
-       and provider_ref like 'close:' || p_booking_id || ':%';
+       and (provider_ref like 'close:' || p_booking_id || ':%'
+            or provider_ref like 'local:' || p_booking_id || ':%');
   end if;
 
   update public.bookings
