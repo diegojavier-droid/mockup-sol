@@ -822,6 +822,165 @@ jobs:
 
           echo "V4.1 dashboard invariants OK"
 
+      - name: Verify consent, override reason and salon-timezone lock
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_svc text; v_items jsonb; d date := current_date + 130;
+            v_am boolean; v_b uuid;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','X','price_amount',10000,'duration_min',60,'process_min',0,'setup_min',0));
+
+            -- CONSENTIMIENTO: un turno de mostrador no puede revocarlo.
+            perform public.create_booking('peluqueria',
+              (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+              60,'fixed',10000,10000,0.20,2000,
+              '{"first_name":"Rosa","phone_e164":"+5493425550001","email":"rosa@x.ar","accepts_marketing":true}'::jsonb,
+              v_items, null, 'online');
+            perform public.create_booking('peluqueria',
+              (d::text || ' 12:00-03')::timestamptz, (d::text || ' 13:00-03')::timestamptz,
+              60,'fixed',10000,10000,0,0,
+              '{"first_name":"Rosa","phone_e164":"+5493425550001"}'::jsonb,
+              v_items, null, 'walk_in');
+            select accepts_marketing into v_am from public.customers where phone_e164 = '+5493425550001';
+            if v_am is not true then
+              raise exception 'un turno interno revocó el consentimiento';
+            end if;
+
+            -- Un valor EXPLÍCITO sí manda.
+            perform public.create_booking('peluqueria',
+              (d::text || ' 14:00-03')::timestamptz, (d::text || ' 15:00-03')::timestamptz,
+              60,'fixed',10000,10000,0,0,
+              '{"first_name":"Rosa","phone_e164":"+5493425550001","accepts_marketing":false}'::jsonb,
+              v_items, null, 'walk_in');
+            select accepts_marketing into v_am from public.customers where phone_e164 = '+5493425550001';
+            if v_am is not false then
+              raise exception 'no respetó un consentimiento negado explícitamente';
+            end if;
+
+            -- Y una clienta nueva sin el campo no estrena un "sí".
+            perform public.create_booking('peluqueria',
+              (d::text || ' 09:30-03')::timestamptz, (d::text || ' 10:00-03')::timestamptz,
+              30,'fixed',10000,10000,0,0,
+              '{"first_name":"Nueva","phone_e164":"+5493425550099"}'::jsonb,
+              v_items, null, 'manual');
+            select accepts_marketing into v_am from public.customers where phone_e164 = '+5493425550099';
+            if v_am is not false then raise exception 'inventó un consentimiento'; end if;
+
+            -- MOTIVO DEL OVERRIDE: una excepción sin justificación no es
+            -- auditable, y auditarla es la única razón por la que existe.
+            perform public.create_booking('depilacion',
+              (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+              60,'fixed',10000,10000,0,0,
+              '{"first_name":"A","phone_e164":"+5493425556001"}'::jsonb, v_items, null, 'manual');
+
+            begin
+              perform public.create_booking('depilacion',
+                (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+                60,'fixed',10000,10000,0,0,
+                '{"first_name":"B","phone_e164":"+5493425556002"}'::jsonb, v_items, null, 'manual',
+                null, 'ci', true, null);
+              raise exception 'GATE ROTO: override sin motivo';
+            exception when others then
+              if position('GATE ROTO' in sqlerrm) > 0 then raise; end if;
+              if sqlerrm <> 'override_reason_required' then raise; end if;
+            end;
+
+            begin
+              perform public.create_booking('depilacion',
+                (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+                60,'fixed',10000,10000,0,0,
+                '{"first_name":"C","phone_e164":"+5493425556003"}'::jsonb, v_items, null, 'manual',
+                null, 'ci', true, '   ');
+              raise exception 'GATE ROTO: override con motivo en blanco';
+            exception when others then
+              if position('GATE ROTO' in sqlerrm) > 0 then raise; end if;
+              if sqlerrm <> 'override_reason_required' then raise; end if;
+            end;
+
+            v_b := (public.create_booking('depilacion',
+              (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+              60,'fixed',10000,10000,0,0,
+              '{"first_name":"D","phone_e164":"+5493425556004"}'::jsonb, v_items, null, 'manual',
+              null, 'ci', true, 'Cliente habitual, solicita excepción')->>'id')::uuid;
+            if (select override_reason from public.bookings where id = v_b) is null then
+              raise exception 'el motivo no quedó guardado';
+            end if;
+
+            delete from public.payments where booking_id in
+              (select id from public.bookings where starts_at::date = d);
+            delete from public.bookings where starts_at::date = d;
+          end $$;
+          SQL
+
+          # LOCK POR DÍA DEL SALÓN. 20:30 y 21:30 ART se solapan, y con la
+          # fecha en UTC caían en días distintos (21:00 ART es medianoche
+          # UTC), tomaban locks diferentes y ambas entraban con capacidad 1.
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare k_a text; k_b text;
+          begin
+            k_a := to_char((current_date + 140 || ' 20:30-03')::timestamptz
+                     at time zone 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD');
+            k_b := to_char((current_date + 140 || ' 21:30-03')::timestamptz
+                     at time zone 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD');
+            if k_a <> k_b then
+              raise exception 'dos reservas de la misma noche tomarían locks distintos: % vs %', k_a, k_b;
+            end if;
+          end $$;
+          SQL
+
+          cat > /tmp/lock-a.sql <<'SQLA'
+          do $$
+          declare v_svc text; v_items jsonb; d date := current_date + 140;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','X','price_amount',10000,'duration_min',120,'process_min',0,'setup_min',0));
+            perform public.create_booking('depilacion',
+              (d::text || ' 20:30-03')::timestamptz, (d::text || ' 22:30-03')::timestamptz,
+              120,'fixed',10000,10000,0,0,
+              '{"first_name":"A","phone_e164":"+5493425888001"}'::jsonb, v_items, null, 'manual');
+          end $$;
+          SQLA
+          sed 's/20:30-03/21:30-03/; s/22:30-03/23:30-03/; s/"A"/"B"/; s/888001/888002/'             /tmp/lock-a.sql > /tmp/lock-b.sql
+
+          # En paralelo: una entra, la otra rebota.
+          psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/lock-a.sql > /tmp/lock-a.log 2>&1 &
+          psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/lock-b.sql > /tmp/lock-b.log 2>&1 &
+          wait
+
+          OVERLAPPING=$(psql "$SUPABASE_LOCAL_DB_URL" -Atc "
+            select count(*) from public.bookings b
+              join public.areas a on a.id = b.area_id
+             where a.slug = 'depilacion'
+               and b.starts_at::date >= (current_date + 140)")
+          if [ "$OVERLAPPING" != "1" ]; then
+            echo "::error::overbooking cruzando medianoche UTC: $OVERLAPPING reservas solapadas"
+            cat /tmp/lock-a.log /tmp/lock-b.log
+            exit 1
+          fi
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 -c             "delete from public.payments where booking_id in (select id from public.bookings where starts_at::date >= (current_date + 140));
+             delete from public.bookings where starts_at::date >= (current_date + 140);"
+
+          echo "consent / override-reason / salon-lock OK"
+
       - name: Verify service closure is idempotent
         run: |
           set -euo pipefail
