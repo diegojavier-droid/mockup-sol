@@ -14,16 +14,24 @@
 #   scripts/e2e-flow.sh
 #
 set -uo pipefail
-BASE=http://127.0.0.1:4173
+
+# Entorno configurable: la misma prueba corre contra el stack local y
+# contra el Supabase efímero de CI, que no tiene el shim de desarrollo.
+BASE=${SOLMAI_E2E_BASE:-http://127.0.0.1:4173}
 API=$BASE/api/v1
-TOKEN=$(/home/user/mockup-sol/scripts/local-stack.sh token dev@sol-mai.test 2>/dev/null)
+if [ -n "${SOLMAI_E2E_STAFF_TOKEN:-}" ]; then
+  TOKEN="$SOLMAI_E2E_STAFF_TOKEN"
+else
+  TOKEN=$("$(dirname "$0")/local-stack.sh" token "${SOLMAI_E2E_STAFF_EMAIL:-dev@sol-mai.test}" 2>/dev/null)
+fi
 H="authorization: Bearer $TOKEN"
 FAIL=0
 ok(){ if [ "$2" = "1" ]; then echo "OK  · $1"; else echo "FALLA · $1 — $3"; FAIL=$((FAIL+1)); fi; }
 
 # Partir de cero: una corrida previa deja turnos y pagos que suman en el
 # dashboard y hacen que el total no sea comprobable.
-su postgres -c "psql -q -d solmai_local" >/dev/null 2>&1 <<'CLEANSQL'
+cleanup_sql() {
+  cat <<'CLEANSQL'
 delete from public.payments where booking_id in (
   select id from public.bookings where customer_id in (
     select id from public.customers where first_name in ('Valentina','Marta','Testina')));
@@ -32,6 +40,14 @@ delete from public.bookings where customer_id in (
 delete from public.customers where first_name in ('Valentina','Marta','Testina');
 delete from public.resource_blocks;
 CLEANSQL
+}
+
+# En CI la base se alcanza por URL; en local, por el socket de postgres.
+if [ -n "${SOLMAI_E2E_DB_URL:-}" ]; then
+  cleanup_sql | psql "$SOLMAI_E2E_DB_URL" -q >/dev/null 2>&1
+else
+  cleanup_sql | su postgres -c "psql -q -d ${SOLMAI_LOCAL_DB:-solmai_local}" >/dev/null 2>&1
+fi
 
 echo "── 1. La clienta ve el catálogo sin autenticarse"
 CATS=$(curl -s -m 10 "$API/catalog/categories" | python3 -c "import sys,json;print(len(json.load(sys.stdin)['data']))")

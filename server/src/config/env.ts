@@ -44,6 +44,28 @@ const serverEnvSchema = z.object({
   // Internal auth (staff/owner console access via JWT)
   INTERNAL_AUTH_JWT_AUDIENCE: nonEmpty,
   INTERNAL_AUTH_ALLOWED_EMAILS: csvEmails,
+  /**
+   * Proveedores de identidad admitidos, separados por coma.
+   *
+   * El default es `google` y así queda en producción: la vinculación
+   * automática por email coincidente supone un proveedor que verifica el
+   * email, y admitir uno que no lo verifique convierte esa vinculación
+   * en una vía de acceso a fichas ajenas.
+   *
+   * Existe como variable para que CI pueda ejercitar el flujo real con
+   * el proveedor que Supabase le permite crear. Vacío NO significa
+   * "cualquiera": el schema exige al menos un valor.
+   */
+  INTERNAL_AUTH_ALLOWED_PROVIDERS: z
+    .string()
+    .default("google")
+    .transform((raw) =>
+      raw
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.string().min(1)).min(1)),
 
   // ---- Reserved for future phases (optional now) ----------------------
   MERCADO_PAGO_ACCESS_TOKEN: z.string().min(1).optional(),

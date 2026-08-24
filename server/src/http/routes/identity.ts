@@ -31,12 +31,19 @@ import { rejectionMessage, verifyIdentity } from "../../lib/identity/verify";
 /**
  * Proveedores admitidos para la identidad de la clienta.
  *
- * Uno solo, y a propósito: es el que la política de identidad supone
- * cuando vincula automáticamente por email coincidente. Agregar acá un
- * proveedor que no verifique el email convertiría esa vinculación en
- * una vía de acceso a fichas ajenas.
+ * Salen de `INTERNAL_AUTH_ALLOWED_PROVIDERS`, que por defecto es sólo
+ * `google`: la vinculación automática por email coincidente supone un
+ * proveedor que verifica el email, y admitir uno que no lo verifique
+ * convierte esa vinculación en una vía de acceso a fichas ajenas.
  */
-const CUSTOMER_PROVIDERS = ["google"] as const;
+type CustomerProvider = "google" | "password" | "manual";
+const KNOWN_PROVIDERS: readonly CustomerProvider[] = ["google", "password", "manual"];
+
+function customerProviders(env: ServerEnv): CustomerProvider[] {
+  // Un proveedor que la base no conoce no puede guardarse como
+  // credencial, así que se descarta acá en vez de fallar al insertar.
+  return KNOWN_PROVIDERS.filter((p) => env.INTERNAL_AUTH_ALLOWED_PROVIDERS.includes(p));
+}
 
 /** Identidad probada por Supabase Auth. Nunca se confía en el cuerpo. */
 async function authenticate(
@@ -59,7 +66,7 @@ async function authenticate(
 
   // Que el token sea válido sólo prueba que lo emitió este proyecto de
   // Supabase. Con quién entró y si ese email es suyo lo decide esto.
-  const check = verifyIdentity(data.user, CUSTOMER_PROVIDERS);
+  const check = verifyIdentity(data.user, customerProviders(env));
   if (!check.ok) {
     console.warn("[sol-mai-api] identidad rechazada:", check.reason);
     throw new HTTPException(403, { message: rejectionMessage(check.reason) });

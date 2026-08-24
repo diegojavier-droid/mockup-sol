@@ -18,12 +18,14 @@ import { createSupabaseAdminClient } from "../../lib/supabase";
 import { rejectionMessage, verifyIdentity } from "../../lib/identity/verify";
 
 /**
- * Con qué se entra al panel. Google, igual que la clienta: el panel da
- * acceso a la agenda y a las fichas, así que un token emitido por un
- * alta de email y clave con el correo de la dueña no puede alcanzar.
- * La lista de acceso sigue siendo la segunda condición, no la única.
+ * Con qué se entra al panel: lo que diga
+ * `INTERNAL_AUTH_ALLOWED_PROVIDERS`, por defecto sólo Google.
+ *
+ * El panel da acceso a la agenda y a las fichas, así que un token
+ * emitido por un alta de email y clave con el correo de la dueña no
+ * puede alcanzar. La lista de emails sigue siendo la segunda condición,
+ * no la única.
  */
-const STAFF_PROVIDERS = ["google"] as const;
 
 export interface StaffIdentity {
   email: string;
@@ -45,7 +47,7 @@ async function resolveIdentity(env: ServerEnv, token: string): Promise<StaffIden
   // Mismo criterio que la identidad de la clienta: el token prueba que
   // lo emitió este proyecto, no con qué proveedor ni que el email sea
   // suyo. Sin esto, la lista de acceso quedaba como única barrera.
-  const check = verifyIdentity(data.user, STAFF_PROVIDERS);
+  const check = verifyIdentity(data.user, env.INTERNAL_AUTH_ALLOWED_PROVIDERS);
   if (!check.ok) {
     console.warn("[sol-mai-api] acceso al panel rechazado:", check.reason);
     throw new HTTPException(403, { message: rejectionMessage(check.reason) });

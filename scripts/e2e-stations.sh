@@ -9,15 +9,20 @@
 # Requiere el stack local y el Worker en :4173 (ver e2e-flow.sh).
 #
 set -uo pipefail
-TOKEN=$(/home/user/mockup-sol/scripts/local-stack.sh token dev@sol-mai.test 2>/dev/null)
-API=http://127.0.0.1:4173/api/v1/admin
+BASE=${SOLMAI_E2E_BASE:-http://127.0.0.1:4173}
+if [ -n "${SOLMAI_E2E_STAFF_TOKEN:-}" ]; then
+  TOKEN="$SOLMAI_E2E_STAFF_TOKEN"
+else
+  TOKEN=$("$(dirname "$0")/local-stack.sh" token "${SOLMAI_E2E_STAFF_EMAIL:-dev@sol-mai.test}" 2>/dev/null)
+fi
+API=$BASE/api/v1/admin
 H="authorization: Bearer $TOKEN"
 FAIL=0
 ok(){ if [ "$2" = "1" ]; then echo "OK  · $1"; else echo "FALLA · $1 — $3"; FAIL=$((FAIL+1)); fi; }
 
 # Un turno interno mañana en Peluquería.
 DAY=$(date -u -d "+3 days" +%Y-%m-%d)
-SVC=$(curl -s "http://127.0.0.1:4173/api/v1/catalog/services?category=peluqueria" | python3 -c "
+SVC=$(curl -s "$BASE/api/v1/catalog/services?category=peluqueria" | python3 -c "
 import sys,json
 for s in json.load(sys.stdin)['data']:
     if not s.get('lengthAffectsPrice') and not s.get('requiresLength'):
