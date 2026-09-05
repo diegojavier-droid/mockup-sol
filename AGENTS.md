@@ -4,11 +4,12 @@
 
 Antes de modificar código, leer en este orden:
 
-1. `docs/sol-mai-current-source-of-truth.md`
-2. `docs/backend-roadmap.md`
-3. `docs/production-architecture-plan.md`
-4. `docs/data-model-v1.md`
-5. `docs/reservation-payment-flow.md`
+1. `docs/sol-mai-product-context.md` (para qué existe el sistema)
+2. `docs/sol-mai-current-source-of-truth.md` (qué hay construido hoy)
+3. `docs/backend-roadmap.md`
+4. `docs/production-architecture-plan.md`
+5. `docs/data-model-v1.md`
+6. `docs/reservation-payment-flow.md`
 
 Los PDFs/documentos maestros anteriores son históricos/contextuales y no
 reemplazan la fuente de verdad vigente del repo.
