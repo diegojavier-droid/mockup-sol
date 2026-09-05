@@ -127,9 +127,12 @@ export function createAdminRoute(env: ServerEnv) {
     if (!parsed.success) throw new HTTPException(400, { message: "Estado inválido." });
 
     try {
+      const staff = c.get("staff");
       const updated = await updateBookingStatus(createSupabaseAdminClient(env), {
         bookingId: c.req.param("id"),
         status: parsed.data.status,
+        actorId: staff.staffId,
+        actorLabel: staff.email,
       });
       return c.json({ data: updated });
     } catch (error) {

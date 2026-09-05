@@ -136,17 +136,19 @@ búsqueda de clienta existente precede al alta.
 
 ## 2.3 Trazabilidad de modificación — brecha confirmada
 
-`PATCH /admin/bookings/:id/status` cambia estado llamando a
-`updateBookingStatus`, que **no recibe actor y no llama a `record_audit`**.
-Confirmar, cancelar o marcar atendida **no queda atribuido a ninguna persona**.
+**RESUELTO** (`20260824140000_booking_status_traceability.sql`).
 
-Evidencia: `server/src/http/routes/admin.ts:122` → `server/src/lib/admin/repository.ts:156`.
-El resto de las acciones (alta, ausencia, cierre, override, vínculo de
-identidad) sí registran actor vía `record_audit`.
+El cambio de estado pasa por `set_booking_status`, que en una sola
+transacción bloquea la fila, valida la transición, escribe el estado y
+registra en `audit_log` quién lo hizo. La tabla de transiciones dejó de vivir
+en TypeScript: ahora hay una sola definición, en la base.
 
-Clasificación: **GAP TÉCNICO**. Contradice el requisito explícito "conservar
-quién creó/modificó la reserva" y es la brecha más barata de cerrar del
-documento.
+El actor es **obligatorio**: sin persona responsable la función rechaza el
+cambio en vez de auditarlo a medias. Verificado contra PostgreSQL real —
+incluido que el guard es lo único que sostiene la propiedad, porque
+`audit_log` por sí solo acepta filas sin actor.
+
+Queda abierto, y es distinto: **G-15**, abajo.
 
 ## 2.4 Identidad de la clienta
 
@@ -415,7 +417,7 @@ Contra `main` en `85e7e03`. Ordenado por lo que desbloquea.
 | ID | Hallazgo | Evidencia | Clase | Bloquea |
 | --- | --- | --- | --- | --- |
 | **G-01** | Un solo servicio principal por reserva; el rol `addon` existe en el schema y **ninguna ruta lo produce** (verificado: sólo aparece como tipo en `booking/repository.ts:52`) | `server/src/domain/quote.ts:90,101` | GAP TÉCNICO | §5-B completo; el ejemplo canónico de IA |
-| **G-02** | Cambio de estado sin actor ni auditoría | `admin.ts:122` → `repository.ts:156` | GAP TÉCNICO | Requisito explícito de trazabilidad |
+| ~~**G-02**~~ | ~~Cambio de estado sin actor ni auditoría~~ — **RESUELTO**: `set_booking_status` valida la transición, exige actor y audita en una sola transacción | `20260824140000_booking_status_traceability.sql` | CERRADO | — |
 | **G-03** | Dos caminos de escritura del cierre, con modelos de dinero divergentes. Sin UI que lo dispare hoy | `admin.ts:518` vs `close_service`; sin referencias en `src/` | GAP TÉCNICO (deuda de modelo) | Gobierno de datos; integridad de caja |
 | **G-04** | No existe ninguna capa de IA en el repo | sin integración en `server/` ni `src/` | GAP TÉCNICO | Etapa 4 de la evolución |
 | **G-05** | La carga administrativa evitada no es calculable: no se registra nada que la mida | `dashboard_summary` mide ocupación y dinero | GAP TÉCNICO + DECISIÓN DE PRODUCTO | La métrica de éxito declarada |
@@ -428,6 +430,7 @@ Contra `main` en `85e7e03`. Ordenado por lo que desbloquea.
 | **G-12** | Sin cobro real de seña | documentado | PENDIENTE (credencial) | Etapa 6 de §6 |
 | **G-13** | Catálogo, precios, duraciones y capacidades son seed/mock | `source`/`confidence` por fila | PENDIENTE DE VALIDAR CON SOL | Todo lo que dependa de un número correcto |
 | **G-14** | Sin línea de base de la operación real: nadie entrevistó a Sol | — | PENDIENTE DE VALIDAR CON SOL | La priorización honesta de §1 |
+| **G-15** | Cancelar desde el panel no toca `deposit_status` ni `refund_due`; `cancel_booking` (la cancelación de la clienta) sí los calcula. Una seña `paid` cancelada por el salón queda contada como cobrada | `20260823120000:640-660` vs `set_booking_status` | GAP TÉCNICO (plata) | Exactitud del dashboard y de la conciliación |
 
 **Lo que ya está bien y no hay que rehacer** (para que el gap analysis no se
 lea como si nada funcionara): una sola agenda con cinco canales verificados por
@@ -517,14 +520,15 @@ requiere que Sol entienda el sistema.
 
 No es un plan de implementación aprobado: es la dependencia técnica real.
 
-1. **G-02** — actor y auditoría en el cambio de estado. Chico, cierra un
-   requisito ya declarado y es precondición de cualquier IA que proponga cambios.
-2. **G-03** — un solo camino de escritura del cierre. Integridad de caja.
-3. **G-01** — múltiples servicios por reserva. **Precondición dura de toda la
+1. ~~**G-02**~~ — hecho.
+2. **G-15** — coherencia de la seña al cancelar desde el panel. Apareció al
+   cerrar G-02 y es plata mal contada, no deuda de forma.
+3. **G-03** — un solo camino de escritura del cierre. Integridad de caja.
+4. **G-01** — múltiples servicios por reserva. **Precondición dura de toda la
    capa de IA**; toca cotización, snapshot, capacidad y UI: es el bloque grande.
-4. **G-05** — decidir qué se instrumenta para medir carga evitada, *antes* de
+5. **G-05** — decidir qué se instrumenta para medir carga evitada, *antes* de
    automatizar. Si se automatiza primero, se pierde la línea de base para siempre.
-5. **G-04 / G-06** — capa de asistencia y captura desde WhatsApp, recién con
+6. **G-04 / G-06** — capa de asistencia y captura desde WhatsApp, recién con
    1-3 resueltos.
 
 Credenciales (G-11, G-12) corren en paralelo: no dependen de este orden y hoy

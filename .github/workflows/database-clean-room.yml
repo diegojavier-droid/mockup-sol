@@ -1195,6 +1195,117 @@ jobs:
 
           echo "service closure idempotency OK"
 
+      - name: Verify booking status changes are attributable
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_svc text; v_items jsonb; d date := current_date + 200;
+            v_b uuid; v_actor uuid; v_status text; v_n int; v_detail jsonb; v_ok boolean;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','X','price_amount',10000,'duration_min',60,'process_min',0,'setup_min',0));
+
+            insert into public.staff_members (slug, display_name, email, role, is_active)
+            values ('ci-trazabilidad','CI','ci-trazabilidad@solmai.test','staff',true)
+            returning id into v_actor;
+
+            v_b := (public.create_booking('peluqueria',
+              (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+              60,'fixed',10000,10000,0.20,2000,
+              '{"first_name":"Traza","phone_e164":"+5493425559200"}'::jsonb,
+              v_items, null, 'online')->>'id')::uuid;
+
+            -- PRECONDICIÓN: el fixture arranca donde la prueba cree que
+            -- arranca. Sin esto, un cambio en create_booking volvería
+            -- verdes por accidente las cinco comprobaciones que siguen.
+            select status into v_status from public.bookings where id = v_b;
+            if v_status <> 'pending_payment' then
+              raise exception 'fixture inválido: el turno nació %', v_status;
+            end if;
+            select count(*) into v_n from public.audit_log
+             where entity_id = v_b and action = 'booking_status_changed';
+            if v_n <> 0 then raise exception 'la precondición ya traía auditoría'; end if;
+
+            -- 1. SIN ACTOR no se cambia el estado, y no se cambia NADA.
+            v_ok := false;
+            begin
+              perform public.set_booking_status(v_b, 'confirmed', null, 'nadie@x.ar');
+            exception when others then
+              if sqlerrm like '%actor_required%' then v_ok := true; else raise; end if;
+            end;
+            if not v_ok then raise exception 'aceptó un cambio de estado sin persona responsable'; end if;
+            select status into v_status from public.bookings where id = v_b;
+            if v_status <> 'pending_payment' then raise exception 'rechazó el actor pero cambió el estado igual'; end if;
+
+            -- 2. Una transición ilegal se rechaza nombrando ambos estados.
+            v_ok := false;
+            begin
+              perform public.set_booking_status(v_b, 'attended', v_actor, 'ci@x.ar');
+            exception when others then
+              if sqlerrm like 'invalid_transition:pending_payment->attended%' then v_ok := true; else raise; end if;
+            end;
+            if not v_ok then raise exception 'aceptó pending_payment -> attended'; end if;
+
+            -- 3. Una transición válida queda auditada y atribuida.
+            perform public.set_booking_status(v_b, 'confirmed', v_actor, 'ci@x.ar');
+            select status into v_status from public.bookings where id = v_b;
+            if v_status <> 'confirmed' then raise exception 'no confirmó el turno'; end if;
+
+            select count(*) into v_n from public.audit_log
+             where entity_id = v_b and action = 'booking_status_changed'
+               and actor_id = v_actor and actor_label = 'ci@x.ar';
+            if v_n <> 1 then raise exception 'esperaba 1 fila de auditoría atribuida, hay %', v_n; end if;
+
+            select detail into v_detail from public.audit_log
+             where entity_id = v_b and action = 'booking_status_changed';
+            if v_detail->>'previous_status' <> 'pending_payment'
+               or v_detail->>'new_status' <> 'confirmed' then
+              raise exception 'el registro no dice de qué estado a cuál: %', v_detail;
+            end if;
+
+            -- 4. Un estado terminal no se revierte.
+            perform public.set_booking_status(v_b, 'cancelled', v_actor, 'ci@x.ar');
+            v_ok := false;
+            begin
+              perform public.set_booking_status(v_b, 'confirmed', v_actor, 'ci@x.ar');
+            exception when others then
+              if sqlerrm like 'invalid_transition:cancelled->confirmed%' then v_ok := true; else raise; end if;
+            end;
+            if not v_ok then raise exception 'revivió un turno cancelado'; end if;
+
+            -- 5. Cancelar sella cuándo.
+            if (select cancelled_at from public.bookings where id = v_b) is null then
+              raise exception 'canceló sin registrar cuándo';
+            end if;
+
+            -- 6. El guard es lo único que sostiene la propiedad: audit_log
+            --    por sí solo acepta filas sin actor. Si esto dejara de ser
+            --    cierto, la comprobación 1 se volvería vacía sin avisar.
+            perform public.record_audit(null, null, 'ci_vacuidad', 'booking', v_b, '{}'::jsonb);
+            select count(*) into v_n from public.audit_log
+             where action = 'ci_vacuidad' and actor_id is null;
+            if v_n <> 1 then
+              raise exception 'la auditoría ya rechazaba el actor nulo: la prueba 1 no demuestra nada';
+            end if;
+
+            delete from public.audit_log where entity_id = v_b;
+            delete from public.payments where booking_id = v_b;
+            delete from public.bookings where id = v_b;
+            delete from public.staff_members where id = v_actor;
+          end $$;
+          SQL
+
+          echo "booking status traceability OK"
+
       - name: Verify field-option composite FK
         run: |
           set -euo pipefail
