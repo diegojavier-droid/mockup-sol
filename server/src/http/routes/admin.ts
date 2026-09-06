@@ -17,7 +17,6 @@ import {
   getBookingForStaff,
   getCustomerDetail,
   listAgenda,
-  recordExecution,
   searchCustomers,
   TransitionError,
   updateBookingStatus,
@@ -528,26 +527,20 @@ export function createAdminRoute(env: ServerEnv) {
     }
   });
 
-  route.post("/bookings/:id/execution", async (c) => {
-    const schema = z.object({
-      finalPriceAmount: z.number().int().min(0).nullish(),
-      actualDurationMin: z.number().int().min(1).max(1440).nullish(),
-      servicesDone: z.string().max(500).nullish(),
-      formula: z.string().max(2000).nullish(),
-      paymentMethod: z.enum(["efectivo", "transferencia", "otro"]).nullish(),
-      observation: z.string().max(1000).nullish(),
-    });
-    const parsed = schema.safeParse(await c.req.json().catch(() => null));
-    if (!parsed.success)
-      throw new HTTPException(400, { message: "Revisá los datos de la atención." });
-
-    await recordExecution(createSupabaseAdminClient(env), {
-      bookingId: c.req.param("id"),
-      ...parsed.data,
-      recordedBy: c.get("staff").email,
-    });
-    return c.json({ data: { ok: true } });
-  });
+  /**
+   * El cierre de una atención vive en `POST /bookings/:id/close`, y sólo
+   * ahí.
+   *
+   * Existía además `POST /bookings/:id/execution`, que escribía la misma
+   * fila de `service_execution_records` por upsert directo, con un enum
+   * de medio de pago sin `mercado_pago`, sin admitir pagos mixtos, sin
+   * idempotencia y sin auditoría. Podía pisar el precio de un cierre ya
+   * conciliado. Ninguna pantalla lo usaba.
+   *
+   * Un hecho de negocio se escribe por un solo camino: `close_service`
+   * cubre todo lo que hacía —y además exige un precio final y un turno
+   * en estado cerrable, que aquella ruta no pedía.
+   */
 
   // --------------------------------------------------------------- clientas
   route.get("/customers", async (c) => {

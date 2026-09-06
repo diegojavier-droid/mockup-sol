@@ -372,35 +372,6 @@ export async function addCustomerNote(
   if (error) throw error;
 }
 
-export async function recordExecution(
-  admin: SupabaseAdminClient,
-  params: {
-    bookingId: string;
-    finalPriceAmount?: number | null;
-    actualDurationMin?: number | null;
-    servicesDone?: string | null;
-    formula?: string | null;
-    paymentMethod?: string | null;
-    observation?: string | null;
-    recordedBy: string;
-  },
-): Promise<void> {
-  const { error } = await admin.from("service_execution_records").upsert(
-    {
-      booking_id: params.bookingId,
-      final_price_amount: params.finalPriceAmount ?? null,
-      actual_duration_min: params.actualDurationMin ?? null,
-      services_done: params.servicesDone ?? null,
-      formula: params.formula ?? null,
-      payment_method: params.paymentMethod ?? null,
-      observation: params.observation ?? null,
-      recorded_by: params.recordedBy,
-      recorded_at: new Date().toISOString(),
-    },
-    { onConflict: "booking_id" },
-  );
-  if (error) throw error;
-}
 
 // ---------------------------------------------------------------------
 // Cierre de atención y conciliación

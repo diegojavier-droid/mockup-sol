@@ -272,12 +272,16 @@ distintos.**
 `final_price_amount` explícito: una llamada a `/execution` posterior a un
 cierre pisaría el precio conciliado y dejaría un medio de pago fuera del ledger.
 
-**Severidad real, medida y no inflada:** ninguna pantalla llama hoy a
-`/execution` — verificado, no hay una sola referencia en `src/`. El riesgo no
-está activo desde la UI; existe a nivel de API para cualquier `staff`
-autenticada, y sobre todo es **deuda de modelo**: dos caminos de escritura para
-un mismo hecho, uno de ellos con un modelo de dinero que el sistema ya
-abandonó. → **GAP TÉCNICO** de diseño, no incidente en curso.
+**RESUELTO** (`20260824160000`). `/execution` y `recordExecution` se
+eliminaron: `close_service` es el único camino de escritura del cierre y cubre
+todo lo que hacía el otro, además de exigir un precio final y un turno en
+estado cerrable —que aquella ruta no pedía—, así que el modelo queda más
+estricto, no sólo más limpio.
+
+La columna `payment_method` **no se borra**: puede haber filas históricas y
+descartarlas perdería el único registro de cómo se cobró esa atención. Queda
+comentada en el schema como histórica de sólo lectura, y un guard de
+repositorio falla si algún día vuelve a escribirse.
 
 **D-02 · `bookings.refund_due` sobrevive a `deposit_status`.** La migración
 que introdujo `deposit_status` documenta que `refund_due` "no alcanza", pero
@@ -425,7 +429,7 @@ Contra `main` en `85e7e03`. Ordenado por lo que desbloquea.
 | --- | --- | --- | --- | --- |
 | **G-01** | Un solo servicio principal por reserva; el rol `addon` existe en el schema y **ninguna ruta lo produce** (verificado: sólo aparece como tipo en `booking/repository.ts:52`) | `server/src/domain/quote.ts:90,101` | GAP TÉCNICO | §5-B completo; el ejemplo canónico de IA |
 | ~~**G-02**~~ | ~~Cambio de estado sin actor ni auditoría~~ — **RESUELTO**: `set_booking_status` valida la transición, exige actor y audita en una sola transacción | `20260824140000_booking_status_traceability.sql` | CERRADO | — |
-| **G-03** | Dos caminos de escritura del cierre, con modelos de dinero divergentes. Sin UI que lo dispare hoy | `admin.ts:518` vs `close_service`; sin referencias en `src/` | GAP TÉCNICO (deuda de modelo) | Gobierno de datos; integridad de caja |
+| ~~**G-03**~~ | ~~Dos caminos de escritura del cierre~~ — **RESUELTO**: `/execution` eliminado; `close_service` es el único camino, y un guard de repositorio falla si vuelve a escribirse `payment_method` | `20260824160000_single_closure_write_path.sql` | CERRADO | — |
 | **G-04** | No existe ninguna capa de IA en el repo | sin integración en `server/` ni `src/` | GAP TÉCNICO | Etapa 4 de la evolución |
 | **G-05** | La carga administrativa evitada no es calculable: no se registra nada que la mida | `dashboard_summary` mide ocupación y dinero | GAP TÉCNICO + DECISIÓN DE PRODUCTO | La métrica de éxito declarada |
 | **G-06** | WhatsApp se registra como canal pero no captura: la reserva se transcribe | sin integración | GAP TÉCNICO + DECISIÓN | Etapa 3 de la evolución |
@@ -529,7 +533,7 @@ No es un plan de implementación aprobado: es la dependencia técnica real.
 
 1. ~~**G-02**~~ — hecho.
 2. ~~**G-15**~~ — hecho.
-3. **G-03** — un solo camino de escritura del cierre. Integridad de caja.
+3. ~~**G-03**~~ — hecho.
 4. **G-01** — múltiples servicios por reserva. **Precondición dura de toda la
    capa de IA**; toca cotización, snapshot, capacidad y UI: es el bloque grande.
 5. **G-05** — decidir qué se instrumenta para medir carga evitada, *antes* de

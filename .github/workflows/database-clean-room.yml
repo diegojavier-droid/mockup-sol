@@ -1607,6 +1607,22 @@ jobs:
             exit 1
           fi
 
+          # G-03: el cierre de una atención se escribe por un solo camino,
+          # `close_service`. `service_execution_records.payment_method` es
+          # una columna heredada que ese camino ya no escribe: su enum no
+          # incluye `mercado_pago` y no admite pagos mixtos, así que
+          # escribirla vuelve a partir en dos la verdad sobre la plata.
+          # `\b` importa: `payment_methods` en plural es la LECTURA de
+          # conciliación, que agrega los medios del ledger y es correcta.
+          EXEC_WRITES=$(git grep -n -E "\bpayment_method\b" -- server/ src/ || true)
+          EXEC_UPSERT=$(git grep -n -E "from\(\"service_execution_records\"\)\s*\.upsert|from\('service_execution_records'\)\s*\.upsert" -- server/ src/ || true)
+          if [ -n "$EXEC_WRITES" ] || [ -n "$EXEC_UPSERT" ]; then
+            echo "::error::el cierre de atención volvió a tener una segunda ruta de escritura (G-03):"
+            echo "$EXEC_WRITES"
+            echo "$EXEC_UPSERT"
+            exit 1
+          fi
+
           if git ls-files | grep -Eq '(^|/)\.env($|\.)' \
             && git ls-files | grep -Ev '(^|/)\.env\.example$' | grep -Eq '(^|/)\.env($|\.)'; then
             echo "::error::A real .env file is tracked"
