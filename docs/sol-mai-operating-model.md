@@ -148,7 +148,14 @@ cambio en vez de auditarlo a medias. Verificado contra PostgreSQL real —
 incluido que el guard es lo único que sostiene la propiedad, porque
 `audit_log` por sí solo acepta filas sin actor.
 
-Queda abierto, y es distinto: **G-15**, abajo.
+Y la asimetría que esto destapó —cancelar desde el panel dejaba la seña
+en `paid`— quedó cerrada en `20260824150000`: cancelar con plata
+acreditada exige decir si se devuelve o se retiene. No se copió la regla
+de la clienta, que responde «¿avisó a tiempo?» y no corresponde cuando
+cancela el salón. Se aplicó el precedente del override: el motor calcula,
+la persona decide, el sistema registra — y la auditoría guarda tanto la
+decisión como lo que habría dicho la regla automática, así apartarse de
+la política queda visible.
 
 ## 2.4 Identidad de la clienta
 
@@ -430,7 +437,7 @@ Contra `main` en `85e7e03`. Ordenado por lo que desbloquea.
 | **G-12** | Sin cobro real de seña | documentado | PENDIENTE (credencial) | Etapa 6 de §6 |
 | **G-13** | Catálogo, precios, duraciones y capacidades son seed/mock | `source`/`confidence` por fila | PENDIENTE DE VALIDAR CON SOL | Todo lo que dependa de un número correcto |
 | **G-14** | Sin línea de base de la operación real: nadie entrevistó a Sol | — | PENDIENTE DE VALIDAR CON SOL | La priorización honesta de §1 |
-| **G-15** | Cancelar desde el panel no toca `deposit_status` ni `refund_due`; `cancel_booking` (la cancelación de la clienta) sí los calcula. Una seña `paid` cancelada por el salón queda contada como cobrada | `20260823120000:640-660` vs `set_booking_status` | GAP TÉCNICO (plata) | Exactitud del dashboard y de la conciliación |
+| ~~**G-15**~~ | ~~Cancelar desde el panel dejaba la seña en `paid`~~ — **RESUELTO**: cancelar con seña acreditada exige decidir `refund` o `retain`; el sistema no elige por Sol qué pasa con la plata | `20260824150000_cancellation_deposit_outcome.sql` | CERRADO | — |
 
 **Lo que ya está bien y no hay que rehacer** (para que el gap analysis no se
 lea como si nada funcionara): una sola agenda con cinco canales verificados por
@@ -521,8 +528,7 @@ requiere que Sol entienda el sistema.
 No es un plan de implementación aprobado: es la dependencia técnica real.
 
 1. ~~**G-02**~~ — hecho.
-2. **G-15** — coherencia de la seña al cancelar desde el panel. Apareció al
-   cerrar G-02 y es plata mal contada, no deuda de forma.
+2. ~~**G-15**~~ — hecho.
 3. **G-03** — un solo camino de escritura del cierre. Integridad de caja.
 4. **G-01** — múltiples servicios por reserva. **Precondición dura de toda la
    capa de IA**; toca cotización, snapshot, capacidad y UI: es el bloque grande.

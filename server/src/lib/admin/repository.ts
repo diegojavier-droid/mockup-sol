@@ -153,13 +153,22 @@ export function parseTransitionError(message: string): { from: string; to: strin
   return match ? { from: match[1], to: match[2] } : null;
 }
 
+/** Qué se hace con una seña ya acreditada al cancelar. Lo decide una persona. */
+export type DepositOutcome = "refund" | "retain";
+
 /**
  * Cambia el estado de un turno.
  *
  * El actor no es opcional: un turno que pasa a cancelado o atendido
- * decide si esa hora se cobra o se pierde, y hasta ahora era la única
- * acción operativa que no registraba quién la hizo. Si falta la persona,
- * la función de base rechaza el cambio en vez de auditarlo a medias.
+ * decide si esa hora se cobra o se pierde, y hasta hace poco era la
+ * única acción operativa que no registraba quién la hizo. Si falta la
+ * persona, la función de base rechaza el cambio en vez de auditarlo a
+ * medias.
+ *
+ * Cancelar un turno con seña acreditada exige además decir qué pasa con
+ * esa plata. El sistema no lo deduce: la regla de la ventana de
+ * reembolso responde "¿la clienta avisó a tiempo?", y cuando cancela el
+ * salón esa pregunta no corresponde.
  */
 export async function updateBookingStatus(
   admin: SupabaseAdminClient,
@@ -168,6 +177,7 @@ export async function updateBookingStatus(
     status: string;
     actorId: string;
     actorLabel?: string | null;
+    depositOutcome?: DepositOutcome | null;
   },
 ): Promise<AgendaEntry> {
   const { error } = await admin.rpc("set_booking_status", {
@@ -175,6 +185,7 @@ export async function updateBookingStatus(
     p_status: params.status,
     p_actor_id: params.actorId,
     p_actor_label: params.actorLabel ?? null,
+    p_deposit_outcome: params.depositOutcome ?? null,
   });
 
   if (error) {
@@ -182,6 +193,7 @@ export async function updateBookingStatus(
     const transition = parseTransitionError(message);
     if (transition) throw new TransitionError(transition.from, transition.to);
     if (message.includes("booking_not_found")) throw new Error("booking_not_found");
+    if (message.includes("deposit_outcome_required")) throw new Error("deposit_outcome_required");
     throw new Error(message || "set_booking_status failed");
   }
 

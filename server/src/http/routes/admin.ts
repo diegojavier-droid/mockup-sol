@@ -122,6 +122,9 @@ export function createAdminRoute(env: ServerEnv) {
   route.patch("/bookings/:id/status", async (c) => {
     const schema = z.object({
       status: z.enum(["confirmed", "attended", "cancelled", "expired"]),
+      // Qué pasa con una seña ya acreditada al cancelar. No tiene default:
+      // el sistema no elige por el salón qué hacer con la plata.
+      depositOutcome: z.enum(["refund", "retain"]).nullish(),
     });
     const parsed = schema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) throw new HTTPException(400, { message: "Estado inválido." });
@@ -133,6 +136,7 @@ export function createAdminRoute(env: ServerEnv) {
         status: parsed.data.status,
         actorId: staff.staffId,
         actorLabel: staff.email,
+        depositOutcome: parsed.data.depositOutcome ?? null,
       });
       return c.json({ data: updated });
     } catch (error) {
@@ -143,6 +147,12 @@ export function createAdminRoute(env: ServerEnv) {
       }
       if (error instanceof Error && error.message === "booking_not_found") {
         throw new HTTPException(404, { message: "No encontramos ese turno." });
+      }
+      if (error instanceof Error && error.message === "deposit_outcome_required") {
+        throw new HTTPException(409, {
+          message:
+            "Este turno tiene la seña abonada. Antes de cancelarlo, decidí si se devuelve o se retiene.",
+        });
       }
       throw error;
     }

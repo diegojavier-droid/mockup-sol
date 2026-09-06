@@ -1323,6 +1323,129 @@ jobs:
 
           echo "booking status traceability OK"
 
+      - name: Verify a cancelled deposit is never left unresolved
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_svc text; v_items jsonb; d date := current_date + 300;
+            v_b uuid; v_b2 uuid; v_b3 uuid; v_actor uuid;
+            v_ok boolean; v_ds text; v_rd boolean; v_det jsonb;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','X','price_amount',10000,'duration_min',60,'process_min',0,'setup_min',0));
+
+            insert into public.staff_members (slug, display_name, email, role, is_active)
+            values ('ci-g15','CI','ci-g15@solmai.test','staff',true) returning id into v_actor;
+
+            -- Una sola definición de la función: si una migración futura
+            -- agrega un parámetro sin borrar la anterior, toda llamada
+            -- queda ambigua y el panel deja de poder cambiar estados.
+            if (select count(*) from pg_proc where proname = 'set_booking_status') <> 1 then
+              raise exception 'hay % versiones de set_booking_status: las llamadas quedan ambiguas',
+                (select count(*) from pg_proc where proname = 'set_booking_status');
+            end if;
+
+            v_b := (public.create_booking('peluqueria',
+              (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+              60,'fixed',10000,10000,0.20,2000,
+              '{"first_name":"G15","phone_e164":"+5493425559300"}'::jsonb,
+              v_items, null, 'online')->>'id')::uuid;
+            update public.bookings set status='confirmed', deposit_status='paid' where id = v_b;
+
+            -- 1. Cancelar sin decidir el destino de la plata se rechaza,
+            --    y no cambia nada.
+            v_ok := false;
+            begin
+              perform public.set_booking_status(v_b, 'cancelled', v_actor, 'ci@x.ar');
+            exception when others then
+              if sqlerrm like '%deposit_outcome_required%' then v_ok := true; else raise; end if;
+            end;
+            if not v_ok then raise exception 'canceló una seña paga sin decidir qué pasa con la plata'; end if;
+            if (select status from public.bookings where id = v_b) <> 'confirmed' then
+              raise exception 'rechazó la decisión pero canceló igual';
+            end if;
+
+            -- 2. Un destino inventado tampoco pasa.
+            v_ok := false;
+            begin
+              perform public.set_booking_status(v_b, 'cancelled', v_actor, 'ci@x.ar', 'quizas');
+            exception when others then
+              if sqlerrm like '%deposit_outcome_required%' then v_ok := true; else raise; end if;
+            end;
+            if not v_ok then raise exception 'aceptó un destino de seña que no existe'; end if;
+
+            -- 3. Devolver deja la plata coherente.
+            perform public.set_booking_status(v_b, 'cancelled', v_actor, 'ci@x.ar', 'refund');
+            select deposit_status, refund_due into v_ds, v_rd from public.bookings where id = v_b;
+            if v_ds <> 'refunded' or v_rd is not true then
+              raise exception 'devolver dejó deposit_status=% refund_due=%', v_ds, v_rd;
+            end if;
+
+            -- 4. La auditoría guarda la decisión Y lo que habría dicho la
+            --    regla automática, para que apartarse de la política sea
+            --    visible en vez de invisible.
+            select detail into v_det from public.audit_log
+             where entity_id = v_b and action = 'booking_status_changed'
+               and detail->>'new_status' = 'cancelled';
+            if v_det->>'deposit_decision' <> 'refund' then
+              raise exception 'no registró la decisión: %', v_det;
+            end if;
+            if v_det->>'rule_would_refund' is null then
+              raise exception 'no registró qué habría dicho la regla: %', v_det;
+            end if;
+            if v_det->>'deposit_status_before' <> 'paid' then
+              raise exception 'no registró el estado anterior de la seña: %', v_det;
+            end if;
+
+            -- 5. Retener también resuelve, en el otro sentido.
+            v_b2 := (public.create_booking('peluqueria',
+              (d::text || ' 12:00-03')::timestamptz, (d::text || ' 13:00-03')::timestamptz,
+              60,'fixed',10000,10000,0.20,2000,
+              '{"first_name":"G15b","phone_e164":"+5493425559301"}'::jsonb,
+              v_items, null, 'online')->>'id')::uuid;
+            update public.bookings set status='confirmed', deposit_status='paid' where id = v_b2;
+            perform public.set_booking_status(v_b2, 'cancelled', v_actor, 'ci@x.ar', 'retain');
+            select deposit_status, refund_due into v_ds, v_rd from public.bookings where id = v_b2;
+            if v_ds <> 'retained' or v_rd is not false then
+              raise exception 'retener dejó deposit_status=% refund_due=%', v_ds, v_rd;
+            end if;
+
+            -- 6. Donde no hay plata acreditada no se pregunta nada: la
+            --    fricción aparece sólo cuando hay algo que decidir.
+            v_b3 := (public.create_booking('peluqueria',
+              (d::text || ' 14:00-03')::timestamptz, (d::text || ' 15:00-03')::timestamptz,
+              60,'fixed',10000,10000,0,0,
+              '{"first_name":"G15c","phone_e164":"+5493425559302"}'::jsonb,
+              v_items, null, 'walk_in')->>'id')::uuid;
+            perform public.set_booking_status(v_b3, 'cancelled', v_actor, 'ci@x.ar');
+            if (select status from public.bookings where id = v_b3) <> 'cancelled' then
+              raise exception 'pidió decidir donde no había plata que decidir';
+            end if;
+
+            -- 7. No queda ninguna reserva cancelada con la seña colgada.
+            if exists (select 1 from public.bookings
+                        where status = 'cancelled' and deposit_status = 'paid') then
+              raise exception 'quedó una cancelación con la seña sin resolver';
+            end if;
+
+            delete from public.audit_log where entity_id in (v_b, v_b2, v_b3);
+            delete from public.payments where booking_id in (v_b, v_b2, v_b3);
+            delete from public.bookings where id in (v_b, v_b2, v_b3);
+            delete from public.staff_members where id = v_actor;
+          end $$;
+          SQL
+
+          echo "cancellation deposit outcome OK"
+
       - name: Verify field-option composite FK
         run: |
           set -euo pipefail
