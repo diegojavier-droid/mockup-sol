@@ -713,9 +713,26 @@ jobs:
             v_from timestamptz; v_to timestamptz;
           begin
             -- Un lunes futuro y limpio, en hora del SALÓN.
-            v_day  := (date_trunc('week', current_date) + interval '14 days')::date;
+            --
+            -- Lejos de todo: a +14 días la ventana pisaba el fixture de
+            -- "invariantes" (`now() + 8 días`, con una seña de 2400
+            -- acreditada) cada vez que CI corría un domingo, y entonces
+            -- `collected_amount` daba 42400 en vez de 40000. El número
+            -- dependía del día de la semana en que se ejecutara la suite.
+            -- Se mantiene el lunes —el salón abre— pero a un año vista,
+            -- fuera del alcance de cualquier otro fixture.
+            v_day  := (date_trunc('week', current_date) + interval '56 weeks')::date;
             v_from := (v_day::text     || ' 00:00:00-03')::timestamptz;
             v_to   := ((v_day+1)::text || ' 00:00:00-03')::timestamptz;
+
+            -- Y si algún día vuelve a pisarse, que falle diciendo eso en
+            -- vez de devolver un total equivocado.
+            if exists (select 1 from public.bookings
+                        where starts_at >= v_from and starts_at < v_to) then
+              raise exception 'ventana contaminada: ya hay % reserva(s) ajena(s) el %',
+                (select count(*) from public.bookings
+                  where starts_at >= v_from and starts_at < v_to), v_day;
+            end if;
 
             select s.slug into v_svc from public.services s
              where s.is_active and not exists (
