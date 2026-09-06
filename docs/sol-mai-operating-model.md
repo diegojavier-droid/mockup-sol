@@ -283,11 +283,14 @@ descartarlas perdería el único registro de cómo se cobró esa atención. Qued
 comentada en el schema como histórica de sólo lectura, y un guard de
 repositorio falla si algún día vuelve a escribirse.
 
-**D-02 · `bookings.refund_due` sobrevive a `deposit_status`.** La migración
-que introdujo `deposit_status` documenta que `refund_due` "no alcanza", pero
-ambas columnas se siguen escribiendo (`20260823120000:531,655`) y el mensaje a
-la clienta lee `refund_due` (`server/src/http/routes/bookings.ts:104`). Dos
-columnas para un hecho. → **GAP TÉCNICO** (bajo riesgo hoy: se escriben juntas).
+**D-02 · `bookings.refund_due` junto a `deposit_status`** — **RESUELTO**
+(`20260824180000`). Las dos columnas siguen existiendo, porque el mensaje a la
+clienta lee una y el reporting la otra, pero ya no pueden contradecirse: una
+restricción de base lo impide. Se eligió la restricción antes que derivar
+`refund_due` de `deposit_status`, porque eso obligaba a sacar la escritura de
+tres funciones que manejan dinero para un problema que no estaba ocurriendo.
+`null` sigue permitido: «no se decidió» es distinto de «no corresponde
+devolver», y ésa es justo la distinción que justificó `deposit_status`.
 
 **D-03 · Actor representado de tres formas.** `audit_log` usa `actor_id` uuid +
 `actor_label` texto (correcto: sobrevive a una baja); `customer_notes.created_by`
@@ -435,7 +438,7 @@ Contra `main` en `85e7e03`. Ordenado por lo que desbloquea.
 | **G-06** | WhatsApp se registra como canal pero no captura: la reserva se transcribe | sin integración | GAP TÉCNICO + DECISIÓN | Etapa 3 de la evolución |
 | **G-07** | `staff_schedules` sin endpoint ni UI | `20260823180000` | GAP TÉCNICO | Agenda por profesional |
 | **G-08** | Sin merge ni baja de clientas duplicadas | `customers` | GAP TÉCNICO | CRM con volumen |
-| **G-09** | `refund_due` y `deposit_status` conviven | `20260823120000:531,655` | GAP TÉCNICO menor | Claridad del modelo de seña |
+| ~~**G-09**~~ | ~~`refund_due` y `deposit_status` conviven sin garantía de coherencia~~ — **RESUELTO**: una restricción de base impide que se contradigan; `null` sigue significando «no se decidió» | `20260824180000_refund_due_coherence.sql` | CERRADO | — |
 | **G-10** | Dos roles de permiso; secretaría y profesional no se distinguen | `20260822190000:14` | DECISIÓN DE PRODUCTO | Permisos por puesto |
 | **G-11** | Sin envío real de confirmaciones/recordatorios | documentado | PENDIENTE (credencial) | §5-A |
 | **G-12** | Sin cobro real de seña | documentado | PENDIENTE (credencial) | Etapa 6 de §6 |
