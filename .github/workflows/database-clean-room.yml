@@ -713,9 +713,26 @@ jobs:
             v_from timestamptz; v_to timestamptz;
           begin
             -- Un lunes futuro y limpio, en hora del SALÓN.
-            v_day  := (date_trunc('week', current_date) + interval '14 days')::date;
+            --
+            -- Lejos de todo: a +14 días la ventana pisaba el fixture de
+            -- "invariantes" (`now() + 8 días`, con una seña de 2400
+            -- acreditada) cada vez que CI corría un domingo, y entonces
+            -- `collected_amount` daba 42400 en vez de 40000. El número
+            -- dependía del día de la semana en que se ejecutara la suite.
+            -- Se mantiene el lunes —el salón abre— pero a un año vista,
+            -- fuera del alcance de cualquier otro fixture.
+            v_day  := (date_trunc('week', current_date) + interval '56 weeks')::date;
             v_from := (v_day::text     || ' 00:00:00-03')::timestamptz;
             v_to   := ((v_day+1)::text || ' 00:00:00-03')::timestamptz;
+
+            -- Y si algún día vuelve a pisarse, que falle diciendo eso en
+            -- vez de devolver un total equivocado.
+            if exists (select 1 from public.bookings
+                        where starts_at >= v_from and starts_at < v_to) then
+              raise exception 'ventana contaminada: ya hay % reserva(s) ajena(s) el %',
+                (select count(*) from public.bookings
+                  where starts_at >= v_from and starts_at < v_to), v_day;
+            end if;
 
             select s.slug into v_svc from public.services s
              where s.is_active and not exists (
@@ -976,6 +993,16 @@ jobs:
             exit 1
           fi
 
+          # Una sola reserva también es lo que se ve si una de las dos
+          # transacciones nunca llegó a competir. Que el rebote sea por
+          # capacidad, y exactamente uno.
+          REBOTES=$(cat /tmp/lock-a.log /tmp/lock-b.log | grep -c "capacity_full" || true)
+          if [ "$REBOTES" != "1" ]; then
+            echo "::error::se esperaba exactamente 1 rebote por capacidad y hubo $REBOTES: las dos transacciones no compitieron"
+            cat /tmp/lock-a.log /tmp/lock-b.log
+            exit 1
+          fi
+
           # Y la costura de MEDIANOCHE DEL SALÓN, que es donde se había
           # mudado el defecto al cambiar la clave de UTC a hora local.
           # Cualquier clave con fecha tiene una costura: una reserva puede
@@ -1007,7 +1034,7 @@ jobs:
             perform public.create_booking('depilacion',
               (d::text || ' 23:30-03')::timestamptz, ((d+1)::text || ' 01:30-03')::timestamptz,
               120,'fixed',10000,10000,0,0,
-              format('{"first_name":"SA","phone_e164":"+54934258891%s"}', floor(random()*100000)::int)::jsonb,
+              format('{"first_name":"SA","phone_e164":"+54934258891%s"}', lpad(floor(random()*10000)::int::text, 4, '0'))::jsonb,
               v_items, null, 'manual');
           end $$;
           SQLA
@@ -1027,7 +1054,7 @@ jobs:
             perform public.create_booking('depilacion',
               ((d+1)::text || ' 00:30-03')::timestamptz, ((d+1)::text || ' 02:30-03')::timestamptz,
               120,'fixed',10000,10000,0,0,
-              format('{"first_name":"SB","phone_e164":"+54934258892%s"}', floor(random()*100000)::int)::jsonb,
+              format('{"first_name":"SB","phone_e164":"+54934258892%s"}', lpad(floor(random()*10000)::int::text, 4, '0'))::jsonb,
               v_items, null, 'manual');
           end $$;
           SQLB
@@ -1048,11 +1075,28 @@ jobs:
           end $$;
           SQL
 
+          rm -f /tmp/seam-out.log
           for i in 1 2 3 4; do
-            psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/seam-a.sql > /dev/null 2>&1 &
-            psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/seam-b.sql > /dev/null 2>&1 &
+            psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/seam-a.sql >> /tmp/seam-out.log 2>&1 &
+            psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/seam-b.sql >> /tmp/seam-out.log 2>&1 &
           done
           wait
+
+          # Los ocho intentos tienen que llegar al control de capacidad. Un
+          # error de fixture —un teléfono inválido, un servicio que no
+          # existe— también deja una sola reserva, y entonces el paso
+          # pasaría sin haber probado nunca la concurrencia.
+          OTROS=$(grep -E "^(psql:)?.*ERROR" /tmp/seam-out.log | grep -vc "capacity_full" || true)
+          if [ "$OTROS" != "0" ]; then
+            echo "::error::el fixture del seam falló por algo que no es capacidad ($OTROS intento(s)); la prueba no habría demostrado nada"
+            grep -E "ERROR" /tmp/seam-out.log | grep -v "capacity_full" | head -5
+            exit 1
+          fi
+          RECHAZOS=$(grep -c "capacity_full" /tmp/seam-out.log || true)
+          if [ "$RECHAZOS" -lt 5 ]; then
+            echo "::error::sólo $RECHAZOS intento(s) llegaron a competir por la capacidad; se esperaban 7"
+            exit 1
+          fi
 
           SEAM=$(psql "$SUPABASE_LOCAL_DB_URL" -Atc "
             select count(*) from public.bookings b
@@ -1195,6 +1239,240 @@ jobs:
 
           echo "service closure idempotency OK"
 
+      - name: Verify booking status changes are attributable
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_svc text; v_items jsonb; d date := current_date + 200;
+            v_b uuid; v_actor uuid; v_status text; v_n int; v_detail jsonb; v_ok boolean;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','X','price_amount',10000,'duration_min',60,'process_min',0,'setup_min',0));
+
+            insert into public.staff_members (slug, display_name, email, role, is_active)
+            values ('ci-trazabilidad','CI','ci-trazabilidad@solmai.test','staff',true)
+            returning id into v_actor;
+
+            v_b := (public.create_booking('peluqueria',
+              (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+              60,'fixed',10000,10000,0.20,2000,
+              '{"first_name":"Traza","phone_e164":"+5493425559200"}'::jsonb,
+              v_items, null, 'online')->>'id')::uuid;
+
+            -- PRECONDICIÓN: el fixture arranca donde la prueba cree que
+            -- arranca. Sin esto, un cambio en create_booking volvería
+            -- verdes por accidente las cinco comprobaciones que siguen.
+            select status into v_status from public.bookings where id = v_b;
+            if v_status <> 'pending_payment' then
+              raise exception 'fixture inválido: el turno nació %', v_status;
+            end if;
+            select count(*) into v_n from public.audit_log
+             where entity_id = v_b and action = 'booking_status_changed';
+            if v_n <> 0 then raise exception 'la precondición ya traía auditoría'; end if;
+
+            -- 1. SIN ACTOR no se cambia el estado, y no se cambia NADA.
+            v_ok := false;
+            begin
+              perform public.set_booking_status(v_b, 'confirmed', null, 'nadie@x.ar');
+            exception when others then
+              if sqlerrm like '%actor_required%' then v_ok := true; else raise; end if;
+            end;
+            if not v_ok then raise exception 'aceptó un cambio de estado sin persona responsable'; end if;
+            select status into v_status from public.bookings where id = v_b;
+            if v_status <> 'pending_payment' then raise exception 'rechazó el actor pero cambió el estado igual'; end if;
+
+            -- 2. Una transición ilegal se rechaza nombrando ambos estados.
+            v_ok := false;
+            begin
+              perform public.set_booking_status(v_b, 'attended', v_actor, 'ci@x.ar');
+            exception when others then
+              if sqlerrm like 'invalid_transition:pending_payment->attended%' then v_ok := true; else raise; end if;
+            end;
+            if not v_ok then raise exception 'aceptó pending_payment -> attended'; end if;
+
+            -- 3. Una transición válida queda auditada y atribuida.
+            perform public.set_booking_status(v_b, 'confirmed', v_actor, 'ci@x.ar');
+            select status into v_status from public.bookings where id = v_b;
+            if v_status <> 'confirmed' then raise exception 'no confirmó el turno'; end if;
+
+            select count(*) into v_n from public.audit_log
+             where entity_id = v_b and action = 'booking_status_changed'
+               and actor_id = v_actor and actor_label = 'ci@x.ar';
+            if v_n <> 1 then raise exception 'esperaba 1 fila de auditoría atribuida, hay %', v_n; end if;
+
+            select detail into v_detail from public.audit_log
+             where entity_id = v_b and action = 'booking_status_changed';
+            if v_detail->>'previous_status' <> 'pending_payment'
+               or v_detail->>'new_status' <> 'confirmed' then
+              raise exception 'el registro no dice de qué estado a cuál: %', v_detail;
+            end if;
+
+            -- 4. Un estado terminal no se revierte.
+            perform public.set_booking_status(v_b, 'cancelled', v_actor, 'ci@x.ar');
+            v_ok := false;
+            begin
+              perform public.set_booking_status(v_b, 'confirmed', v_actor, 'ci@x.ar');
+            exception when others then
+              if sqlerrm like 'invalid_transition:cancelled->confirmed%' then v_ok := true; else raise; end if;
+            end;
+            if not v_ok then raise exception 'revivió un turno cancelado'; end if;
+
+            -- 5. Cancelar sella cuándo.
+            if (select cancelled_at from public.bookings where id = v_b) is null then
+              raise exception 'canceló sin registrar cuándo';
+            end if;
+
+            -- 6. El guard es lo único que sostiene la propiedad: audit_log
+            --    por sí solo acepta filas sin actor. Si esto dejara de ser
+            --    cierto, la comprobación 1 se volvería vacía sin avisar.
+            perform public.record_audit(null, null, 'ci_vacuidad', 'booking', v_b, '{}'::jsonb);
+            select count(*) into v_n from public.audit_log
+             where action = 'ci_vacuidad' and actor_id is null;
+            if v_n <> 1 then
+              raise exception 'la auditoría ya rechazaba el actor nulo: la prueba 1 no demuestra nada';
+            end if;
+
+            delete from public.audit_log where entity_id = v_b;
+            delete from public.payments where booking_id = v_b;
+            delete from public.bookings where id = v_b;
+            delete from public.staff_members where id = v_actor;
+          end $$;
+          SQL
+
+          echo "booking status traceability OK"
+
+      - name: Verify a cancelled deposit is never left unresolved
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_svc text; v_items jsonb; d date := current_date + 300;
+            v_b uuid; v_b2 uuid; v_b3 uuid; v_actor uuid;
+            v_ok boolean; v_ds text; v_rd boolean; v_det jsonb;
+          begin
+            select s.slug into v_svc from public.services s
+             where s.is_active and not exists (
+               select 1 from public.service_personalization_rules x
+                 join public.personalization_fields f on f.id = x.field_id
+                where x.service_id = s.id and f.field_role = 'tier_selector')
+             order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','X','price_amount',10000,'duration_min',60,'process_min',0,'setup_min',0));
+
+            insert into public.staff_members (slug, display_name, email, role, is_active)
+            values ('ci-g15','CI','ci-g15@solmai.test','staff',true) returning id into v_actor;
+
+            -- Una sola definición de la función: si una migración futura
+            -- agrega un parámetro sin borrar la anterior, toda llamada
+            -- queda ambigua y el panel deja de poder cambiar estados.
+            if (select count(*) from pg_proc where proname = 'set_booking_status') <> 1 then
+              raise exception 'hay % versiones de set_booking_status: las llamadas quedan ambiguas',
+                (select count(*) from pg_proc where proname = 'set_booking_status');
+            end if;
+
+            v_b := (public.create_booking('peluqueria',
+              (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
+              60,'fixed',10000,10000,0.20,2000,
+              '{"first_name":"G15","phone_e164":"+5493425559300"}'::jsonb,
+              v_items, null, 'online')->>'id')::uuid;
+            update public.bookings set status='confirmed', deposit_status='paid' where id = v_b;
+
+            -- 1. Cancelar sin decidir el destino de la plata se rechaza,
+            --    y no cambia nada.
+            v_ok := false;
+            begin
+              perform public.set_booking_status(v_b, 'cancelled', v_actor, 'ci@x.ar');
+            exception when others then
+              if sqlerrm like '%deposit_outcome_required%' then v_ok := true; else raise; end if;
+            end;
+            if not v_ok then raise exception 'canceló una seña paga sin decidir qué pasa con la plata'; end if;
+            if (select status from public.bookings where id = v_b) <> 'confirmed' then
+              raise exception 'rechazó la decisión pero canceló igual';
+            end if;
+
+            -- 2. Un destino inventado tampoco pasa.
+            v_ok := false;
+            begin
+              perform public.set_booking_status(v_b, 'cancelled', v_actor, 'ci@x.ar', 'quizas');
+            exception when others then
+              if sqlerrm like '%deposit_outcome_required%' then v_ok := true; else raise; end if;
+            end;
+            if not v_ok then raise exception 'aceptó un destino de seña que no existe'; end if;
+
+            -- 3. Devolver deja la plata coherente.
+            perform public.set_booking_status(v_b, 'cancelled', v_actor, 'ci@x.ar', 'refund');
+            select deposit_status, refund_due into v_ds, v_rd from public.bookings where id = v_b;
+            if v_ds <> 'refunded' or v_rd is not true then
+              raise exception 'devolver dejó deposit_status=% refund_due=%', v_ds, v_rd;
+            end if;
+
+            -- 4. La auditoría guarda la decisión Y lo que habría dicho la
+            --    regla automática, para que apartarse de la política sea
+            --    visible en vez de invisible.
+            select detail into v_det from public.audit_log
+             where entity_id = v_b and action = 'booking_status_changed'
+               and detail->>'new_status' = 'cancelled';
+            if v_det->>'deposit_decision' <> 'refund' then
+              raise exception 'no registró la decisión: %', v_det;
+            end if;
+            if v_det->>'rule_would_refund' is null then
+              raise exception 'no registró qué habría dicho la regla: %', v_det;
+            end if;
+            if v_det->>'deposit_status_before' <> 'paid' then
+              raise exception 'no registró el estado anterior de la seña: %', v_det;
+            end if;
+
+            -- 5. Retener también resuelve, en el otro sentido.
+            v_b2 := (public.create_booking('peluqueria',
+              (d::text || ' 12:00-03')::timestamptz, (d::text || ' 13:00-03')::timestamptz,
+              60,'fixed',10000,10000,0.20,2000,
+              '{"first_name":"G15b","phone_e164":"+5493425559301"}'::jsonb,
+              v_items, null, 'online')->>'id')::uuid;
+            update public.bookings set status='confirmed', deposit_status='paid' where id = v_b2;
+            perform public.set_booking_status(v_b2, 'cancelled', v_actor, 'ci@x.ar', 'retain');
+            select deposit_status, refund_due into v_ds, v_rd from public.bookings where id = v_b2;
+            if v_ds <> 'retained' or v_rd is not false then
+              raise exception 'retener dejó deposit_status=% refund_due=%', v_ds, v_rd;
+            end if;
+
+            -- 6. Donde no hay plata acreditada no se pregunta nada: la
+            --    fricción aparece sólo cuando hay algo que decidir.
+            v_b3 := (public.create_booking('peluqueria',
+              (d::text || ' 14:00-03')::timestamptz, (d::text || ' 15:00-03')::timestamptz,
+              60,'fixed',10000,10000,0,0,
+              '{"first_name":"G15c","phone_e164":"+5493425559302"}'::jsonb,
+              v_items, null, 'walk_in')->>'id')::uuid;
+            perform public.set_booking_status(v_b3, 'cancelled', v_actor, 'ci@x.ar');
+            if (select status from public.bookings where id = v_b3) <> 'cancelled' then
+              raise exception 'pidió decidir donde no había plata que decidir';
+            end if;
+
+            -- 7. No queda ninguna reserva cancelada con la seña colgada.
+            if exists (select 1 from public.bookings
+                        where status = 'cancelled' and deposit_status = 'paid') then
+              raise exception 'quedó una cancelación con la seña sin resolver';
+            end if;
+
+            delete from public.audit_log where entity_id in (v_b, v_b2, v_b3);
+            delete from public.payments where booking_id in (v_b, v_b2, v_b3);
+            delete from public.bookings where id in (v_b, v_b2, v_b3);
+            delete from public.staff_members where id = v_actor;
+          end $$;
+          SQL
+
+          echo "cancellation deposit outcome OK"
+
       - name: Verify field-option composite FK
         run: |
           set -euo pipefail
@@ -1326,6 +1604,22 @@ jobs:
           if [ -n "$SERVER_IMPORTS" ]; then
             echo "::error::src/ must not import from server/:"
             echo "$SERVER_IMPORTS"
+            exit 1
+          fi
+
+          # G-03: el cierre de una atención se escribe por un solo camino,
+          # `close_service`. `service_execution_records.payment_method` es
+          # una columna heredada que ese camino ya no escribe: su enum no
+          # incluye `mercado_pago` y no admite pagos mixtos, así que
+          # escribirla vuelve a partir en dos la verdad sobre la plata.
+          # `\b` importa: `payment_methods` en plural es la LECTURA de
+          # conciliación, que agrega los medios del ledger y es correcta.
+          EXEC_WRITES=$(git grep -n -E "\bpayment_method\b" -- server/ src/ || true)
+          EXEC_UPSERT=$(git grep -n -E "from\(\"service_execution_records\"\)\s*\.upsert|from\('service_execution_records'\)\s*\.upsert" -- server/ src/ || true)
+          if [ -n "$EXEC_WRITES" ] || [ -n "$EXEC_UPSERT" ]; then
+            echo "::error::el cierre de atención volvió a tener una segunda ruta de escritura (G-03):"
+            echo "$EXEC_WRITES"
+            echo "$EXEC_UPSERT"
             exit 1
           fi
 

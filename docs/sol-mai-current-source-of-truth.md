@@ -1,5 +1,9 @@
 # Sol Mai Peluquería — fuente de verdad vigente
 
+> Este documento describe **qué hay construido hoy**. El **para qué** —el norte
+> de producto, la captura multicanal y el rol de la IA— vive en
+> `docs/sol-mai-product-context.md`.
+
 > Estado operativo vigente del proyecto a partir de la auditoría del repo `diegojavier-droid/mockup-sol`. La rama estable es `main` y la rama viva de desarrollo es `mvp/sol-mai-v2`.
 
 Este documento es la fuente de verdad vigente para alinear producto, diseño y desarrollo de Sol Mai Peluquería. Los documentos maestros anteriores se conservan como material histórico o contextual, pero no reemplazan esta lectura operativa del estado actual del repositorio y de las decisiones recientes.

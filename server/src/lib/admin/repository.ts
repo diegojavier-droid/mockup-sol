@@ -132,17 +132,6 @@ export async function getBookingForStaff(
   return data ? toAgendaEntry(data as unknown as AgendaRow) : null;
 }
 
-const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-  pending_payment: ["confirmed", "cancelled", "expired"],
-  confirmed: ["attended", "cancelled"],
-  expired: ["confirmed", "cancelled"],
-  attended: [],
-  cancelled: [],
-  // Una ausencia es terminal: se registró que la hora se perdió. Revertirla
-  // sería reescribir lo que pasó, no corregir un estado.
-  no_show: [],
-};
-
 export class TransitionError extends Error {
   constructor(
     public from: string,
@@ -153,28 +142,60 @@ export class TransitionError extends Error {
   }
 }
 
+/**
+ * La transición la valida `set_booking_status` en PostgreSQL, dentro de
+ * la misma transacción que escribe el estado y la auditoría. Acá sólo se
+ * recupera el par estado-origen/estado-destino del mensaje para que el
+ * panel siga explicando en castellano por qué no se puede.
+ */
+export function parseTransitionError(message: string): { from: string; to: string } | null {
+  const match = /invalid_transition:([a-z_]+)->([a-z_]+)/.exec(message ?? "");
+  return match ? { from: match[1], to: match[2] } : null;
+}
+
+/** Qué se hace con una seña ya acreditada al cancelar. Lo decide una persona. */
+export type DepositOutcome = "refund" | "retain";
+
+/**
+ * Cambia el estado de un turno.
+ *
+ * El actor no es opcional: un turno que pasa a cancelado o atendido
+ * decide si esa hora se cobra o se pierde, y hasta hace poco era la
+ * única acción operativa que no registraba quién la hizo. Si falta la
+ * persona, la función de base rechaza el cambio en vez de auditarlo a
+ * medias.
+ *
+ * Cancelar un turno con seña acreditada exige además decir qué pasa con
+ * esa plata. El sistema no lo deduce: la regla de la ventana de
+ * reembolso responde "¿la clienta avisó a tiempo?", y cuando cancela el
+ * salón esa pregunta no corresponde.
+ */
 export async function updateBookingStatus(
   admin: SupabaseAdminClient,
-  params: { bookingId: string; status: string },
+  params: {
+    bookingId: string;
+    status: string;
+    actorId: string;
+    actorLabel?: string | null;
+    depositOutcome?: DepositOutcome | null;
+  },
 ): Promise<AgendaEntry> {
-  const { data: current, error: readError } = await admin
-    .from("bookings")
-    .select("status")
-    .eq("id", params.bookingId)
-    .maybeSingle();
-  if (readError) throw readError;
-  if (!current) throw new Error("booking_not_found");
+  const { error } = await admin.rpc("set_booking_status", {
+    p_booking_id: params.bookingId,
+    p_status: params.status,
+    p_actor_id: params.actorId,
+    p_actor_label: params.actorLabel ?? null,
+    p_deposit_outcome: params.depositOutcome ?? null,
+  });
 
-  const from = (current as { status: string }).status;
-  if (!(ALLOWED_TRANSITIONS[from] ?? []).includes(params.status)) {
-    throw new TransitionError(from, params.status);
+  if (error) {
+    const message = (error.message ?? "").trim();
+    const transition = parseTransitionError(message);
+    if (transition) throw new TransitionError(transition.from, transition.to);
+    if (message.includes("booking_not_found")) throw new Error("booking_not_found");
+    if (message.includes("deposit_outcome_required")) throw new Error("deposit_outcome_required");
+    throw new Error(message || "set_booking_status failed");
   }
-
-  const patch: Record<string, unknown> = { status: params.status };
-  if (params.status === "cancelled") patch.cancelled_at = new Date().toISOString();
-
-  const { error } = await admin.from("bookings").update(patch).eq("id", params.bookingId);
-  if (error) throw error;
 
   const updated = await getBookingForStaff(admin, params.bookingId);
   if (!updated) throw new Error("booking_not_found");
@@ -351,35 +372,6 @@ export async function addCustomerNote(
   if (error) throw error;
 }
 
-export async function recordExecution(
-  admin: SupabaseAdminClient,
-  params: {
-    bookingId: string;
-    finalPriceAmount?: number | null;
-    actualDurationMin?: number | null;
-    servicesDone?: string | null;
-    formula?: string | null;
-    paymentMethod?: string | null;
-    observation?: string | null;
-    recordedBy: string;
-  },
-): Promise<void> {
-  const { error } = await admin.from("service_execution_records").upsert(
-    {
-      booking_id: params.bookingId,
-      final_price_amount: params.finalPriceAmount ?? null,
-      actual_duration_min: params.actualDurationMin ?? null,
-      services_done: params.servicesDone ?? null,
-      formula: params.formula ?? null,
-      payment_method: params.paymentMethod ?? null,
-      observation: params.observation ?? null,
-      recorded_by: params.recordedBy,
-      recorded_at: new Date().toISOString(),
-    },
-    { onConflict: "booking_id" },
-  );
-  if (error) throw error;
-}
 
 // ---------------------------------------------------------------------
 // Cierre de atención y conciliación
