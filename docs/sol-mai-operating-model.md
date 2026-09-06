@@ -431,7 +431,7 @@ Contra `main` en `85e7e03`. Ordenado por lo que desbloquea.
 | ~~**G-02**~~ | ~~Cambio de estado sin actor ni auditoría~~ — **RESUELTO**: `set_booking_status` valida la transición, exige actor y audita en una sola transacción | `20260824140000_booking_status_traceability.sql` | CERRADO | — |
 | ~~**G-03**~~ | ~~Dos caminos de escritura del cierre~~ — **RESUELTO**: `/execution` eliminado; `close_service` es el único camino, y un guard de repositorio falla si vuelve a escribirse `payment_method` | `20260824160000_single_closure_write_path.sql` | CERRADO | — |
 | **G-04** | No existe ninguna capa de IA en el repo | sin integración en `server/` ni `src/` | GAP TÉCNICO | Etapa 4 de la evolución |
-| **G-05** | La carga administrativa evitada no es calculable: no se registra nada que la mida | `dashboard_summary` mide ocupación y dinero | GAP TÉCNICO + DECISIÓN DE PRODUCTO | La métrica de éxito declarada |
+| ~~**G-05**~~ | ~~No se registraba nada que permitiera medir la carga evitada~~ — **INSTRUMENTADO**: el sistema ya cuenta lo que resolvió solo y lo que necesitó a una persona. El tiempo ahorrado sigue NO DISPONIBLE: falta el dato de Sol | `20260824170000_assisted_activity.sql` | PENDIENTE DE VALIDAR CON SOL | Convertir el conteo a tiempo |
 | **G-06** | WhatsApp se registra como canal pero no captura: la reserva se transcribe | sin integración | GAP TÉCNICO + DECISIÓN | Etapa 3 de la evolución |
 | **G-07** | `staff_schedules` sin endpoint ni UI | `20260823180000` | GAP TÉCNICO | Agenda por profesional |
 | **G-08** | Sin merge ni baja de clientas duplicadas | `customers` | GAP TÉCNICO | CRM con volumen |
@@ -467,7 +467,9 @@ Hoy Sol o secretaría explican por WhatsApp; **no queda registro de nada**.
 → La persona interviene si el servicio es `subject_to_confirmation` o si el
 match de taxonomía es de baja confianza.
 → Quedaría registrada la consulta y si terminó en reserva.
-→ **Trabajo evitado: no medible hoy** (G-05, G-14). Decir un número sería
+→ **Trabajo evitado: ya se cuenta, todavía no se traduce a tiempo.** El
+sistema registra que la web contestó la consulta; cuántos minutos de una
+persona vale eso lo sabe Sol (G-14). Decir un número sin ese dato sería
 inventarlo.
 
 ## P3 · Registrar una reserva de WhatsApp
@@ -536,8 +538,8 @@ No es un plan de implementación aprobado: es la dependencia técnica real.
 3. ~~**G-03**~~ — hecho.
 4. **G-01** — múltiples servicios por reserva. **Precondición dura de toda la
    capa de IA**; toca cotización, snapshot, capacidad y UI: es el bloque grande.
-5. **G-05** — decidir qué se instrumenta para medir carga evitada, *antes* de
-   automatizar. Si se automatiza primero, se pierde la línea de base para siempre.
+5. ~~**G-05**~~ — instrumentado antes de automatizar, que era el punto.
+   Convertir el conteo a tiempo espera la pregunta 1 de la sección 9.
 6. **G-04 / G-06** — capa de asistencia y captura desde WhatsApp, recién con
    1-3 resueltos.
 

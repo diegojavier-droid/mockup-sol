@@ -163,7 +163,7 @@ no una lista de deseos.
 | Capa de IA (§6) | **No existe ninguna**: no hay integración con ningún proveedor de modelos en `server/` ni en `src/`. No hay interpretación de lenguaje, ni extracción de entidades, ni propuesta de acción. |
 | Normalización de lenguaje informal (§7) | La taxonomía interna existe (áreas, servicios, extras), pero no hay ninguna capa que traduzca «botox» o «mechas» a esa taxonomía. |
 | Captura automática / inferencia (§8) | Hoy el back-office es carga humana asistida por selección. Existe reutilización de clienta (`customers`, identidad), pero no inferencia. |
-| Métrica de carga administrativa evitada (§11) | El dashboard mide ocupación y dinero, no trabajo humano ahorrado. No hay ningún dato registrado que permita calcularla. |
+| Métrica de carga administrativa evitada (§11) | **Instrumentada** (`20260824170000`): el dashboard distingue lo que resolvió el sistema —precios y horarios contestados por la web, reservas online— de lo que necesitó a una persona. Falta el insumo de Sol: cuántos minutos vale cada consulta. Hasta entonces el tiempo ahorrado es NO DISPONIBLE, igual que el margen. |
 | Captura desde WhatsApp/teléfono sin doble carga (§4, §10) | El canal se **registra**, pero la reserva se **carga a mano**. No hay ingreso desde WhatsApp: la informalidad se transcribe, no se absorbe. |
 
 ### Consecuencia
