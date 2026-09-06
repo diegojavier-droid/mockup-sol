@@ -16,8 +16,13 @@ import { z } from "zod";
 import type { ServerEnv } from "../../config/env";
 import { createSupabaseAdminClient, createSupabaseAnonClient } from "../../lib/supabase";
 import { createCatalogRepository } from "../../lib/catalog/repository";
-import { loadQuoteContext } from "../../lib/quote/repository";
-import { computeQuote } from "../../domain/quote";
+import { composeQuote, computeQuote } from "../../domain/quote";
+import {
+  loadServiceParts,
+  normalizeServiceParts,
+  servicePartsErrorMessage,
+  ServicePartsError,
+} from "../../lib/quote/parts";
 import { QuoteError } from "../../domain/types";
 import { computeAvailability } from "../../domain/availability";
 import {
@@ -32,12 +37,22 @@ import { SALON_TZ_OFFSET_MIN } from "../../config/salon";
 export { SALON_TZ_OFFSET_MIN } from "../../config/salon";
 
 const querySchema = z.object({
+  /**
+   * Uno o varios servicios separados por coma: `service=color,corte-fem`.
+   * Si no se pide el bloque completo, la web ofrecería horarios donde
+   * entra el corte pero no el color y el corte juntos.
+   */
   service: z
     .string()
     .min(1)
+    .max(260)
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*(,[a-z0-9]+(-[a-z0-9]+)*)*$/),
+  /** Un largo por servicio, en el mismo orden; uno solo se aplica a todos. */
+  length: z
+    .string()
     .max(64)
-    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
-  length: z.enum(["corto", "medio", "largo", "xl", "unico"]).optional(),
+    .regex(/^(corto|medio|largo|xl|unico)(,(corto|medio|largo|xl|unico))*$/)
+    .optional(),
   extras: z.string().max(256).optional(),
   from: z.string().datetime().optional(),
   days: z.coerce.number().int().min(1).max(60).optional(),
@@ -65,23 +80,55 @@ export function createAvailabilityRoute(env: ServerEnv) {
 
     const anon = createSupabaseAnonClient(env);
     const catalog = createCatalogRepository(anon);
-    const context = await loadQuoteContext(anon, catalog, {
-      serviceSlug: parsed.data.service,
-      extraCodes: parsed.data.extras ? parsed.data.extras.split(",").filter(Boolean) : [],
-    });
-    if (!context) {
+    const slugs = parsed.data.service.split(",").filter(Boolean);
+    const lengths = parsed.data.length ? parsed.data.length.split(",") : [];
+    const partsInput = slugs.map((serviceSlug, i) => ({
+      serviceSlug,
+      // Un solo largo se aplica a todo: pedir «medio» para color y corte
+      // no debería obligar a repetirlo.
+      lengthTier: (lengths.length === 1 ? lengths[0] : lengths[i]) as
+        | "corto"
+        | "medio"
+        | "largo"
+        | "xl"
+        | "unico"
+        | undefined,
+      // La personalización acompaña al primer servicio: es el que la
+      // pantalla pregunta.
+      personalization: i === 0 ? parsePersonalization(parsed.data.personalization) : undefined,
+    }));
+
+    let loaded;
+    try {
+      loaded = await loadServiceParts(anon, catalog, {
+        parts: normalizeServiceParts({ services: partsInput }),
+        extraCodes: parsed.data.extras ? parsed.data.extras.split(",").filter(Boolean) : [],
+      });
+    } catch (error) {
+      if (error instanceof ServicePartsError) {
+        throw new HTTPException(422, { message: servicePartsErrorMessage(error.code) });
+      }
+      throw error;
+    }
+    if (!loaded) {
       throw new HTTPException(404, { message: "Service not found" });
     }
+    const context = loaded.contexts[0];
 
     let blockingMin: number;
     try {
-      blockingMin = computeQuote({
-        service: context.service,
-        lengthTier: parsed.data.length ?? null,
-        personalization: parsePersonalization(parsed.data.personalization),
-        extras: context.extras,
-        settings: context.settings,
-      }).blockingMin;
+      blockingMin = composeQuote(
+        loaded.contexts.map((ctx, i) =>
+          computeQuote({
+            service: ctx.service,
+            lengthTier: partsInput[i].lengthTier ?? null,
+            personalization: partsInput[i].personalization,
+            extras: ctx.extras,
+            settings: ctx.settings,
+          }),
+        ),
+        context.settings,
+      ).blockingMin;
     } catch (error) {
       if (error instanceof QuoteError) {
         throw new HTTPException(422, { message: error.code });

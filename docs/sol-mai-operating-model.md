@@ -129,8 +129,8 @@ búsqueda de clienta existente precede al alta.
 
 | Hallazgo | Evidencia | Clasificación |
 | --- | --- | --- |
-| **Un solo servicio principal por reserva.** `computeQuote` sólo emite ítems `main` y `extra`; el rol `addon` existe en el schema y **nunca se produce**. El payload de alta —público e interno— acepta `serviceSlug` singular. | `server/src/domain/quote.ts:90,101`; `server/src/http/routes/admin.ts:386`; `server/src/http/routes/bookings.ts:42` | **GAP TÉCNICO** |
-| Consecuencia directa: **«color y corte» no es expresable como una reserva.** El ejemplo canónico de IA que fija el norte de producto no tiene hoy dónde escribirse. | idem | **GAP TÉCNICO** (bloqueante para §5) |
+| ~~Un solo servicio principal por reserva~~ — **RESUELTO**. `composeQuote` compone lo que `computeQuote` calcula por prestación; las tres rutas aceptan `services: [...]` y la forma singular sigue viva. | `server/src/domain/quote.ts`, `server/src/lib/quote/parts.ts` | CERRADO |
+| Límite deliberado que queda: las prestaciones deben ser de la **misma área**. Un turno que mezclara peluquería con uñas ocuparía capacidad en dos áreas a la vez, y eso es un cambio del modelo de capacidad, no de cotización. Se rechaza con un mensaje que lo dice. | `parts.ts` (`mixed_areas`) | **DECISIÓN DE PRODUCTO** |
 | El alta interna no pide email; la clienta queda sin canal de confirmación digital. | `NewBookingDialog.tsx` | **DECISIÓN DE PRODUCTO** (pedirlo agrega fricción; no pedirlo impide recordatorios) |
 | No hay captura desde WhatsApp: el canal se **registra**, la reserva se **transcribe**. | no existe integración | **GAP TÉCNICO** + **DECISIÓN DE PRODUCTO** |
 
@@ -427,7 +427,7 @@ Contra `main` en `85e7e03`. Ordenado por lo que desbloquea.
 
 | ID | Hallazgo | Evidencia | Clase | Bloquea |
 | --- | --- | --- | --- | --- |
-| **G-01** | Un solo servicio principal por reserva; el rol `addon` existe en el schema y **ninguna ruta lo produce** (verificado: sólo aparece como tipo en `booking/repository.ts:52`) | `server/src/domain/quote.ts:90,101` | GAP TÉCNICO | §5-B completo; el ejemplo canónico de IA |
+| ~~**G-01**~~ | ~~Un solo servicio principal por reserva~~ — **RESUELTO**: cotización, disponibilidad y alta aceptan varias prestaciones; «color y corte» ya es un turno. Sin migración: `booking_items` ya lo modelaba | `server/src/domain/quote.ts` (`composeQuote`), `server/src/lib/quote/parts.ts` | CERRADO | — |
 | ~~**G-02**~~ | ~~Cambio de estado sin actor ni auditoría~~ — **RESUELTO**: `set_booking_status` valida la transición, exige actor y audita en una sola transacción | `20260824140000_booking_status_traceability.sql` | CERRADO | — |
 | ~~**G-03**~~ | ~~Dos caminos de escritura del cierre~~ — **RESUELTO**: `/execution` eliminado; `close_service` es el único camino, y un guard de repositorio falla si vuelve a escribirse `payment_method` | `20260824160000_single_closure_write_path.sql` | CERRADO | — |
 | **G-04** | No existe ninguna capa de IA en el repo | sin integración en `server/` ni `src/` | GAP TÉCNICO | Etapa 4 de la evolución |
@@ -536,8 +536,8 @@ No es un plan de implementación aprobado: es la dependencia técnica real.
 1. ~~**G-02**~~ — hecho.
 2. ~~**G-15**~~ — hecho.
 3. ~~**G-03**~~ — hecho.
-4. **G-01** — múltiples servicios por reserva. **Precondición dura de toda la
-   capa de IA**; toca cotización, snapshot, capacidad y UI: es el bloque grande.
+4. ~~**G-01**~~ — hecho en el backend. Falta que el panel y la web ofrezcan
+   elegir más de una prestación: el contrato ya lo acepta.
 5. ~~**G-05**~~ — instrumentado antes de automatizar, que era el punto.
    Convertir el conteo a tiempo espera la pregunta 1 de la sección 9.
 6. **G-04 / G-06** — capa de asistencia y captura desde WhatsApp, recién con
