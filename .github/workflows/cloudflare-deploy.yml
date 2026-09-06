@@ -27,9 +27,48 @@ jobs:
       - name: Build
         run: bun run build
 
+      # El build genera su propia configuración en dist/server, con el
+      # Worker compilado y el directorio de assets del navegador. La
+      # configuración de la raíz apunta al fuente y NO declara assets:
+      # desplegar con ella publica un sitio sin estilos ni javascript.
+      - name: Comprobar que el build dejó su configuración
+        run: |
+          set -euo pipefail
+          test -f dist/server/wrangler.json || {
+            echo "::error::el build no generó dist/server/wrangler.json"; exit 1; }
+          test -d dist/client || {
+            echo "::error::el build no generó dist/client (assets del navegador)"; exit 1; }
+
       - name: Deploy with Wrangler
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+          command: deploy --config dist/server/wrangler.json
+          # Se cargan en el Worker antes de publicar. El propietario los
+          # define una sola vez en los secrets del repositorio y nunca
+          # pasan por un chat ni quedan en el código.
+          secrets: |
+            SUPABASE_URL
+            SUPABASE_PUBLISHABLE_KEY
+            SUPABASE_SECRET_KEY
+            INTERNAL_AUTH_ALLOWED_EMAILS
+            API_BASE_URL
+            PUBLIC_WEB_BASE_URL
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          INTERNAL_AUTH_ALLOWED_EMAILS: ${{ secrets.INTERNAL_AUTH_ALLOWED_EMAILS }}
+          # La dirección definitiva se conoce recién después del primer
+          # despliegue. Hasta que se cargue, se usa la del Worker.
+          API_BASE_URL: ${{ vars.PUBLIC_WEB_BASE_URL || 'https://sol-mai-peluqueria.workers.dev' }}
+          PUBLIC_WEB_BASE_URL: ${{ vars.PUBLIC_WEB_BASE_URL || 'https://sol-mai-peluqueria.workers.dev' }}
+
+      - name: Dónde quedó publicado
+        run: |
+          echo "### Sol Mai publicado" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "La dirección aparece arriba, en la salida de Wrangler, como \`https://sol-mai-peluqueria.<algo>.workers.dev\`." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Cargala como variable de repositorio \`PUBLIC_WEB_BASE_URL\` y volvé a ejecutar este workflow, para que los links que genera el sistema apunten al lugar correcto." >> "$GITHUB_STEP_SUMMARY"

@@ -13,5 +13,18 @@
   },
   "observability": {
     "enabled": true
+  },
+
+  // Sin esto el Worker se despliega sin dirección propia y no habría
+  // nada que abrir en el navegador.
+  "workers_dev": true,
+
+  // Valores que no son secretos y no cambian entre despliegues. Lo que
+  // sí es secreto —claves de Supabase, emails habilitados— lo carga el
+  // workflow desde los secrets de GitHub, para que no viva en el repo.
+  "vars": {
+    "NODE_ENV": "production",
+    "APP_ENV": "production",
+    "INTERNAL_AUTH_JWT_AUDIENCE": "sol-mai-internal"
   }
 }
