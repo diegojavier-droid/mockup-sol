@@ -1824,6 +1824,7 @@ jobs:
 
           bash scripts/e2e-flow.sh
           bash scripts/e2e-stations.sh
+          bash scripts/e2e-combo.sh
 
       - name: Stop local Supabase
         if: always()

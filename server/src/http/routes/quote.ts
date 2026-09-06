@@ -15,16 +15,30 @@ import {
   waitUntilContextOf,
 } from "../../lib/assisted/record";
 import { createCatalogRepository } from "../../lib/catalog/repository";
-import { loadQuoteContext } from "../../lib/quote/repository";
-import { computeQuote } from "../../domain/quote";
+import { composeQuote, computeQuote } from "../../domain/quote";
+import {
+  loadServiceParts,
+  normalizeServiceParts,
+  servicePartSchema,
+  servicePartsErrorMessage,
+  ServicePartsError,
+  MAX_SERVICE_PARTS,
+} from "../../lib/quote/parts";
 import { QuoteError } from "../../domain/types";
 
 const quoteRequestSchema = z.object({
+  /**
+   * Varias prestaciones en un turno: «color y corte». La forma singular
+   * de abajo sigue funcionando — un solo servicio manda exactamente lo
+   * mismo que antes.
+   */
+  services: z.array(servicePartSchema).min(1).max(MAX_SERVICE_PARTS).optional(),
   serviceSlug: z
     .string()
     .min(1)
     .max(64)
-    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/)
+    .optional(),
   lengthTier: z.enum(["corto", "medio", "largo", "xl", "unico"]).nullish(),
   personalization: z.record(z.string().max(64), z.string().max(64)).optional(),
   extraCodes: z.array(z.string().min(1).max(64)).max(10).default([]),
@@ -50,22 +64,38 @@ export function createQuoteRoute(env: ServerEnv) {
 
     const client = createSupabaseAnonClient(env);
     const catalog = createCatalogRepository(client);
-    const context = await loadQuoteContext(client, catalog, {
-      serviceSlug: parsed.data.serviceSlug,
-      extraCodes: parsed.data.extraCodes,
-    });
-    if (!context) {
+
+    let loaded;
+    try {
+      loaded = await loadServiceParts(client, catalog, {
+        parts: normalizeServiceParts(parsed.data),
+        extraCodes: parsed.data.extraCodes,
+      });
+    } catch (error) {
+      if (error instanceof ServicePartsError) {
+        throw new HTTPException(422, { message: servicePartsErrorMessage(error.code) });
+      }
+      throw error;
+    }
+    if (!loaded) {
       throw new HTTPException(404, { message: "Service not found" });
     }
 
+    const parts = normalizeServiceParts(parsed.data);
+
     try {
-      const quote = computeQuote({
-        service: context.service,
-        lengthTier: parsed.data.lengthTier ?? null,
-        personalization: parsed.data.personalization,
-        extras: context.extras,
-        settings: context.settings,
-      });
+      const quote = composeQuote(
+        loaded.contexts.map((context, i) =>
+          computeQuote({
+            service: context.service,
+            lengthTier: parts[i].lengthTier ?? null,
+            personalization: parts[i].personalization,
+            extras: context.extras,
+            settings: context.settings,
+          }),
+        ),
+        loaded.contexts[0].settings,
+      );
       // La web acaba de contestar cuánto sale y cuánto dura. Es una de
       // las dos preguntas que hoy consumen a Sol antes de cada venta, y
       // no queda registrada en ningún lado si no se cuenta acá.

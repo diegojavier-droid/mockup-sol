@@ -14,6 +14,8 @@
 
 import {
   QuoteError,
+  type PriceDisplayMode,
+  type QuoteSettings,
   type LengthTier,
   type QuoteInput,
   type QuoteItem,
@@ -127,5 +129,81 @@ export function computeQuote(input: QuoteInput): QuoteResult {
     remainingAmount: estimatedMinAmount - depositAmount,
     requiresConsultation: service.parameters.requiresConsultation,
     appliedModifiers,
+  };
+}
+
+/**
+ * Varias prestaciones en un mismo turno — «color y corte».
+ *
+ * No reescribe el motor: compone resultados que `computeQuote` ya
+ * calculó por separado. Componer una sola parte tiene que dar
+ * exactamente lo mismo que cotizarla sola, y hay una prueba que lo
+ * exige: así el camino de un servicio no cambia de comportamiento.
+ *
+ * DECISIONES, y por qué son éstas y no otras:
+ *
+ * · Precio: SUMA de las partes. Que un combo valga menos que la suma es
+ *   una regla comercial que sólo Sol puede fijar; inventarla acá sería
+ *   cobrar de menos sin que nadie lo haya decidido.
+ *
+ * · Duración: SUMA. Un salón real puede solapar el proceso de un color
+ *   con el corte de otra clienta, pero si eso se hace —y cuánto— es
+ *   operación real que no está validada. Sumar reserva de más, que es el
+ *   error seguro: nunca vende un horario que no existe.
+ *
+ * · Setup: MÁXIMO, no suma. Es la preparación ENTRE clientas, no por
+ *   prestación; sumarlo lo contaría dos veces para la misma persona. Con
+ *   una sola parte el máximo es ese mismo valor, que es lo que preserva
+ *   el comportamiento actual.
+ *
+ * · Modo de precio: gana el MENOS certero. Si una de las prestaciones
+ *   está sujeta a confirmación, el turno entero lo está: prometer un
+ *   número firme sobre una parte incierta es peor que decir que hay que
+ *   verlo.
+ *
+ * · Seña: se recalcula sobre el mínimo TOTAL, no se suman las señas
+ *   parciales, para que el redondeo no derive.
+ */
+const MODE_UNCERTAINTY: Record<PriceDisplayMode, number> = {
+  fixed: 0,
+  from: 1,
+  subject_to_confirmation: 2,
+};
+
+export function composeQuote(parts: QuoteResult[], settings: QuoteSettings): QuoteResult {
+  if (parts.length === 0) {
+    throw new QuoteError("service_not_quotable", "no services to quote");
+  }
+  if (parts.length === 1) return parts[0];
+
+  const items = parts.flatMap((p) => p.items);
+  const estimatedMinAmount = parts.reduce((acc, p) => acc + p.estimatedMinAmount, 0);
+  const durationShownMin = parts.reduce((acc, p) => acc + p.durationShownMin, 0);
+  const processMin = parts.reduce((acc, p) => acc + p.processMin, 0);
+  const setupMin = Math.max(...parts.map((p) => p.setupMin));
+
+  const mode = parts.reduce<PriceDisplayMode>(
+    (worst, p) =>
+      MODE_UNCERTAINTY[p.priceDisplayMode] > MODE_UNCERTAINTY[worst] ? p.priceDisplayMode : worst,
+    "fixed",
+  );
+
+  const depositAmount = Math.round((estimatedMinAmount * settings.depositRatePct) / 100);
+
+  return {
+    items,
+    priceDisplayMode: mode,
+    isEstimate: mode !== "fixed",
+    estimatedMinAmount,
+    estimatedMaxAmount: null,
+    durationShownMin,
+    processMin,
+    setupMin,
+    blockingMin: durationShownMin + setupMin,
+    depositRatePct: settings.depositRatePct,
+    depositAmount,
+    remainingAmount: estimatedMinAmount - depositAmount,
+    requiresConsultation: parts.some((p) => p.requiresConsultation),
+    appliedModifiers: parts.flatMap((p) => p.appliedModifiers),
   };
 }

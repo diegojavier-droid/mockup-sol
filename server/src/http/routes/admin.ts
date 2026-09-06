@@ -41,9 +41,16 @@ import {
 } from "../../lib/booking/repository";
 import { normalizePhoneAr } from "../../domain/phone";
 import { logBookingFailure, requestId } from "../../lib/observability";
-import { computeQuote } from "../../domain/quote";
+import { composeQuote, computeQuote } from "../../domain/quote";
+import {
+  loadServiceParts,
+  normalizeServiceParts,
+  servicePartSchema,
+  servicePartsErrorMessage,
+  ServicePartsError,
+  MAX_SERVICE_PARTS,
+} from "../../lib/quote/parts";
 import { QuoteError } from "../../domain/types";
-import { loadQuoteContext } from "../../lib/quote/repository";
 import { createCatalogRepository } from "../../lib/catalog/repository";
 import { createSupabaseAnonClient } from "../../lib/supabase";
 
@@ -395,7 +402,9 @@ export function createAdminRoute(env: ServerEnv) {
   route.post("/bookings", async (c) => {
     const schema = z
       .object({
-        serviceSlug: z.string().min(1).max(64),
+        /** «Color y corte» dictado por WhatsApp, en un solo turno. */
+        services: z.array(servicePartSchema).min(1).max(MAX_SERVICE_PARTS).optional(),
+        serviceSlug: z.string().min(1).max(64).optional(),
         lengthTier: z.enum(["corto", "medio", "largo", "xl", "unico"]).nullish(),
         personalization: z.record(z.string().max(64), z.string().max(64)).optional(),
         extraCodes: z.array(z.string().min(1).max(64)).max(10).default([]),
@@ -434,21 +443,36 @@ export function createAdminRoute(env: ServerEnv) {
     if (!phone) throw new HTTPException(400, { message: "Revisá el teléfono." });
 
     const anon = createSupabaseAnonClient(env);
-    const context = await loadQuoteContext(anon, createCatalogRepository(anon), {
-      serviceSlug: body.serviceSlug,
-      extraCodes: body.extraCodes,
-    });
-    if (!context) throw new HTTPException(404, { message: "No encontramos ese servicio." });
+    let parts;
+    let loaded;
+    try {
+      parts = normalizeServiceParts(body);
+      loaded = await loadServiceParts(anon, createCatalogRepository(anon), {
+        parts,
+        extraCodes: body.extraCodes,
+      });
+    } catch (error) {
+      if (error instanceof ServicePartsError) {
+        throw new HTTPException(422, { message: servicePartsErrorMessage(error.code) });
+      }
+      throw error;
+    }
+    if (!loaded) throw new HTTPException(404, { message: "No encontramos ese servicio." });
+    const context = loaded.contexts[0];
 
     let quote;
+    let partQuotes;
     try {
-      quote = computeQuote({
-        service: context.service,
-        lengthTier: body.lengthTier ?? null,
-        personalization: body.personalization,
-        extras: context.extras,
-        settings: context.settings,
-      });
+      partQuotes = loaded.contexts.map((ctx, i) =>
+        computeQuote({
+          service: ctx.service,
+          lengthTier: parts[i].lengthTier ?? null,
+          personalization: parts[i].personalization,
+          extras: ctx.extras,
+          settings: ctx.settings,
+        }),
+      );
+      quote = composeQuote(partQuotes, context.settings);
     } catch (error) {
       if (error instanceof QuoteError) {
         throw new HTTPException(422, { message: quoteErrorMessage(error.code) });
@@ -477,18 +501,21 @@ export function createAdminRoute(env: ServerEnv) {
           phone_e164: phone,
           email: body.customer.email ?? null,
         },
-        items: quote.items.map((item) => ({
-          ...(item.role === "main"
-            ? { service_slug: item.slug }
-            : { extra_slug: `${context.areaSlug}-${item.slug}` }),
-          role: item.role,
-          name: item.name,
-          price_amount: item.priceAmount,
-          length_tier: item.lengthTier,
-          duration_min: item.durationMin,
-          process_min: item.processMin,
-          setup_min: item.setupMin,
-        })),
+        items: partQuotes.flatMap((partQuote, i) =>
+          partQuote.items.map((item) => ({
+            ...(item.role === "main"
+              ? { service_slug: item.slug }
+              : { extra_slug: `${context.areaSlug}-${item.slug}` }),
+            role: item.role,
+            name: item.name,
+            price_amount: item.priceAmount,
+            length_tier: item.lengthTier,
+            duration_min: item.durationMin,
+            process_min: item.processMin,
+            setup_min: item.setupMin,
+            personalization: item.role === "main" ? (parts[i].personalization ?? null) : null,
+          })),
+        ),
         customerNote: body.note ?? null,
         source: body.source,
         createdBy: staff.staffId,
