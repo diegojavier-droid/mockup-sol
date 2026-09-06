@@ -498,6 +498,27 @@ export interface DashboardSummary {
    * el margen del mes y la pantalla tiene que poder decirlo.
    */
   margin: { available: boolean; coverage: number; amount: number | null };
+  /**
+   * Cuánto resolvió el sistema y cuánto necesitó a una persona.
+   *
+   * `time_saved.available: false` es deliberado y no es un pendiente de
+   * implementación: cuánto tarda alguien en contestar una consulta lo
+   * sabe Sol, y hasta que lo diga no se estima. Misma regla que el margen.
+   */
+  assisted: {
+    resolved_by_system: {
+      quotes: number;
+      availability: number;
+      bookings: number;
+      total: number;
+    };
+    required_a_person: {
+      bookings: number;
+      operative_actions: number;
+      total: number;
+    };
+    time_saved: { available: boolean; minutes: number | null; reason: string };
+  };
   top_services: Array<{ name: string; count: number }>;
 }
 
@@ -505,12 +526,23 @@ export async function loadDashboardSummary(
   admin: SupabaseAdminClient,
   params: { from: Date; to: Date },
 ): Promise<DashboardSummary> {
-  const { data, error } = await admin.rpc("dashboard_summary", {
+  const range = {
     p_from: params.from.toISOString(),
     p_to: params.to.toISOString(),
-  });
-  if (error) throw error;
-  return data as DashboardSummary;
+  };
+  // Dos funciones y no una: `dashboard_summary` ya es grande, y la
+  // actividad asistida se lee de tablas distintas. Van en paralelo, así
+  // que el panel no paga la separación.
+  const [summary, assisted] = await Promise.all([
+    admin.rpc("dashboard_summary", range),
+    admin.rpc("assisted_activity_summary", range),
+  ]);
+  if (summary.error) throw summary.error;
+  if (assisted.error) throw assisted.error;
+  return {
+    ...(summary.data as Omit<DashboardSummary, "assisted">),
+    assisted: assisted.data as DashboardSummary["assisted"],
+  };
 }
 
 // ---------------------------------------------------------------- recursos

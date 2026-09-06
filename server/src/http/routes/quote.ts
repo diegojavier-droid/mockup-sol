@@ -9,7 +9,11 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import type { ServerEnv } from "../../config/env";
-import { createSupabaseAnonClient } from "../../lib/supabase";
+import { createSupabaseAnonClient, createSupabaseAdminClient } from "../../lib/supabase";
+import {
+  recordAssistedActivityInBackground,
+  waitUntilContextOf,
+} from "../../lib/assisted/record";
 import { createCatalogRepository } from "../../lib/catalog/repository";
 import { loadQuoteContext } from "../../lib/quote/repository";
 import { computeQuote } from "../../domain/quote";
@@ -62,6 +66,14 @@ export function createQuoteRoute(env: ServerEnv) {
         extras: context.extras,
         settings: context.settings,
       });
+      // La web acaba de contestar cuánto sale y cuánto dura. Es una de
+      // las dos preguntas que hoy consumen a Sol antes de cada venta, y
+      // no queda registrada en ningún lado si no se cuenta acá.
+      recordAssistedActivityInBackground(
+        createSupabaseAdminClient(env),
+        "quote_self_service",
+        waitUntilContextOf(c),
+      );
       return c.json({ data: quote });
     } catch (error) {
       if (error instanceof QuoteError) {
