@@ -1024,7 +1024,7 @@ jobs:
             perform public.create_booking('depilacion',
               (d::text || ' 23:30-03')::timestamptz, ((d+1)::text || ' 01:30-03')::timestamptz,
               120,'fixed',10000,10000,0,0,
-              format('{"first_name":"SA","phone_e164":"+54934258891%s"}', floor(random()*100000)::int)::jsonb,
+              format('{"first_name":"SA","phone_e164":"+54934258891%s"}', lpad(floor(random()*10000)::int::text, 4, '0'))::jsonb,
               v_items, null, 'manual');
           end $$;
           SQLA
@@ -1044,7 +1044,7 @@ jobs:
             perform public.create_booking('depilacion',
               ((d+1)::text || ' 00:30-03')::timestamptz, ((d+1)::text || ' 02:30-03')::timestamptz,
               120,'fixed',10000,10000,0,0,
-              format('{"first_name":"SB","phone_e164":"+54934258892%s"}', floor(random()*100000)::int)::jsonb,
+              format('{"first_name":"SB","phone_e164":"+54934258892%s"}', lpad(floor(random()*10000)::int::text, 4, '0'))::jsonb,
               v_items, null, 'manual');
           end $$;
           SQLB
@@ -1065,11 +1065,28 @@ jobs:
           end $$;
           SQL
 
+          rm -f /tmp/seam-out.log
           for i in 1 2 3 4; do
-            psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/seam-a.sql > /dev/null 2>&1 &
-            psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/seam-b.sql > /dev/null 2>&1 &
+            psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/seam-a.sql >> /tmp/seam-out.log 2>&1 &
+            psql "$SUPABASE_LOCAL_DB_URL" -f /tmp/seam-b.sql >> /tmp/seam-out.log 2>&1 &
           done
           wait
+
+          # Los ocho intentos tienen que llegar al control de capacidad. Un
+          # error de fixture —un teléfono inválido, un servicio que no
+          # existe— también deja una sola reserva, y entonces el paso
+          # pasaría sin haber probado nunca la concurrencia.
+          OTROS=$(grep -E "^(psql:)?.*ERROR" /tmp/seam-out.log | grep -vc "capacity_full" || true)
+          if [ "$OTROS" != "0" ]; then
+            echo "::error::el fixture del seam falló por algo que no es capacidad ($OTROS intento(s)); la prueba no habría demostrado nada"
+            grep -E "ERROR" /tmp/seam-out.log | grep -v "capacity_full" | head -5
+            exit 1
+          fi
+          RECHAZOS=$(grep -c "capacity_full" /tmp/seam-out.log || true)
+          if [ "$RECHAZOS" -lt 5 ]; then
+            echo "::error::sólo $RECHAZOS intento(s) llegaron a competir por la capacidad; se esperaban 7"
+            exit 1
+          fi
 
           SEAM=$(psql "$SUPABASE_LOCAL_DB_URL" -Atc "
             select count(*) from public.bookings b
