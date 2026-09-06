@@ -1473,6 +1473,77 @@ jobs:
 
           echo "cancellation deposit outcome OK"
 
+      - name: Verify assisted activity is counted without inventing time
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_from timestamptz; v_to timestamptz; r jsonb; v_n int;
+          begin
+            v_from := (current_date::text || ' 00:00:00-03')::timestamptz;
+            v_to   := ((current_date+1)::text || ' 00:00:00-03')::timestamptz;
+
+            delete from public.assisted_activity_daily;
+
+            -- Arranca en cero y no rellena con nada.
+            r := public.assisted_activity_summary(v_from, v_to);
+            if (r->'resolved_by_system'->>'quotes')::int <> 0 then
+              raise exception 'no arrancó en cero: %', r->'resolved_by_system';
+            end if;
+
+            -- LA regla del bloque: el tiempo ahorrado NO se estima. Cuánto
+            -- tarda una persona en contestar una consulta lo sabe Sol, y
+            -- hasta que lo diga esto vale NO DISPONIBLE, jamás un número.
+            if (r->'time_saved'->>'available')::boolean is not false then
+              raise exception 'declaró disponible el tiempo ahorrado sin el dato';
+            end if;
+            if r->'time_saved'->>'minutes' is not null then
+              raise exception 'estimó minutos ahorrados: %', r->'time_saved';
+            end if;
+
+            -- Contar suma, y en el contador correcto.
+            perform public.record_assisted_activity('quote_self_service');
+            perform public.record_assisted_activity('quote_self_service');
+            perform public.record_assisted_activity('availability_self_service');
+            r := public.assisted_activity_summary(v_from, v_to);
+            if (r->'resolved_by_system'->>'quotes')::int <> 2
+               or (r->'resolved_by_system'->>'availability')::int <> 1 then
+              raise exception 'los contadores no suman: %', r->'resolved_by_system';
+            end if;
+
+            -- Una métrica inventada se rechaza en la base, no en la app.
+            begin
+              perform public.record_assisted_activity('lo_que_se_me_ocurra');
+              raise exception 'GATE ROTO: aceptó una métrica inexistente';
+            exception when others then
+              if position('GATE ROTO' in sqlerrm) > 0 then raise; end if;
+            end;
+
+            -- El día es el del SALÓN: a las 23:00 de Santa Fe ya es otro
+            -- día en UTC, y una consulta del martes a la noche contaría
+            -- como del miércoles.
+            select count(*) into v_n from public.assisted_activity_daily
+             where day = (now() at time zone 'America/Argentina/Buenos_Aires')::date;
+            if v_n <> 2 then
+              raise exception 'no usó el día del salón: % fila(s) en el día correcto', v_n;
+            end if;
+
+            -- Y sigue sin estimar tiempo aunque ya haya datos que contar:
+            -- tener el numerador no autoriza a inventar el multiplicador.
+            r := public.assisted_activity_summary(v_from, v_to);
+            if (r->'time_saved'->>'available')::boolean is not false
+               or r->'time_saved'->>'minutes' is not null then
+              raise exception 'con datos cargados se puso a estimar tiempo: %', r->'time_saved';
+            end if;
+
+            delete from public.assisted_activity_daily;
+          end $$;
+          SQL
+
+          echo "assisted activity OK"
+
       - name: Verify field-option composite FK
         run: |
           set -euo pipefail
