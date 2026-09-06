@@ -993,6 +993,16 @@ jobs:
             exit 1
           fi
 
+          # Una sola reserva también es lo que se ve si una de las dos
+          # transacciones nunca llegó a competir. Que el rebote sea por
+          # capacidad, y exactamente uno.
+          REBOTES=$(cat /tmp/lock-a.log /tmp/lock-b.log | grep -c "capacity_full" || true)
+          if [ "$REBOTES" != "1" ]; then
+            echo "::error::se esperaba exactamente 1 rebote por capacidad y hubo $REBOTES: las dos transacciones no compitieron"
+            cat /tmp/lock-a.log /tmp/lock-b.log
+            exit 1
+          fi
+
           # Y la costura de MEDIANOCHE DEL SALÓN, que es donde se había
           # mudado el defecto al cambiar la clave de UTC a hora local.
           # Cualquier clave con fecha tiene una costura: una reserva puede
