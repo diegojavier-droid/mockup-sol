@@ -50,6 +50,16 @@ export function useQuote(input: QuoteInput) {
   });
 }
 
+/**
+ * Cuántos días adelante se pide la disponibilidad.
+ *
+ * El calendario del paso de fecha no deja navegar más allá de esta
+ * ventana: una semana que se ve vacía porque nunca se preguntó es
+ * indistinguible de una semana sin lugar, y la clienta concluye que el
+ * salón está completo cuando en realidad hay turnos.
+ */
+export const AVAILABILITY_WINDOW_DAYS = 21;
+
 export function useAvailability(input: QuoteInput & { days?: number }) {
   const params = new URLSearchParams();
   if (input.serviceSlug) params.set("service", input.serviceSlug);
@@ -59,7 +69,7 @@ export function useAvailability(input: QuoteInput & { days?: number }) {
     .map(([k, v]) => `${k}:${v}`)
     .join(",");
   if (personalization) params.set("personalization", personalization);
-  params.set("days", String(input.days ?? 21));
+  params.set("days", String(input.days ?? AVAILABILITY_WINDOW_DAYS));
 
   return useQuery({
     queryKey: ["availability", params.toString()],
