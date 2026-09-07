@@ -98,8 +98,8 @@ function clampWizardStep(value: number, stepKeys: BookingStepKey[]): WizardStep 
 const ADDITIONAL_COMMENTS_MAX_LENGTH = 500;
 
 const mockReturningCustomers: CustomerFormState[] = [
-  { firstName: "Mai", whatsapp: "342 555 1234", email: "mai@solmai.com", notes: "" },
-  { firstName: "Sofía", whatsapp: "342 600 7788", email: "sofia@example.com", notes: "" },
+  { firstName: "Mai", whatsapp: "342 555 1234", email: "mai@solmai.com" },
+  { firstName: "Sofía", whatsapp: "342 600 7788", email: "sofia@example.com" },
 ];
 
 const normalizeLookup = (value: string) =>
@@ -164,7 +164,7 @@ export function buildBookingRequestPayload({
       personalization: personal,
       dateId: date,
       time,
-      notes: buildBookingNotes(additionalComments, customer.notes),
+      notes: additionalComments.trim() || undefined,
     },
     totals: {
       durationMinutes: totals.durationMinutes,
@@ -187,22 +187,6 @@ export function buildBookingRequestPayload({
     },
     status: "pending_payment",
   };
-}
-
-function buildBookingNotes(additionalComments: string, customerNotes: string) {
-  const comments = additionalComments.trim();
-  const notes = customerNotes.trim();
-
-  if (comments && notes) {
-    return `Comentarios adicionales: ${comments}\nMensaje: ${notes}`.slice(
-      0,
-      ADDITIONAL_COMMENTS_MAX_LENGTH,
-    );
-  }
-  if (comments) return comments;
-  if (notes) return notes;
-
-  return undefined;
 }
 
 function findMockCustomer(customer: CustomerFormState) {
@@ -244,10 +228,6 @@ function validateCustomer(customer: CustomerFormState): CustomerErrors {
         errors[field] = issue.message;
       }
     }
-  }
-
-  if (customer.notes.length > 500) {
-    errors.notes = "Máximo 500 caracteres";
   }
 
   return errors;
@@ -380,7 +360,6 @@ export function useBookingWizard(
     firstName: restoredDraft?.customer.firstName ?? "",
     whatsapp: restoredDraft?.customer.whatsapp ?? "",
     email: restoredDraft?.customer.email ?? "",
-    notes: restoredDraft?.customer.notes ?? "",
   });
   const [customerTouched, setCustomerTouched] = useState<CustomerTouched>({});
   const [isCustomerRecognized, setIsCustomerRecognized] = useState(false);
@@ -502,7 +481,6 @@ export function useBookingWizard(
       !!customer.firstName ||
       !!customer.whatsapp ||
       !!customer.email ||
-      !!customer.notes ||
       paymentPending;
 
     if (!hasDraftContent) {
@@ -599,7 +577,6 @@ export function useBookingWizard(
             firstName: current.firstName.trim() ? current.firstName : mockCustomer.firstName,
             whatsapp: nextCustomer.whatsapp.trim() ? nextCustomer.whatsapp : mockCustomer.whatsapp,
             email: nextCustomer.email.trim() ? nextCustomer.email : mockCustomer.email,
-            notes: current.notes,
           };
         }
 

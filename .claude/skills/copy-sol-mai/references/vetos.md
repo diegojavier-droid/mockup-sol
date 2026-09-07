@@ -133,3 +133,42 @@ se descartó porque:
 Diego marcó que *espléndida* es vocabulario suyo, no necesariamente de Sol ni
 de las clientas. Se puede usar, pero como palabra prestada y no como si fuera
 la voz del salón. La idea que **sí** quedó en pie es la de los **diez años**.
+
+---
+
+## «Pedir mi turno» → «Confirmar mi turno» — botón final
+
+No es un veto: es una decisión de Diego que revierte un criterio mío, y
+queda anotada para que nadie la «arregle» de vuelta.
+
+Yo había puesto «Pedir mi turno» razonando que el turno nace esperando la
+seña, así que «Confirmar» prometía de más. Diego, viéndolo en pantalla,
+pidió «Confirmar mi turno».
+
+Tiene razón en lo que importa: **la clienta está confirmando su decisión**,
+que es lo que ese botón le pide. Lo que queda pendiente es la seña, y eso
+lo dice el renglón de abajo, que se ajustó para no contradecirlo:
+
+- Antes: «En el paso siguiente pagás la seña y queda confirmado.»
+- Ahora: «Después pagás la seña y tu turno queda asegurado.»
+
+La lección: cuando el botón y su aclaración usan la misma palabra con dos
+sentidos distintos —confirmás acá, pero queda confirmado después—, el
+problema no es el botón, es que hay que cambiar una de las dos palabras.
+
+---
+
+## La nota para Sol se pedía dos veces
+
+No es un veto de una frase, es uno de estructura. La misma nota se pedía
+en el paso de personalización y otra vez en el de contacto. En el código
+las dos se pegaban en un solo campo antes de guardar —«Comentarios
+adicionales: … / Mensaje: …»— así que era duplicación pura: dos preguntas
+para un solo destino.
+
+> «cuando se llega al paso 5 otra vez se le pide que se agregue un mensaje
+> para sol. eso no vale la pena que siga existiendo» — Diego
+
+**La lección.** Antes de agregar un campo, preguntarse dónde termina. Si
+dos campos terminan en la misma columna, es un solo campo mal dibujado, y
+la clienta paga el error respondiendo dos veces lo mismo.
