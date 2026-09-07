@@ -24,7 +24,7 @@ export function BookingConfirmation({
 }) {
   const depositAmount = booking?.depositAmount ?? 0;
   const depositPrice = formatPrice(depositAmount);
-  const payLabel = depositAmount ? `Abonar seña — ${depositPrice}` : "Abonar seña";
+  const payLabel = depositAmount ? `Pagar la seña — ${depositPrice}` : "Pagar la seña";
   const [view, setView] = useState<LocalPaymentView>("pending");
   const [linkCopied, setLinkCopied] = useState(false);
   const checkout = useDepositCheckout();
@@ -67,7 +67,7 @@ export function BookingConfirmation({
             <span className="h-1.5 w-1.5 rounded-full bg-champagne-deep" />
             {view === "pending"
               ? "Reserva guardada · falta la seña"
-              : "Pago pendiente de verificación"}
+              : "Estamos confirmando tu pago"}
           </div>
 
           {/* Resumen del turno */}
@@ -123,8 +123,8 @@ export function BookingConfirmation({
               {/* Estado local: pago informado */}
               <div className="rounded-2xl border border-champagne-deep/25 bg-gradient-to-b from-champagne/40 to-cream/50 px-5 py-4">
                 <p className="text-[11px] leading-relaxed text-foreground/85">
-                  Si completaste el pago, Sol Mai verificará la acreditación y te confirmará por
-                  email y WhatsApp.
+                  Si ya pagaste, lo confirmamos y te avisamos por email y WhatsApp. No hace falta
+                  que hagas nada más.
                 </p>
                 <button
                   type="button"
@@ -143,7 +143,7 @@ export function BookingConfirmation({
           {booking && (
             <div className="rounded-2xl border border-border bg-cream/40 px-4 py-3">
               <p className="text-[11px] leading-relaxed text-foreground/80">
-                Guardá este enlace para ver o cancelar tu turno:
+                Guardá este link para ver o cancelar tu turno:
               </p>
               <button
                 type="button"
@@ -159,7 +159,7 @@ export function BookingConfirmation({
                 }}
                 className="mt-2 w-full truncate rounded-full border border-champagne-deep/30 bg-card px-4 py-2 text-center text-xs text-foreground transition-colors hover:border-champagne-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                {linkCopied ? "Enlace copiado" : "Copiar enlace de mi reserva"}
+                {linkCopied ? "Link copiado" : "Copiar el link de mi turno"}
               </button>
             </div>
           )}
@@ -167,7 +167,7 @@ export function BookingConfirmation({
           {/* Soporte discreto */}
           <div className="min-w-0 px-1 text-[11px] leading-relaxed text-muted-foreground/80">
             <p className="break-words">
-              Soporte: <span className="break-all">{solMaiContact.email}</span> ·{" "}
+              ¿Alguna duda? Escribinos: <span className="break-all">{solMaiContact.email}</span> ·{" "}
               {solMaiContact.whatsappDisplay}
             </p>
           </div>

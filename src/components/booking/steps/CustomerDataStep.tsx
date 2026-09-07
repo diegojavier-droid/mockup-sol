@@ -39,8 +39,16 @@ export function CustomerDataStep({
   };
 
   const handleBlurCapture = (event: FocusEvent<HTMLDivElement>) => {
+    // El elemento se guarda ANTES del requestAnimationFrame. React deja
+    // `currentTarget` en null apenas termina el handler, así que leerlo
+    // adentro del callback tiraba «Cannot read properties of null» en
+    // cada blur: la clienta pasaba de un campo a otro y el resumen con
+    // el precio, que se esconde mientras escribe para no pelear con el
+    // teclado, ya no volvía a aparecer.
+    const container = event.currentTarget;
+
     window.requestAnimationFrame(() => {
-      if (event.currentTarget.contains(document.activeElement)) return;
+      if (container.contains(document.activeElement)) return;
 
       onMobileInputFocusChange?.(false);
     });
@@ -97,7 +105,7 @@ export function CustomerDataStep({
           />
           <CustomerTextarea
             error={errors.notes}
-            label="Agregar una nota opcional"
+            label="Agregar una nota para Sol Mai"
             maxLength={500}
             onChange={(value) => onChangeCustomerField("notes", value)}
             placeholder="Algo importante para preparar tu visita."

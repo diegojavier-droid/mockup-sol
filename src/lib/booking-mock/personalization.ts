@@ -4,11 +4,11 @@ export const personalizationFields: Record<CategoryId, PersonalizationField[]> =
   peluqueria: [
     {
       id: "largo",
-      label: "Largo del cabello",
+      label: "Largo del pelo",
       options: ["Corto", "Media melena", "Largo", "Muy largo"],
     },
     { id: "densidad", label: "Densidad", options: ["Fina", "Media", "Abundante"] },
-    { id: "tipo", label: "Tipo de cabello", options: ["Liso", "Ondulado", "Rizado", "Crespo"] },
+    { id: "tipo", label: "Tipo de pelo", options: ["Liso", "Ondulado", "Rizado", "Crespo"] },
     {
       id: "quimicos",
       label: "Antecedentes químicos",

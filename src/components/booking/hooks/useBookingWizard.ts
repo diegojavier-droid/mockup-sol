@@ -643,7 +643,7 @@ export function useBookingWizard(
 
     if (!payloadResult.success || !service || !date || !time) {
       setBookingRequestError(
-        "No pudimos preparar la solicitud. Revisá tus datos o intentá nuevamente.",
+        "No pudimos tomar el turno. Fijate que estén completos tus datos y probá de nuevo; si sigue igual, escribinos y lo resolvemos.",
       );
       return;
     }

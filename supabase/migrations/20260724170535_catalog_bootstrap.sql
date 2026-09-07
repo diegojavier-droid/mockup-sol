@@ -76,7 +76,7 @@ insert into public.services (category_id, slug, name, description, duration_minu
   select id, 'reparacion', 'Reparación capilar', 'Fibras dañadas restauradas.', 60, 20000, 'ARS', 'tratamiento', 17, true, true from public.categories where slug = 'peluqueria'
   on conflict (slug) do update set category_id = excluded.category_id, name = excluded.name, description = excluded.description, duration_minutes = excluded.duration_minutes, price_amount = excluded.price_amount, tag = excluded.tag, sort_order = excluded.sort_order, is_public = excluded.is_public, is_active = excluded.is_active, deleted_at = null;
 insert into public.services (category_id, slug, name, description, duration_minutes, price_amount, currency, tag, sort_order, is_public, is_active)
-  select id, 'reconstruccion', 'Reconstrucción', 'Plan intensivo para cabellos castigados.', 60, 22000, 'ARS', 'tratamiento', 18, true, true from public.categories where slug = 'peluqueria'
+  select id, 'reconstruccion', 'Reconstrucción', 'Plan intensivo para el pelo muy castigado.', 60, 22000, 'ARS', 'tratamiento', 18, true, true from public.categories where slug = 'peluqueria'
   on conflict (slug) do update set category_id = excluded.category_id, name = excluded.name, description = excluded.description, duration_minutes = excluded.duration_minutes, price_amount = excluded.price_amount, tag = excluded.tag, sort_order = excluded.sort_order, is_public = excluded.is_public, is_active = excluded.is_active, deleted_at = null;
 insert into public.services (category_id, slug, name, description, duration_minutes, price_amount, currency, tag, sort_order, is_public, is_active)
   select id, 'post-color', 'Tratamiento post-color', 'Sella y prolonga el color.', 30, 12000, 'ARS', 'tratamiento', 19, true, true from public.categories where slug = 'peluqueria'
@@ -194,7 +194,7 @@ insert into public.extras (category_id, code, slug, name, duration_delta_minutes
 
 -- personalization fields + options
 insert into public.personalization_fields (category_id, slug, label, field_type, is_required, sort_order, is_public, is_active)
-  select id, 'largo', 'Largo del cabello', 'single_choice', false, 0, true, true from public.categories where slug = 'peluqueria'
+  select id, 'largo', 'Largo del pelo', 'single_choice', false, 0, true, true from public.categories where slug = 'peluqueria'
   on conflict (category_id, slug) do update set label = excluded.label, field_type = excluded.field_type, sort_order = excluded.sort_order, is_public = excluded.is_public, is_active = excluded.is_active, deleted_at = null;
 insert into public.personalization_options (field_id, slug, label, value, sort_order, is_active)
   select pf.id, 'corto', 'Corto', 'Corto', 0, true from public.personalization_fields pf join public.categories c on c.id = pf.category_id where c.slug = 'peluqueria' and pf.slug = 'largo'
@@ -221,7 +221,7 @@ insert into public.personalization_options (field_id, slug, label, value, sort_o
   select pf.id, 'abundante', 'Abundante', 'Abundante', 2, true from public.personalization_fields pf join public.categories c on c.id = pf.category_id where c.slug = 'peluqueria' and pf.slug = 'densidad'
   on conflict (field_id, slug) do update set label = excluded.label, value = excluded.value, sort_order = excluded.sort_order, is_active = excluded.is_active;
 insert into public.personalization_fields (category_id, slug, label, field_type, is_required, sort_order, is_public, is_active)
-  select id, 'tipo', 'Tipo de cabello', 'single_choice', false, 2, true, true from public.categories where slug = 'peluqueria'
+  select id, 'tipo', 'Tipo de pelo', 'single_choice', false, 2, true, true from public.categories where slug = 'peluqueria'
   on conflict (category_id, slug) do update set label = excluded.label, field_type = excluded.field_type, sort_order = excluded.sort_order, is_public = excluded.is_public, is_active = excluded.is_active, deleted_at = null;
 insert into public.personalization_options (field_id, slug, label, value, sort_order, is_active)
   select pf.id, 'liso', 'Liso', 'Liso', 0, true from public.personalization_fields pf join public.categories c on c.id = pf.category_id where c.slug = 'peluqueria' and pf.slug = 'tipo'

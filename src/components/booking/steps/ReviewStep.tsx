@@ -29,7 +29,7 @@ export function ReviewStep({
   const shownRate = quote ? quote.depositRatePct : Math.round(depositRate * 100);
 
   return (
-    <StepShell title="Revisá tu solicitud">
+    <StepShell title="Revisá que esté todo bien">
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
         <div className="space-y-4">
           <section>
@@ -50,9 +50,7 @@ export function ReviewStep({
           </div>
 
           <section className="min-w-0 rounded-2xl bg-cream/50 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              Datos de clienta
-            </p>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Tus datos</p>
             <div className="mt-2 grid gap-2 text-sm text-foreground/90">
               <p className="min-w-0 break-words">{customer.firstName || "—"}</p>
               <p className="min-w-0 break-words">{customer.whatsapp || "—"}</p>
@@ -101,10 +99,10 @@ export function ReviewStep({
         onClick={onConfirm}
         className="mt-5 w-full rounded-full bg-primary py-4 font-serif text-lg text-primary-foreground shadow-[0_20px_40px_-18px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        Confirmar solicitud
+        Pedir mi turno
       </button>
       <p className="mt-2 text-center text-xs text-muted-foreground">
-        Después vas a poder abonar la seña.
+        En el paso siguiente pagás la seña y queda confirmado.
       </p>
     </StepShell>
   );

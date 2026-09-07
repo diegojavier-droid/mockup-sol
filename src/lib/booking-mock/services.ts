@@ -179,7 +179,7 @@ export const services: Record<CategoryId, Service[]> = {
     {
       id: "reconstruccion",
       name: "Reconstrucción",
-      desc: "Plan intensivo para cabellos castigados.",
+      desc: "Plan intensivo para el pelo muy castigado.",
       duration: "1 h",
       durationMinutes: 60,
       price: "$22.000",

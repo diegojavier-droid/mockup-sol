@@ -35,11 +35,11 @@ const recommendedForByServiceId: Record<string, string> = {
   balayage: "Un degradé prolijo, pintado a mano, con mantenimiento espaciado.",
   claritos: "Sumar reflejos suaves en zonas estratégicas del rostro.",
   alisado: "Si querés reducir el frizz y ganar manejabilidad por varios meses.",
-  botox: "Devolver suavidad, brillo y control del frizz al cabello castigado.",
-  nutricion: "Cabello seco o castigado que necesita nutrientes profundos.",
+  botox: "Devolver suavidad, brillo y control del frizz al pelo castigado.",
+  nutricion: "Pelo seco o castigado que necesita nutrientes profundos.",
   hidratacion: "Recuperar elasticidad y brillo cuando sentís el pelo apagado.",
   reparacion: "Si tu pelo tiene fibras dañadas que querés restaurar.",
-  reconstruccion: "Plan intensivo para cabellos muy castigados.",
+  reconstruccion: "Plan intensivo para el pelo muy castigado.",
   "post-color": "Sellar y proteger el color después de un servicio químico.",
   // Maquillaje
   "mk-social": "Eventos, fiestas y salidas donde querés un look prolijo y duradero.",
@@ -57,7 +57,7 @@ const recommendedForByServiceId: Record<string, string> = {
 };
 
 const recommendedForByCategory: Record<CategoryId, string> = {
-  peluqueria: "Cabello cuidado con productos profesionales Itely Hairfashion.",
+  peluqueria: "Pelo cuidado con productos profesionales Itely Hairfashion.",
   maquillaje: "Maquillaje profesional para que te sientas cómoda y luminosa.",
   unas: "Uñas cuidadas con terminación prolija y productos de calidad.",
   depilacion: "Depilación facial simple, rápida y prolija.",

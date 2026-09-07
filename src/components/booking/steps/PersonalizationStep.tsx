@@ -53,12 +53,12 @@ const sectionTitles: Record<Intent, string> = {
 };
 
 const currentSectionTitleByCategory: Partial<Record<CategoryId, string>> = {
-  peluqueria: "Tu cabello hoy",
+  peluqueria: "Tu pelo hoy",
   unas: "Tus uñas hoy",
 };
 
 const personalizationStepTitleByCategory: Record<CategoryId, string> = {
-  peluqueria: "Conozcamos tu cabello",
+  peluqueria: "Conozcamos tu pelo",
   maquillaje: "Preparemos tu maquillaje",
   unas: "Preparemos tus uñas",
   depilacion: "Preparemos tu depilación",
