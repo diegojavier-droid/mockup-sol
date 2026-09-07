@@ -135,7 +135,7 @@ jobs:
           personalization_fields=14
           personalization_options=49
           service_personalization_option_modifiers=192
-          service_personalization_rules=200
+          service_personalization_rules=209
           services=43
           EOF
 
