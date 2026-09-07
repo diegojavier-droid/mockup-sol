@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import { type CategoryId, type Personalization } from "@/lib/booking-data";
 import type { PersonalizationField } from "@/lib/booking-types";
 import { cn } from "@/lib/utils";
@@ -154,7 +152,6 @@ export function PersonalizationStep({
 }) {
   const { personalizationFields } = useCatalog();
   const buckets = bucketFields(personalizationFields[category]);
-  const [noteOpen, setNoteOpen] = useState(additionalComments.trim().length > 0);
 
   const sections = (
     [
@@ -192,45 +189,37 @@ export function PersonalizationStep({
           </section>
         ))}
 
-        {/* Nota — disclosure */}
-        <div className="pt-5">
-          {noteOpen ? (
-            <label className="block">
-              <span className="text-sm font-medium text-foreground">Nota para Sol Mai</span>
-              <textarea
-                autoFocus={additionalComments.length === 0}
-                className="mt-2 min-h-20 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30"
-                maxLength={ADDITIONAL_COMMENTS_MAX_LENGTH}
-                onChange={(event) => onChangeAdditionalComments(event.target.value)}
-                placeholder="Detalles, referencias o algo a tener en cuenta."
-                value={additionalComments}
-              />
-              <span className="mt-1.5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                <button
-                  type="button"
-                  className="text-muted-foreground underline-offset-2 hover:underline"
-                  onClick={() => {
-                    onChangeAdditionalComments("");
-                    setNoteOpen(false);
-                  }}
-                >
-                  Quitar nota
-                </button>
-                <span>
-                  {additionalComments.length}/{ADDITIONAL_COMMENTS_MAX_LENGTH}
-                </span>
+        {/* La nota, siempre abierta.
+ 
+            Estaba detrás de un «+ Agregar una nota», y esconderla tenía
+            dos costos. Uno: la clienta tenía que darse cuenta de que ese
+            link existía y decidir abrirlo, justo lo contrario de lo que
+            este paso pide, que es contar cosas. Dos: el link rompía el
+            ritmo visual — todo lo de arriba son secciones con su título
+            y sus opciones, y abajo aparecía un renglón subrayado suelto.
+
+            Ahora es una sección más, con el mismo encabezado que las
+            otras. Vacía no molesta a nadie; abierta invita. */}
+        <section className="py-5">
+          <SectionEyebrow>Agregá una nota para Sol</SectionEyebrow>
+          <label className="block">
+            <span className="sr-only">Agregá una nota para Sol</span>
+            <textarea
+              className="min-h-20 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30"
+              maxLength={ADDITIONAL_COMMENTS_MAX_LENGTH}
+              onChange={(event) => onChangeAdditionalComments(event.target.value)}
+              placeholder="Detalles, referencias o algo a tener en cuenta."
+              value={additionalComments}
+            />
+            {/* El contador sólo aparece cuando hay algo escrito: en un
+                campo vacío es ruido, y cerca del límite es información. */}
+            {additionalComments.length > 0 ? (
+              <span className="mt-1.5 block text-right text-xs text-muted-foreground">
+                {additionalComments.length}/{ADDITIONAL_COMMENTS_MAX_LENGTH}
               </span>
-            </label>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setNoteOpen(true)}
-              className="text-sm text-foreground/80 underline-offset-4 hover:text-foreground hover:underline"
-            >
-              + Agregar una nota para Sol Mai
-            </button>
-          )}
-        </div>
+            ) : null}
+          </label>
+        </section>
       </div>
     </StepShell>
   );

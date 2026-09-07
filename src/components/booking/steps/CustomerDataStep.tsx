@@ -105,7 +105,7 @@ export function CustomerDataStep({
           />
           <CustomerTextarea
             error={errors.notes}
-            label="Agregar una nota para Sol Mai"
+            label="Agregá una nota para Sol"
             maxLength={500}
             onChange={(value) => onChangeCustomerField("notes", value)}
             placeholder="Algo importante para preparar tu visita."
