@@ -33,8 +33,14 @@ maquillaje, uñas y depilación: eso no son «especialidades», son las cosas qu
 la clienta viene a hacerse.
 
 **La lección.** Los títulos de sección nombran **lo que la clienta quiere**, no
-cómo el negocio se organiza por dentro. Sospechá de cualquier título que
-empiece con «nuestro/nuestra».
+cómo el negocio se organiza por dentro.
+
+**Cuidado con generalizar de más.** El problema no es la palabra
+«nuestro»: Sol misma escribe «En Sol Mai nuestros espacios estan pensados
+para vos» (ver `marca.md`), y ahí funciona porque «nuestros espacios» es
+algo concreto que la clienta va a pisar. «Nuestras especialidades» es una
+categoría de negocio. La pregunta no es qué posesivo usás, es si lo que
+nombrás existe para la clienta o sólo para el organigrama.
 
 ---
 

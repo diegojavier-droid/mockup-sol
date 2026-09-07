@@ -3,24 +3,24 @@ import { cn } from "@/lib/utils";
 import peluImg from "@/assets/sol-mai-peluqueria.jpg";
 import makeImg from "@/assets/sol-mai-maquillaje.jpg";
 import nailsImg from "@/assets/sol-mai-unas.jpg";
+import waxImg from "@/assets/sol-mai-depilacion.jpg";
 import { selectableCardClass } from "../booking-styles";
 import { SelectedMark } from "../cards/SelectedMark";
 
 /**
  * Foto por área.
  *
- * `depilacion` no tiene foto propia todavía y por eso no está acá.
- * Estuvo apuntando a la de maquillaje, y el resultado era que dos de las
- * cuatro tarjetas mostraban exactamente la misma imagen: se leía como un
- * error del sitio, no como una decisión. Hasta que exista la foto de
- * depilación, la tarjeta usa un fondo cálido sin imagen —queda prolijo y
- * no promete algo que no es. En cuanto el archivo esté en `src/assets/`,
- * se agrega la línea y la tarjeta lo toma sola.
+ * El tipo queda parcial a propósito: si mañana se agrega un área sin
+ * foto, la tarjeta cae en el fondo cálido de abajo en vez de mostrar la
+ * imagen de otra área. Eso ya pasó —depilación mostraba la foto de
+ * maquillaje— y dos tarjetas con la misma imagen se leen como un error
+ * del sitio, no como una decisión.
  */
 const categoryImages: Partial<Record<CategoryId, string>> = {
   peluqueria: peluImg,
   maquillaje: makeImg,
   unas: nailsImg,
+  depilacion: waxImg,
 };
 
 const publicCategoryLabels: Record<CategoryId, string> = {

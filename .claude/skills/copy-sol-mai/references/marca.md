@@ -58,3 +58,51 @@ pendiente en vez de resolverla sola:
   («te esperamos»).
 - Si «peluquería de barrio» le gusta o le molesta como autodefinición.
 - Precios, tiempos y duraciones del catálogo (pueden ser provisionales).
+
+## La voz de Sol, con sus propias palabras
+
+**Ésta es la fuente más confiable de todo el material.** No es una
+interpretación ni un resumen de buscador: es un posteo publicado por la
+cuenta del salón (`@solmai.peluqueria`), transcrito de una captura que
+mandó Diego el 7 de septiembre de 2026.
+
+> En Sol Mai nuestros espacios estan pensados para vos
+>
+> Tu relax
+>
+> Tu tiempo
+>
+> Tu cuidado
+>
+> Vení a vivir tu experiencia con nosotros.
+
+Qué se aprende de acá, y hay que respetarlo:
+
+- **Sol habla en plural: «nosotros».** «Nuestros espacios», «con
+  nosotros». No dice «yo te espero». Esto cierra una pregunta que estaba
+  abierta: los textos del producto van en primera persona del plural —
+  «te esperamos», «armamos el turno con vos», «escribinos».
+- **Voseo, obviamente.** «Para vos», «Vení».
+- **Su ritmo son frases cortas apiladas.** Tres líneas de dos palabras
+  («Tu relax / Tu tiempo / Tu cuidado») y después una que cierra. No
+  escribe párrafos.
+- **«Tu» al principio de la línea es su figura.** Le habla de las cosas
+  de la clienta, no de las del salón.
+- **Sí usa el lenguaje de la experiencia**: «vení a vivir tu
+  experiencia». No le tiene miedo a lo aspiracional. Es coherente con lo
+  que Diego describe de ella.
+- Escribe sin tilde en «estan». No hace falta imitar eso: en el producto
+  el texto va bien escrito.
+
+Lo que **no** se deduce de acá: que cualquier frase con «nuestro» sirva.
+Sol dice «nuestros espacios» —algo concreto y suyo— y no «nuestras
+especialidades», que es una categoría de negocio. La diferencia está
+explicada en `vetos.md`.
+
+## El espacio
+
+La foto del posteo muestra el salón por dentro: paredes claras, cortinas
+de voile, pampas secas, mobiliario claro, piso de granito, todo prolijo y
+luminoso. Es exactamente lo que Diego describe: peluquería de barrio, muy
+cuidada. El texto tiene que estar a la altura de esa foto — ni humilde ni
+pomposo.
