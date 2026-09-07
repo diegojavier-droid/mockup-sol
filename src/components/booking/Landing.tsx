@@ -141,7 +141,7 @@ export function Landing({
               República de Siria 3798 · Santa Fe
             </span>
             <h1 className="font-serif text-[2.55rem] leading-[1.02] text-foreground sm:mt-6 sm:text-6xl lg:text-[4.5rem]">
-              Diez años <em className="not-italic text-champagne-deep">peinando Santa Fe.</em>
+              Un lugar <em className="not-italic text-champagne-deep">pensado para vos.</em>
             </h1>
             <div className="mt-3 h-px w-14 bg-champagne-deep/40 sm:mt-6 sm:w-16" />
             <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:mt-6 sm:text-base">

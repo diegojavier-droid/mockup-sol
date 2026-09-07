@@ -109,6 +109,17 @@ agradecimiento.
 
 Regla corta: **si el sujeto de la frase es el salón, reescribila.**
 
+**Qué se puso en su lugar.** Diego eligió «Un lugar pensado para vos.»
+Es la frase de Sol comprimida: su posteo dice «En Sol Mai nuestros
+espacios estan pensados para vos». La foto del salón la respalda y el
+sujeto vuelve a ser la clienta.
+
+Queda anotado el riesgo que se aceptó a sabiendas: la frase roza «Belleza
+a tu medida», vetada más arriba por genérica. Lo que la salva es que
+describe **el espacio** —algo concreto, que se ve en la foto y que Sol
+decoró— y no una promesa de servicio personalizado que nada sostiene. Si
+alguna vez se siente vacía, el problema será ése y no otro.
+
 ---
 
 ## Sobre «espléndida»
