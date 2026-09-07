@@ -1,7 +1,28 @@
 name: Deploy Cloudflare Worker
 
+# Se publica solo al mergear a `main`.
+#
+# Antes esto era `workflow_dispatch` a secas: el despliegue sólo ocurría
+# si una persona entraba a GitHub y apretaba el botón. El resultado era
+# que el sitio publicado se quedaba viejo sin que nadie se diera cuenta,
+# porque nada avisa de un despliegue que no ocurrió. `main` es la línea
+# estable del proyecto; si algo llegó ahí, es porque tiene que estar
+# publicado.
+#
+# El botón manual sigue existiendo, para reintentar un despliegue que
+# falló o para volver a publicar después de cargar una variable.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
+
+# Dos merges seguidos no pueden pisarse: el segundo espera al primero en
+# vez de publicar los dos al mismo tiempo y dejar vaya a saber cuál.
+# No se cancela el que está en curso — un despliegue a medias es peor
+# que uno de más.
+concurrency:
+  group: cloudflare-deploy
+  cancel-in-progress: false
 
 permissions:
   contents: read

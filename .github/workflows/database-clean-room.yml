@@ -132,8 +132,8 @@ jobs:
           business_hours=4
           categories=4
           extras=13
-          personalization_fields=12
-          personalization_options=43
+          personalization_fields=14
+          personalization_options=49
           service_personalization_option_modifiers=192
           service_personalization_rules=200
           services=43
@@ -712,16 +712,21 @@ jobs:
             v_b1 uuid; v_b2 uuid; v_b3 uuid; r jsonb;
             v_from timestamptz; v_to timestamptz;
           begin
-            -- Un lunes futuro y limpio, en hora del SALÓN.
+            -- Un MARTES futuro y limpio, en hora del SALÓN.
             --
             -- Lejos de todo: a +14 días la ventana pisaba el fixture de
             -- "invariantes" (`now() + 8 días`, con una seña de 2400
             -- acreditada) cada vez que CI corría un domingo, y entonces
             -- `collected_amount` daba 42400 en vez de 40000. El número
             -- dependía del día de la semana en que se ejecutara la suite.
-            -- Se mantiene el lunes —el salón abre— pero a un año vista,
-            -- fuera del alcance de cualquier otro fixture.
-            v_day  := (date_trunc('week', current_date) + interval '56 weeks')::date;
+            -- Por eso se fija un día de la semana concreto, a un año
+            -- vista, fuera del alcance de cualquier otro fixture.
+            --
+            -- Era lunes, porque el salón abría los lunes. Ya no: Sol
+            -- cierra los lunes, así que ese día la capacidad es cero y
+            -- la prueba de ocupación medía la nada. `date_trunc('week')`
+            -- da lunes; +1 día da martes, que el salón sí atiende.
+            v_day  := (date_trunc('week', current_date) + interval '56 weeks' + interval '1 day')::date;
             v_from := (v_day::text     || ' 00:00:00-03')::timestamptz;
             v_to   := ((v_day+1)::text || ' 00:00:00-03')::timestamptz;
 
@@ -804,8 +809,8 @@ jobs:
             end if;
 
             -- Un día del SALÓN cuenta un día, no dos fechas UTC.
-            if (r->'occupancy'->>'capacity_minutes')::bigint <> 4320 then
-              raise exception 'un día del salón debe dar 4320 min (8 estaciones x 9 h), dio %',
+            if (r->'occupancy'->>'capacity_minutes')::bigint <> 3360 then
+              raise exception 'un martes del salón debe dar 3360 min (8 estaciones x 7 h), dio %',
                 r->'occupancy'->>'capacity_minutes';
             end if;
             -- La ausencia no suma ocupación; la atendida sí.
@@ -826,7 +831,7 @@ jobs:
             update public.schedule_exceptions set capacity_delta = -2
              where starts_at = v_from and reason = 'Feriado CI';
             r := public.dashboard_summary(v_from, v_to);
-            if (r->'occupancy'->>'capacity_minutes')::bigint <> 4320 then
+            if (r->'occupancy'->>'capacity_minutes')::bigint <> 3360 then
               raise exception 'un ajuste de cupos no debe leerse como cierre, dio %',
                 r->'occupancy'->>'capacity_minutes';
             end if;

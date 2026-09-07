@@ -329,6 +329,18 @@ insert into public.personalization_options (field_id, slug, label, value, sort_o
   select pf.id, 'no', 'No', 'No', 1, true from public.personalization_fields pf join public.categories c on c.id = pf.category_id where c.slug = 'maquillaje' and pf.slug = 'prueba'
   on conflict (field_id, slug) do update set label = excluded.label, value = excluded.value, sort_order = excluded.sort_order, is_active = excluded.is_active;
 insert into public.personalization_fields (category_id, slug, label, field_type, is_required, sort_order, is_public, is_active)
+  select id, 'alergias', 'Alergias', 'single_choice', false, 4, true, true from public.categories where slug = 'maquillaje'
+  on conflict (category_id, slug) do update set label = excluded.label, field_type = excluded.field_type, sort_order = excluded.sort_order, is_public = excluded.is_public, is_active = excluded.is_active, deleted_at = null;
+insert into public.personalization_options (field_id, slug, label, value, sort_order, is_active)
+  select pf.id, 'no', 'No', 'No', 0, true from public.personalization_fields pf join public.categories c on c.id = pf.category_id where c.slug = 'maquillaje' and pf.slug = 'alergias'
+  on conflict (field_id, slug) do update set label = excluded.label, value = excluded.value, sort_order = excluded.sort_order, is_active = excluded.is_active;
+insert into public.personalization_options (field_id, slug, label, value, sort_order, is_active)
+  select pf.id, 'si-leves', 'Sí, leves', 'Sí, leves', 1, true from public.personalization_fields pf join public.categories c on c.id = pf.category_id where c.slug = 'maquillaje' and pf.slug = 'alergias'
+  on conflict (field_id, slug) do update set label = excluded.label, value = excluded.value, sort_order = excluded.sort_order, is_active = excluded.is_active;
+insert into public.personalization_options (field_id, slug, label, value, sort_order, is_active)
+  select pf.id, 'si-importantes', 'Sí, importantes', 'Sí, importantes', 2, true from public.personalization_fields pf join public.categories c on c.id = pf.category_id where c.slug = 'maquillaje' and pf.slug = 'alergias'
+  on conflict (field_id, slug) do update set label = excluded.label, value = excluded.value, sort_order = excluded.sort_order, is_active = excluded.is_active;
+insert into public.personalization_fields (category_id, slug, label, field_type, is_required, sort_order, is_public, is_active)
   select id, 'estado', 'Estado actual de las uñas', 'single_choice', false, 0, true, true from public.categories where slug = 'unas'
   on conflict (category_id, slug) do update set label = excluded.label, field_type = excluded.field_type, sort_order = excluded.sort_order, is_public = excluded.is_public, is_active = excluded.is_active, deleted_at = null;
 insert into public.personalization_options (field_id, slug, label, value, sort_order, is_active)
@@ -357,6 +369,18 @@ insert into public.personalization_options (field_id, slug, label, value, sort_o
   on conflict (field_id, slug) do update set label = excluded.label, value = excluded.value, sort_order = excluded.sort_order, is_active = excluded.is_active;
 insert into public.personalization_options (field_id, slug, label, value, sort_order, is_active)
   select pf.id, 'color-liso', 'Color liso', 'Color liso', 3, true from public.personalization_fields pf join public.categories c on c.id = pf.category_id where c.slug = 'unas' and pf.slug = 'terminacion'
+  on conflict (field_id, slug) do update set label = excluded.label, value = excluded.value, sort_order = excluded.sort_order, is_active = excluded.is_active;
+insert into public.personalization_fields (category_id, slug, label, field_type, is_required, sort_order, is_public, is_active)
+  select id, 'alergias', 'Alergias', 'single_choice', false, 0, true, true from public.categories where slug = 'depilacion'
+  on conflict (category_id, slug) do update set label = excluded.label, field_type = excluded.field_type, sort_order = excluded.sort_order, is_public = excluded.is_public, is_active = excluded.is_active, deleted_at = null;
+insert into public.personalization_options (field_id, slug, label, value, sort_order, is_active)
+  select pf.id, 'no', 'No', 'No', 0, true from public.personalization_fields pf join public.categories c on c.id = pf.category_id where c.slug = 'depilacion' and pf.slug = 'alergias'
+  on conflict (field_id, slug) do update set label = excluded.label, value = excluded.value, sort_order = excluded.sort_order, is_active = excluded.is_active;
+insert into public.personalization_options (field_id, slug, label, value, sort_order, is_active)
+  select pf.id, 'si-leves', 'Sí, leves', 'Sí, leves', 1, true from public.personalization_fields pf join public.categories c on c.id = pf.category_id where c.slug = 'depilacion' and pf.slug = 'alergias'
+  on conflict (field_id, slug) do update set label = excluded.label, value = excluded.value, sort_order = excluded.sort_order, is_active = excluded.is_active;
+insert into public.personalization_options (field_id, slug, label, value, sort_order, is_active)
+  select pf.id, 'si-importantes', 'Sí, importantes', 'Sí, importantes', 2, true from public.personalization_fields pf join public.categories c on c.id = pf.category_id where c.slug = 'depilacion' and pf.slug = 'alergias'
   on conflict (field_id, slug) do update set label = excluded.label, value = excluded.value, sort_order = excluded.sort_order, is_active = excluded.is_active;
 
 -- service_personalization_rules + option modifiers (desde bookingServiceRuleMatrix)
@@ -1453,6 +1477,9 @@ insert into public.service_personalization_rules (service_id, field_id, decision
   select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-social' and c.slug = 'maquillaje' and f.slug = 'prueba'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 insert into public.service_personalization_rules (service_id, field_id, decision)
+  select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-social' and c.slug = 'maquillaje' and f.slug = 'alergias'
+  on conflict (service_id, field_id) do update set decision = excluded.decision;
+insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-fiesta' and c.slug = 'maquillaje' and f.slug = 'evento'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 insert into public.service_personalization_rules (service_id, field_id, decision)
@@ -1463,6 +1490,9 @@ insert into public.service_personalization_rules (service_id, field_id, decision
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-fiesta' and c.slug = 'maquillaje' and f.slug = 'prueba'
+  on conflict (service_id, field_id) do update set decision = excluded.decision;
+insert into public.service_personalization_rules (service_id, field_id, decision)
+  select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-fiesta' and c.slug = 'maquillaje' and f.slug = 'alergias'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-evento' and c.slug = 'maquillaje' and f.slug = 'evento'
@@ -1477,6 +1507,9 @@ insert into public.service_personalization_rules (service_id, field_id, decision
   select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-evento' and c.slug = 'maquillaje' and f.slug = 'prueba'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 insert into public.service_personalization_rules (service_id, field_id, decision)
+  select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-evento' and c.slug = 'maquillaje' and f.slug = 'alergias'
+  on conflict (service_id, field_id) do update set decision = excluded.decision;
+insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-novia' and c.slug = 'maquillaje' and f.slug = 'evento'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 insert into public.service_personalization_rules (service_id, field_id, decision)
@@ -1489,6 +1522,9 @@ insert into public.service_personalization_rules (service_id, field_id, decision
   select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-novia' and c.slug = 'maquillaje' and f.slug = 'prueba'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 insert into public.service_personalization_rules (service_id, field_id, decision)
+  select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-novia' and c.slug = 'maquillaje' and f.slug = 'alergias'
+  on conflict (service_id, field_id) do update set decision = excluded.decision;
+insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-prueba' and c.slug = 'maquillaje' and f.slug = 'evento'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 insert into public.service_personalization_rules (service_id, field_id, decision)
@@ -1499,6 +1535,9 @@ insert into public.service_personalization_rules (service_id, field_id, decision
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-prueba' and c.slug = 'maquillaje' and f.slug = 'prueba'
+  on conflict (service_id, field_id) do update set decision = excluded.decision;
+insert into public.service_personalization_rules (service_id, field_id, decision)
+  select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'mk-prueba' and c.slug = 'maquillaje' and f.slug = 'alergias'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'semi' and c.slug = 'unas' and f.slug = 'estado'
@@ -1535,6 +1574,18 @@ insert into public.service_personalization_rules (service_id, field_id, decision
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 insert into public.service_personalization_rules (service_id, field_id, decision)
   select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'retiro' and c.slug = 'unas' and f.slug = 'terminacion'
+  on conflict (service_id, field_id) do update set decision = excluded.decision;
+insert into public.service_personalization_rules (service_id, field_id, decision)
+  select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'depi-rostro-completo' and c.slug = 'depilacion' and f.slug = 'alergias'
+  on conflict (service_id, field_id) do update set decision = excluded.decision;
+insert into public.service_personalization_rules (service_id, field_id, decision)
+  select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'depi-cejas' and c.slug = 'depilacion' and f.slug = 'alergias'
+  on conflict (service_id, field_id) do update set decision = excluded.decision;
+insert into public.service_personalization_rules (service_id, field_id, decision)
+  select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'depi-bigote' and c.slug = 'depilacion' and f.slug = 'alergias'
+  on conflict (service_id, field_id) do update set decision = excluded.decision;
+insert into public.service_personalization_rules (service_id, field_id, decision)
+  select s.id, f.id, 'contextual' from public.services s, public.personalization_fields f join public.categories c on c.id = f.category_id where s.slug = 'depi-bozo-menton' and c.slug = 'depilacion' and f.slug = 'alergias'
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 
 -- business hours (una franja por weekday hoy; el schema admite múltiples)

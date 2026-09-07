@@ -34,6 +34,11 @@ export const personalizationFields: Record<CategoryId, PersonalizationField[]> =
       options: ["Natural", "Glam", "Editorial", "Clásico"],
     },
     { id: "prueba", label: "¿Requiere prueba previa?", options: ["Sí", "No"] },
+    // Es la misma pregunta, con las mismas opciones, que en peluquería:
+    // una sola forma de preguntarlo en todo el salón. Los productos de
+    // maquillaje van sobre la cara y cerca de los ojos, así que acá
+    // importa por lo menos tanto como en el pelo.
+    { id: "alergias", label: "Alergias", options: ["No", "Sí, leves", "Sí, importantes"] },
   ],
   unas: [
     {
@@ -47,5 +52,9 @@ export const personalizationFields: Record<CategoryId, PersonalizationField[]> =
       options: ["Brillante", "Mate", "Francesa", "Color liso"],
     },
   ],
-  depilacion: [],
+  depilacion: [
+    // Depilación es cera sobre la piel: si hay algo que preguntar antes
+    // de empezar, es esto. Hasta ahora el área no preguntaba nada.
+    { id: "alergias", label: "Alergias", options: ["No", "Sí, leves", "Sí, importantes"] },
+  ],
 };
