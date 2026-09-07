@@ -1538,17 +1538,13 @@ insert into public.service_personalization_rules (service_id, field_id, decision
   on conflict (service_id, field_id) do update set decision = excluded.decision;
 
 -- business hours (una franja por weekday hoy; el schema admite múltiples)
-delete from public.business_hours where weekday = 1 and opens_at = '09:30' and closes_at = '18:30';
-insert into public.business_hours (weekday, opens_at, closes_at, is_active) values (1, '09:30', '18:30', true);
-delete from public.business_hours where weekday = 2 and opens_at = '09:30' and closes_at = '18:30';
-insert into public.business_hours (weekday, opens_at, closes_at, is_active) values (2, '09:30', '18:30', true);
-delete from public.business_hours where weekday = 3 and opens_at = '09:30' and closes_at = '18:30';
-insert into public.business_hours (weekday, opens_at, closes_at, is_active) values (3, '09:30', '18:30', true);
-delete from public.business_hours where weekday = 4 and opens_at = '09:30' and closes_at = '18:30';
-insert into public.business_hours (weekday, opens_at, closes_at, is_active) values (4, '09:30', '18:30', true);
-delete from public.business_hours where weekday = 5 and opens_at = '09:30' and closes_at = '18:30';
-insert into public.business_hours (weekday, opens_at, closes_at, is_active) values (5, '09:30', '18:30', true);
-delete from public.business_hours where weekday = 6 and opens_at = '10:00' and closes_at = '14:00';
-insert into public.business_hours (weekday, opens_at, closes_at, is_active) values (6, '10:00', '14:00', true);
+delete from public.business_hours where weekday = 2 and opens_at = '08:00' and closes_at = '15:00';
+insert into public.business_hours (weekday, opens_at, closes_at, is_active) values (2, '08:00', '15:00', true);
+delete from public.business_hours where weekday = 3 and opens_at = '08:00' and closes_at = '15:00';
+insert into public.business_hours (weekday, opens_at, closes_at, is_active) values (3, '08:00', '15:00', true);
+delete from public.business_hours where weekday = 4 and opens_at = '13:00' and closes_at = '20:00';
+insert into public.business_hours (weekday, opens_at, closes_at, is_active) values (4, '13:00', '20:00', true);
+delete from public.business_hours where weekday = 5 and opens_at = '13:00' and closes_at = '20:00';
+insert into public.business_hours (weekday, opens_at, closes_at, is_active) values (5, '13:00', '20:00', true);
 
 commit;

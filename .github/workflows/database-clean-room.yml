@@ -129,7 +129,7 @@ jobs:
           " > /tmp/counts-before.txt
 
           cat > /tmp/counts-expected.txt <<'EOF'
-          business_hours=6
+          business_hours=4
           categories=4
           extras=13
           personalization_fields=12
@@ -191,7 +191,7 @@ jobs:
             if n <> 13 then raise exception 'anon extras expected 13, got %', n; end if;
 
             select count(*) into n from public.business_hours;
-            if n <> 6 then raise exception 'anon business_hours expected 6, got %', n; end if;
+            if n <> 4 then raise exception 'anon business_hours expected 4, got %', n; end if;
           end
           $$;
 

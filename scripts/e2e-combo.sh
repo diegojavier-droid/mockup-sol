@@ -38,8 +38,13 @@ cleanup() {
 cleanup
 
 # Dos servicios reales de la MISMA área, y uno de otra para el rechazo.
-A=$(psql_run "select s.slug from public.services s join public.categories c on c.id=s.category_id join public.service_price_tiers t on t.service_id=s.id where c.slug='peluqueria' and s.is_active group by s.slug order by s.slug limit 1")
-B=$(psql_run "select s.slug from public.services s join public.categories c on c.id=s.category_id join public.service_price_tiers t on t.service_id=s.id where c.slug='peluqueria' and s.is_active and s.slug <> '$A' group by s.slug order by s.slug limit 1")
+#
+# Se eligen los DOS MÁS CORTOS a propósito. El salón abre siete horas por
+# día, así que dos servicios largos suman más que la jornada y la
+# disponibilidad del combo queda —correctamente— vacía: el test no podría
+# comparar nada y fallaría por un motivo que no es el que mide.
+A=$(psql_run "select s.slug from public.services s join public.categories c on c.id=s.category_id join public.service_price_tiers t on t.service_id=s.id where c.slug='peluqueria' and s.is_active group by s.slug, s.duration_minutes order by s.duration_minutes, s.slug limit 1")
+B=$(psql_run "select s.slug from public.services s join public.categories c on c.id=s.category_id join public.service_price_tiers t on t.service_id=s.id where c.slug='peluqueria' and s.is_active and s.slug <> '$A' group by s.slug, s.duration_minutes order by s.duration_minutes, s.slug limit 1")
 OTRA=$(psql_run "select s.slug from public.services s join public.categories c on c.id=s.category_id join public.service_price_tiers t on t.service_id=s.id where c.slug <> 'peluqueria' and s.is_active group by s.slug order by s.slug limit 1")
 
 if [ -z "$A" ] || [ -z "$B" ]; then
@@ -118,6 +123,9 @@ for d in json.load(sys.stdin)['data']['days']:
         print(d['times'][-1] if d['times'] else ''); break" 2>/dev/null)
 LAST2=$(curl -s -m 25 "$API/availability?service=$A,$B&length=medio&from=${DAY}T00:00:00Z&days=1" \
   | python3 -c "import sys,json;d=json.load(sys.stdin)['data']['days'];t=d[0]['times'] if d else [];print(t[-1] if t else '')" 2>/dev/null)
+if [ -z "$LAST2" ]; then
+  echo "    (el combo no entra en ninguna jornada de $DAY: bloque de ${DC}min + preparación)"
+fi
 ok "el último horario del combo es más temprano que el del servicio solo ($LAST2 < $LAST1)" \
    "$([ -n "$LAST1" ] && [ -n "$LAST2" ] && [ "$LAST2" \< "$LAST1" ] && echo 1 || echo 0)" "$LAST1 / $LAST2"
 

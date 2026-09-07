@@ -36,13 +36,25 @@ const summerVacationClosedDays: ClosedDay[] = Array.from({ length: 28 }, (_, ind
   active: true,
 }));
 
+/**
+ * Horario real del salón (confirmado por Sol, 2026-09-07). Antes decía
+ * lunes a viernes de 09:30 a 18:30 y sábados de 10 a 14, que era un
+ * horario inventado del andamiaje inicial.
+ *
+ * Lunes y domingo cerrados. El sábado queda fuera a propósito: Sol
+ * atiende novias y eventos esos días y se coordinan por WhatsApp, no
+ * eligiendo de una lista de horarios.
+ *
+ * De acá sale el seed del bootstrap del catálogo
+ * (`scripts/generate-catalog-seed.ts`), así que este arreglo y
+ * `supabase/migrations/20260907120000_real_business_hours.sql` tienen que
+ * decir lo mismo. En producción la fuente de verdad es `business_hours`.
+ */
 export const businessHours: BusinessHours[] = [
-  { weekday: 1, opensAt: "09:30", closesAt: "18:30", active: true },
-  { weekday: 2, opensAt: "09:30", closesAt: "18:30", active: true },
-  { weekday: 3, opensAt: "09:30", closesAt: "18:30", active: true },
-  { weekday: 4, opensAt: "09:30", closesAt: "18:30", active: true },
-  { weekday: 5, opensAt: "09:30", closesAt: "18:30", active: true },
-  { weekday: 6, opensAt: "10:00", closesAt: "14:00", active: true },
+  { weekday: 2, opensAt: "08:00", closesAt: "15:00", active: true },
+  { weekday: 3, opensAt: "08:00", closesAt: "15:00", active: true },
+  { weekday: 4, opensAt: "13:00", closesAt: "20:00", active: true },
+  { weekday: 5, opensAt: "13:00", closesAt: "20:00", active: true },
 ];
 
 export const closedDays: ClosedDay[] = [
