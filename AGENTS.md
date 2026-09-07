@@ -15,6 +15,14 @@ Antes de modificar código, leer en este orden:
 Los PDFs/documentos maestros anteriores son históricos/contextuales y no
 reemplazan la fuente de verdad vigente del repo.
 
+## Textos que ve la clienta
+
+Cualquier palabra visible en la app —títulos, botones, errores, mails,
+mensajes de WhatsApp— se escribe siguiendo `.claude/skills/copy-sol-mai/`.
+La regla central es que el copy se investiga antes de escribirse, y que
+las frases ya rechazadas quedan registradas con su motivo en
+`references/vetos.md`. No proponer texto nuevo sin leer ese archivo.
+
 ## Gobierno
 
 - `main` = baseline estable.
