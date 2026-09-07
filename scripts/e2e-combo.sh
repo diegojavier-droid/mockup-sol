@@ -95,10 +95,28 @@ fi
 
 echo ""
 echo "── 4. La disponibilidad pide el bloque COMPLETO"
-DAY=$(date -u -d "+6 days" +%Y-%m-%d)
-LAST1=$(curl -s -m 20 "$API/availability?service=$A&length=medio&from=${DAY}T00:00:00Z&days=1" \
-  | python3 -c "import sys,json;d=json.load(sys.stdin)['data']['days'];t=d[0]['times'] if d else [];print(t[-1] if t else '')" 2>/dev/null)
-LAST2=$(curl -s -m 20 "$API/availability?service=$A,$B&length=medio&from=${DAY}T00:00:00Z&days=1" \
+# El salón cierra los lunes y no ofrece sábados online, así que un offset
+# fijo caía en un día cerrado según el día de la semana en que corriera
+# CI. Se pide una ventana y se compara sobre el primer día que el sistema
+# ofrece para el servicio solo; el combo se consulta sobre ESE mismo día.
+FROM=$(date -u -d "+1 day" +%Y-%m-%d)
+AV1=$(curl -s -m 25 "$API/availability?service=$A&length=medio&from=${FROM}T00:00:00Z&days=14")
+DAY=$(echo "$AV1" | python3 -c "
+import sys,json
+for d in json.load(sys.stdin)['data']['days']:
+    if d['times']:
+        print(d['date']); break" 2>/dev/null)
+if [ -z "$DAY" ]; then
+  echo "FALLA · no hay ningún día con horarios en los próximos 14 días"
+  FAIL=$((FAIL+1))
+  DAY=$FROM
+fi
+LAST1=$(echo "$AV1" | python3 -c "
+import sys,json
+for d in json.load(sys.stdin)['data']['days']:
+    if d['date']=='$DAY':
+        print(d['times'][-1] if d['times'] else ''); break" 2>/dev/null)
+LAST2=$(curl -s -m 25 "$API/availability?service=$A,$B&length=medio&from=${DAY}T00:00:00Z&days=1" \
   | python3 -c "import sys,json;d=json.load(sys.stdin)['data']['days'];t=d[0]['times'] if d else [];print(t[-1] if t else '')" 2>/dev/null)
 ok "el último horario del combo es más temprano que el del servicio solo ($LAST2 < $LAST1)" \
    "$([ -n "$LAST1" ] && [ -n "$LAST2" ] && [ "$LAST2" \< "$LAST1" ] && echo 1 || echo 0)" "$LAST1 / $LAST2"

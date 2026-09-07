@@ -55,18 +55,25 @@ ok "el catálogo público responde ($CATS categorías)" "$([ "$CATS" -ge 4 ] && 
 
 echo ""
 echo "── 2. La clienta pide disponibilidad real"
-DAY=$(date -u -d "+5 days" +%Y-%m-%d)
-AV=$(curl -s -m 10 "$API/availability?service=corte-fem&length=medio&from=${DAY}T00:00:00Z&days=1")
+# El salón no abre todos los días (lunes cerrado, sábados fuera del canal
+# online), así que un offset fijo caía en un día cerrado según el día de
+# la semana en que corriera CI y el test fallaba sin que nada estuviera
+# roto. Se pide una ventana y se toma el primer día que el sistema
+# realmente ofrece.
+DAY=$(date -u -d "+1 day" +%Y-%m-%d)
+AV=$(curl -s -m 20 "$API/availability?service=corte-fem&length=medio&from=${DAY}T00:00:00Z&days=14")
 SLOTS=$(echo "$AV" | python3 -c "
 import sys,json
 d=json.load(sys.stdin).get('data',{})
 print(sum(len(x['times']) for x in d.get('days',[])))
 " 2>/dev/null || echo 0)
-ok "hay horarios disponibles ($SLOTS)" "$([ "$SLOTS" -gt 0 ] && echo 1 || echo 0)" "$(echo "$AV" | head -c 200)"
+ok "hay horarios disponibles en los próximos 14 días ($SLOTS)" \
+   "$([ "$SLOTS" -gt 0 ] && echo 1 || echo 0)" "$(echo "$AV" | head -c 200)"
 FIRST=$(echo "$AV" | python3 -c "
 import sys,json
-d=json.load(sys.stdin)['data']['days'][0]
-print('%sT%s:00-03:00' % (d['date'], d['times'][0]))" 2>/dev/null)
+for d in json.load(sys.stdin)['data']['days']:
+    if d['times']:
+        print('%sT%s:00-03:00' % (d['date'], d['times'][0])); break" 2>/dev/null)
 echo "    primer horario: $FIRST"
 
 echo ""
