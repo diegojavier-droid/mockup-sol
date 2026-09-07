@@ -1,94 +1,174 @@
 # Cómo escriben los salones argentinos
 
-Material de referencia para no escribir a ciegas. Se amplía cada vez que se
-investiga algo nuevo.
+Frases **textuales**, transcritas de los sitios el 7 de septiembre de 2026.
+Cada una está atada a su fuente. Cuando algo sea interpretación mía y no
+una cita, lo digo.
 
-## Advertencia sobre la calidad de esta fuente
+Si volvés a investigar, sumá acá lo que encuentres — y si encontrás un
+contraejemplo de algo que este archivo afirma, corregilo. Ya pasó una vez
+(ver «La corrección» más abajo).
 
-Lo que sigue se juntó **el 7 de septiembre de 2026 desde el contenedor remoto
-de este repo**, donde la política de red bloquea abrir sitios externos: cada
-intento de entrar a `bucles.com.ar`, `malapeluqueria.com`, `cerini.net`,
-`agendapro.com` o Instagram devolvió `EGRESS_BLOCKED`. Lo único que funcionó
-fue la búsqueda web, que devuelve **resúmenes del buscador, no el HTML del
-sitio**.
+---
 
-Consecuencia práctica: las frases de abajo son **paráfrasis, no citas
-textuales verificadas**. Sirven para leer el terreno —qué se dice y qué no—
-pero no para copiar una construcción palabra por palabra.
+## BUCLES · Palermo Soho · bucles.com.ar
 
-Si alguna vez trabajás desde una máquina con salida a internet, abrí los
-sitios de verdad, transcribí el copy textual y reemplazá esta sección. Queda
-anotado como deuda.
+**Titular de la portada, textual:**
 
-## Patrón 1 · «Reservá tu turno» es el estándar del rubro
+> RESERVÁ TU TURNO ONLINE Y OLVIDÁTE DE ESPERAR!
 
-Aparece como llamada a la acción en prácticamente todos los salones y
-plataformas argentinas relevadas (Wonoma, AgendaPro, los sitios de los salones
-porteños). No es una frase creativa: es **la** convención del rubro en
-Argentina.
+**Cómo explican el proceso de reserva:**
 
-Para el producto: usá «turno», no «cita». Usá «reservá», no «agendá» ni
-«reserva». Acá conviene sonar convencional; la diferenciación va en el título,
-no en el botón.
+> TE EXPLICAMOS EN 3 SIMPLES PASOS
+>
+> 1. Seleccioná la Promo
+> 2. Confirmá Fecha y Hora
+> 3. Elegí el medio de pago.
 
-## Patrón 2 · Los años valen, y se dicen
+**Títulos de sección:**
 
-Los salones argentinos usan la antigüedad como argumento central, sin
-vergüenza:
+> Servicios Destacados
+> COMBOS Especiales
 
-- **Cerini** (Buenos Aires): marca de lujo del rubro *desde 1985*, dirigida
-  desde su fundación por Claudio Cerini.
-- **Roho** (Caballito): *casi 15 años*, con el lema «no estando de moda» y la
-  declaración de que su intención es incomodar y promover la propia
-  revolución de la clienta.
-- **Angie Salón de Belleza** (Recoleta): se presenta con *más de 13 años*.
-- **Alta Peluquería** (Rosario): tiene una página dedicada al *10° Aniversario*.
+**Frases de venta:**
 
-Para Sol Mai: **los diez años no son un dato de relleno, son el activo más
-fuerte que tiene la portada.** Es el único número confirmado, es verdadero y
-es exactamente lo que el rubro pone adelante. Diego llegó solo a la misma
-conclusión cuando propuso «Diez años de belleza».
+> A LA VANGUARDIA DE LAS NUEVAS TENDENCIAS.
+> EL CAMBIO QUE ESTÁS BUSCANDO.
+> PROCESO DURADERO.
 
-## Patrón 3 · Lo que prometen no es rapidez, es criterio
+**La dirección, como título de la página:**
 
-Las descripciones de los salones top giran alrededor de la técnica, el equipo
-y el resultado. Ninguno vende «rápido», «automático» ni «sin esperar»:
+> Paraguay 4415 (esq. Guatemala) - Palermo Soho
 
-- **MALA** (Palermo Soho): un espacio para potenciar tu estilo, con técnicas
-  de vanguardia, productos de calidad y **un equipo que escucha lo que
-  buscás**.
-- **Verdini**: destacar lo mejor de tu pelo combinando técnica, experiencia y
-  productos de alta calidad, para **resultados reales**.
-- **STARDUST** (Buenos Aires): resaltar tu belleza única con un enfoque
-  personalizado y creativo.
+Qué se aprende:
 
-Dos cosas para robar y una para evitar. Robar: el foco en **el equipo que
-escucha** y en **el resultado real**, que es literalmente lo que Diego
-describió del trato en Sol Mai. Evitar: «tu belleza única» y «enfoque
-personalizado» son el mismo relleno que «belleza a tu medida», ya vetado.
+- **«Reservá tu turno» es literal, no una aproximación.** Y va con
+  «online» al lado.
+- **Los pasos se explican en imperativo y en vos**, numerados y de tres o
+  cuatro palabras: «Seleccioná la Promo», «Confirmá Fecha y Hora». Es
+  exactamente el patrón que necesita un asistente de reserva. Sol Mai usa
+  la misma construcción en «Elegí por dónde empezar» y «Pedir mi turno».
+- **«Servicios Destacados», sin posesivo.** Confirma por qué «Nuestras
+  especialidades» sonaba raro: el rubro nombra lo que hay, no de quién es.
+- **La dirección va arriba y grande.** No escondida en el pie.
 
-## Patrón 4 · Voseo, siempre
+---
 
-Todo el corpus está en voseo y en segunda persona del singular: «lo que
-buscás», «tu pelo», «reservá». Nadie usa «tú» ni «usted». Es la vara mínima:
-un texto en español neutro se lee como importado.
+## CERINI · Buenos Aires · cerini.net
 
-## Lo que el rubro NO hace
+**Su historia, textual:**
 
-Ningún salón relevado vende la reserva online como ahorro de contacto humano.
-Ninguno dice «sin llamar», «sin esperar respuesta» ni «sin hablar con nadie».
-Venden el equipo y el resultado; la reserva online es apenas la puerta.
+> Cerini abrió su primer salón en la calle M.T de Alvear en 1985 y desde
+> el primer momento, se convirtió en una marca registrada en materia de
+> tendencias en color, cortes y peinados.
 
-Esto confirma desde afuera el veto más importante de `vetos.md`.
+> El curriculum de la peluquería, dirigida desde siempre por Claudio
+> Cerini, incluye algunos de los cambios de looks más icónicos de la moda
+> argentina como los cortes de pelo Carolina Peleritti y Deborah de
+> Corral.
+
+> Desde entonces hasta hoy Cerini ha recibido celebridades de todos los
+> ámbitos […] quienes confían en el estilo personalizado que es el ADN de
+> la peluquería.
+
+**Cómo escriben el horario:**
+
+> Lunes a Sábado de 8hs a 20hs
+
+**Cómo avisan que los precios pueden cambiar:**
+
+> Listado de precios vigentes a partir del 21 de Agosto de 2026
+>
+> Los precios y la disponibilidad, pueden estar sujetos a modificaciones
+> sin previo aviso.
+
+**Cómo nombran los largos en la lista de precios:**
+
+> CORTO / MEDIO
+> LARGO (debajo del hombro)
+
+Qué se aprende:
+
+- **La antigüedad se dice con la fecha y el lugar**, no con un adjetivo:
+  «abrió su primer salón en la calle M.T de Alvear en 1985». Es el mismo
+  movimiento que «Diez años peinando Santa Fe»: un dato verificable, no
+  una promesa.
+- **«Estilo personalizado» sí se usa** — pero Cerini se lo gana con
+  cuarenta años y clientas con nombre y apellido. Ahí está el matiz que
+  hundió a «Belleza a tu medida»: la frase no es mala en sí, es que no se
+  puede afirmar sin nada que la sostenga.
+- **«8hs a 20hs»** es la forma local de escribir un horario. La app usa
+  «8 a 15», que es la misma familia y entra mejor en un teléfono.
+- **Los largos se aclaran con una referencia física**: «LARGO (debajo del
+  hombro)». La app hoy dice «Corto / Media melena / Largo / Muy largo»
+  sin referencia. Vale la pena considerarlo: la clienta que duda entre
+  «largo» y «muy largo» está adivinando, y de eso depende el precio.
+- **Un aviso de precios sujetos a cambio es normal en el rubro**, y está
+  escrito sin pedir disculpas. Relevante porque los precios de Sol son
+  provisionales y la app muestra «Total estimado».
+
+---
+
+## AgendaPro · plataforma de reservas · agendapro.com
+
+> Encuentra el servicio perfecto para ti
+> Elige cuando
+
+Qué se aprende, y es un contraste útil: **la plataforma NO habla en
+argentino.** «Encuentra», «para ti», «Elige» — es español neutro, porque
+le sirve a toda la región. Los salones, en cambio, escriben en voseo.
+
+Sol Mai tiene que sonar a salón, no a plataforma. Si un texto del producto
+se puede leer igual en México, está mal escrito.
+
+---
+
+## La corrección
+
+La versión anterior de este archivo afirmaba:
+
+> «Ningún salón relevado vende la reserva online como ahorro de contacto
+> humano. Ninguno dice "sin llamar", "sin esperar respuesta" ni "sin
+> hablar con nadie".»
+
+**Era falso, y se armó con resúmenes de buscador en vez de con los sitios
+abiertos.** BUCLES, uno de los salones más conocidos de Palermo, encabeza
+su portada con «OLVIDÁTE DE ESPERAR».
+
+Pero el veto de `vetos.md` sigue en pie, y ahora por una razón más
+precisa. Hay que separar dos cosas que se parecen:
+
+- **«Olvidate de esperar» (BUCLES) habla del tiempo**: no hacer cola, no
+  quedarse sentada, no depender de que haya lugar. Eso es un beneficio
+  real y se puede decir.
+- **«Reservá sin esperar respuesta» (vetado) hablaba de la persona**:
+  prometía que del otro lado no hay nadie que conteste.
+
+Lo primero saca una molestia. Lo segundo saca el vínculo, que en un salón
+de 150 clientas es el producto. La regla queda así: **se puede prometer
+que no vas a perder tiempo; no se puede prometer que no vas a hablar con
+nadie.**
+
+Esta corrección vale más que cualquier frase de este archivo: muestra que
+una regla escrita sin mirar las fuentes se convierte en una regla falsa
+que después se aplica con confianza.
+
+---
+
+## Cómo se juntó esto
+
+Con `curl` desde el contenedor, sobre los sitios reales, y extrayendo el
+texto de los títulos y párrafos del HTML. La herramienta de fetch del
+asistente sigue bloqueada aunque el entorno permita el dominio: usá
+`curl` y leé el HTML.
+
+Instagram sigue sin ser accesible (pide login). El material de la cuenta
+del salón entra por capturas — ver `marca.md`, que tiene la voz de Sol
+transcrita de un posteo.
 
 ## Fuentes
 
-- https://www.wonoma.com/es-AR
-- https://agendapro.com/mp/ar/peluquerias-buenos-aires
-- https://www.malapeluqueria.com/ · https://malapeluqueria.site.agendapro.com/ar
-- https://cerini.net/en/history/
-- https://buscador-peluquerias.salonsecret.com.ar/993160-roho
-- https://www.facebook.com/Angiesalondebelleza/
-- https://altapeluqueria.com.ar/aniversario/
-- https://www.stardust.salon/
 - https://www.bucles.com.ar/
+- https://cerini.net/ · /historia/ · /servicios/
+- https://agendapro.com/mp/ar/peluquerias-buenos-aires
+- https://www.stardust.salon/ (la portada llega vacía: se arma con
+  JavaScript, así que `curl` no ve el texto)
