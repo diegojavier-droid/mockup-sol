@@ -116,7 +116,70 @@ export function createPaymentsRoute(env: ServerEnv) {
           200,
         );
       }
-      throw error;
+
+      // El proveedor contestó mal, tardó, o está caído.
+      //
+      // Para la clienta es la misma situación que la de arriba: acaba de
+      // cargar todos sus datos y no puede pagar ahora. Antes ese caso
+      // subía como error y le mostraba una falla genérica; ahora degrada
+      // igual, porque el turno tampoco se pierde: quedó creado esperando
+      // la seña y el salón lo puede coordinar.
+      //
+      // No se silencia: se registra fuerte del lado del servidor y se
+      // deja rastro en `payments`, para que una reserva trabada tenga una
+      // explicación y no le cueste a Sol una llamada averiguando qué pasó.
+      console.error(
+        JSON.stringify({
+          evento: "checkout_no_disponible",
+          proveedor: provider.name,
+          bookingId,
+          detalle: error instanceof Error ? error.message : String(error),
+          ts: new Date().toISOString(),
+        }),
+      );
+
+      // `provider_ref` es único por proveedor y acá no hay ninguno que
+      // venga del otro lado, así que se sintetiza uno. Si el rastro falla
+      // —la base caída, por ejemplo— no puede tumbar la respuesta: la
+      // clienta ya tiene su turno y merece un mensaje, no un 500.
+      try {
+        const { error: traceError } = await admin.from("payments").insert({
+          booking_id: bookingId,
+          provider: provider.name,
+          provider_ref: `fallo:${bookingId}:${Date.now()}`,
+          amount: booking.depositAmount,
+          status: "preference_failed",
+          raw_payload: {
+            detalle: error instanceof Error ? error.message : String(error),
+          },
+        });
+        // El cliente de Supabase NO rechaza ante un error de base: lo
+        // devuelve en `error`. Un `catch` solo no alcanza para enterarse.
+        if (traceError) {
+          console.error(
+            "[sol-mai-api] no se pudo registrar el intento fallido:",
+            traceError.message,
+          );
+        }
+      } catch (traceError) {
+        // Y si además falla la conexión, tampoco puede tumbar la
+        // respuesta: la clienta ya tiene su turno y merece un mensaje,
+        // no un 500 por un registro que es para nosotros, no para ella.
+        console.error("[sol-mai-api] no se pudo registrar el intento fallido:", traceError);
+      }
+
+      return c.json(
+        {
+          data: {
+            checkoutUrl: null,
+            depositAmount: booking.depositAmount,
+            paymentRequiredUntil: booking.paymentRequiredUntil,
+            message:
+              "Ahora mismo no podemos abrir el pago. Tu turno queda esperando la seña y te escribimos para coordinarla.",
+          },
+        },
+        200,
+      );
     }
   });
 
