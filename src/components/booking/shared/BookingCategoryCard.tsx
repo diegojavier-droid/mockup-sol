@@ -6,11 +6,21 @@ import nailsImg from "@/assets/sol-mai-unas.jpg";
 import { selectableCardClass } from "../booking-styles";
 import { SelectedMark } from "../cards/SelectedMark";
 
-const categoryImages: Record<CategoryId, string> = {
+/**
+ * Foto por área.
+ *
+ * `depilacion` no tiene foto propia todavía y por eso no está acá.
+ * Estuvo apuntando a la de maquillaje, y el resultado era que dos de las
+ * cuatro tarjetas mostraban exactamente la misma imagen: se leía como un
+ * error del sitio, no como una decisión. Hasta que exista la foto de
+ * depilación, la tarjeta usa un fondo cálido sin imagen —queda prolijo y
+ * no promete algo que no es. En cuanto el archivo esté en `src/assets/`,
+ * se agrega la línea y la tarjeta lo toma sola.
+ */
+const categoryImages: Partial<Record<CategoryId, string>> = {
   peluqueria: peluImg,
   maquillaje: makeImg,
   unas: nailsImg,
-  depilacion: makeImg,
 };
 
 const publicCategoryLabels: Record<CategoryId, string> = {
@@ -63,17 +73,27 @@ export function BookingCategoryCard({
       )}
     >
       <div className="relative overflow-hidden">
-        <img
-          src={image}
-          alt={title}
-          loading="lazy"
-          width={800}
-          height={800}
-          className={cn(
-            "w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]",
-            isPublic ? "h-24 sm:h-32 lg:h-28" : "h-28 sm:h-32",
-          )}
-        />
+        {image ? (
+          <img
+            src={image}
+            alt={title}
+            loading="lazy"
+            width={800}
+            height={800}
+            className={cn(
+              "w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]",
+              isPublic ? "h-24 sm:h-32 lg:h-28" : "h-28 sm:h-32",
+            )}
+          />
+        ) : (
+          <div
+            aria-hidden
+            className={cn(
+              "w-full bg-gradient-to-br from-cream via-sand/70 to-blonde/50",
+              isPublic ? "h-24 sm:h-32 lg:h-28" : "h-28 sm:h-32",
+            )}
+          />
+        )}
         {!isPublic ? (
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card/30 via-transparent to-transparent" />
         ) : null}

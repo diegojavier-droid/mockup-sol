@@ -136,7 +136,29 @@ function toFieldDTO(row: FieldRow): PersonalizationFieldDTO {
   };
 }
 
+/**
+ * Franja de atención del salón, tal como la lee la clienta.
+ *
+ * `weekday` sigue la convención de la base y de JS: 0 = domingo … 6 =
+ * sábado. Un día sin franjas es un día cerrado; no se devuelve una fila
+ * vacía porque "cerrado" no es un horario.
+ */
+export interface BusinessHourDTO {
+  weekday: number;
+  opensAt: string;
+  closesAt: string;
+}
+
+/** Lo que la portada necesita saber del salón, todo de la base. */
+export interface SalonInfoDTO {
+  hours: BusinessHourDTO[];
+  /** Porcentaje de seña. `null` si no está configurado: se prefiere callar a inventarlo. */
+  depositRatePct: number | null;
+}
+
 export interface CatalogRepository {
+  getSalonInfo(): Promise<SalonInfoDTO>;
+  listBusinessHours(): Promise<BusinessHourDTO[]>;
   listCategories(): Promise<CategoryDTO[]>;
   listServices(params?: { categorySlug?: string }): Promise<ServiceSummaryDTO[]>;
   listExtras(params?: { categorySlug?: string }): Promise<ExtraDTO[]>;
@@ -144,8 +166,51 @@ export interface CatalogRepository {
   getServiceDetail(slug: string): Promise<ServiceDetailDTO | null>;
 }
 
+async function loadBusinessHours(client: SupabaseAnonServerClient): Promise<BusinessHourDTO[]> {
+  const { data, error } = await client
+    .from("business_hours")
+    .select("weekday, opens_at, closes_at")
+    .eq("is_active", true)
+    .order("weekday", { ascending: true })
+    .order("opens_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((r) => {
+    const row = r as { weekday: number; opens_at: string; closes_at: string };
+    // La base devuelve "08:00:00"; a la clienta se le muestra "08:00".
+    return {
+      weekday: row.weekday,
+      opensAt: row.opens_at.slice(0, 5),
+      closesAt: row.closes_at.slice(0, 5),
+    };
+  });
+}
+
 export function createCatalogRepository(client: SupabaseAnonServerClient): CatalogRepository {
   return {
+    async getSalonInfo() {
+      const hours = await loadBusinessHours(client);
+
+      // `deposit_rate_pct` es legible por anon (ver la policy
+      // business_settings_public_read). Si faltara, se devuelve null y la
+      // portada no menciona la seña: un porcentaje escrito a mano en la
+      // interfaz es exactamente el tipo de dato que después no coincide
+      // con lo que se cobra.
+      const { data, error } = await client
+        .from("business_settings")
+        .select("value")
+        .eq("key", "deposit_rate_pct")
+        .maybeSingle();
+      if (error) throw error;
+
+      const raw = (data as { value: unknown } | null)?.value;
+      const parsed = typeof raw === "number" ? raw : Number(raw);
+      const depositRatePct = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+
+      return { hours, depositRatePct };
+    },
+
+    listBusinessHours: () => loadBusinessHours(client),
+
     async listCategories() {
       const { data, error } = await client
         .from("categories")

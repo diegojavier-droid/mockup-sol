@@ -7,6 +7,8 @@ import { ServiceDetailsDrawer } from "./shared/ServiceDetailsDrawer";
 import heroImage from "@/assets/sol-mai-hero.jpg";
 import solMaiLogo from "@/assets/sol-mai-logo-header.png";
 import { useCatalog } from "@/lib/catalog-context";
+import { useSalonInfo } from "@/lib/business-hours";
+import { whatsappLink } from "@/lib/sol-mai-contact";
 
 export function Landing({
   onSelectPublicCategory,
@@ -20,6 +22,13 @@ export function Landing({
   selectedCategory: CategoryId | null;
 }) {
   const { categories, services } = useCatalog();
+  // Horario y seña salen de la base. Ver src/lib/business-hours.ts: la
+  // portada llegó a anunciar «próximo turno: mañana 11:30» sin haber
+  // mirado la agenda, y turnos los lunes con el salón cerrado.
+  const { scheduleLines, closedDays, depositRatePct } = useSalonInfo();
+  const whatsappEventsUrl = whatsappLink(
+    "¡Hola Sol Mai! Quiero consultar por un peinado de novia o un evento.",
+  );
   const selectedCategoryData = selectedCategory
     ? categories.find((category) => category.id === selectedCategory)
     : null;
@@ -102,16 +111,23 @@ export function Landing({
                 <span className="h-1 w-1 rounded-full bg-champagne-deep" />
                 Santa Fe
               </span>
-              <div className="absolute bottom-3 right-3">
-                <div className="rounded-xl border border-border/50 bg-card/85 px-2.5 py-1 text-right backdrop-blur-sm">
-                  <p className="text-[8px] uppercase tracking-[0.18em] text-muted-foreground">
-                    Próximo turno
-                  </p>
-                  <p className="font-serif text-[11px] leading-tight text-foreground">
-                    Mañana · 11:30
-                  </p>
+              {scheduleLines.length > 0 ? (
+                <div className="absolute bottom-3 right-3">
+                  <div className="rounded-xl border border-border/50 bg-card/85 px-2.5 py-1 text-right backdrop-blur-sm">
+                    <p className="text-[8px] uppercase tracking-[0.18em] text-muted-foreground">
+                      Atendemos
+                    </p>
+                    {scheduleLines.map((line) => (
+                      <p
+                        key={line.days}
+                        className="font-serif text-[11px] leading-tight text-foreground"
+                      >
+                        {line.days} · {line.hours}
+                      </p>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </div>
             <p className="mt-2.5 flex items-center gap-1.5 px-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
               <span className="h-1 w-1 rounded-full bg-champagne-deep" />
@@ -125,13 +141,11 @@ export function Landing({
               República de Siria 3798 · Santa Fe
             </span>
             <h1 className="font-serif text-[2.55rem] leading-[1.02] text-foreground sm:mt-6 sm:text-6xl lg:text-[4.5rem]">
-              Belleza <em className="not-italic text-champagne-deep">a tu medida.</em>
+              Diez años <em className="not-italic text-champagne-deep">peinando Santa Fe.</em>
             </h1>
             <div className="mt-3 h-px w-14 bg-champagne-deep/40 sm:mt-6 sm:w-16" />
             <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:mt-6 sm:text-base">
-              Reservá tu turno online.
-              <br className="sm:hidden" />
-              Seña del 20% y saldo en el salón.
+              Elegí el horario que te quede cómodo y reservá tu turno. Te esperamos.
             </p>
 
             <div className="mt-5 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
@@ -143,6 +157,14 @@ export function Landing({
                 Ver servicios
               </button>
             </div>
+
+            {/* La seña sale de business_settings: si algún día cambia, el
+                texto cambia solo. Si no está configurada no se menciona. */}
+            {depositRatePct !== null ? (
+              <p className="mt-3.5 text-xs leading-relaxed text-muted-foreground sm:mt-5 sm:text-sm">
+                Reservás con el {depositRatePct}% de seña y el resto lo pagás en el salón.
+              </p>
+            ) : null}
           </div>
 
           <div className="relative hidden sm:block">
@@ -155,12 +177,21 @@ export function Landing({
                 className="h-[520px] w-full object-cover lg:h-[600px]"
               />
             </div>
-            <div className="absolute -bottom-5 left-5 hidden rounded-2xl border border-border bg-card/95 px-5 py-3 shadow-lg backdrop-blur sm:block">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Próximo turno disponible
-              </p>
-              <p className="mt-1 font-serif text-lg text-foreground">Mañana · 11:30</p>
-            </div>
+            {scheduleLines.length > 0 ? (
+              <div className="absolute -bottom-5 left-5 hidden rounded-2xl border border-border bg-card/95 px-5 py-3 shadow-lg backdrop-blur sm:block">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Atendemos
+                </p>
+                {scheduleLines.map((line) => (
+                  <p key={line.days} className="mt-1 font-serif text-base text-foreground">
+                    {line.days} · {line.hours}
+                  </p>
+                ))}
+                {closedDays ? (
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">{closedDays}</p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -170,7 +201,7 @@ export function Landing({
         >
           <div className="max-w-2xl">
             <h2 className="font-serif text-4xl text-foreground lg:text-5xl">
-              Nuestras especialidades
+              Elegí por dónde empezar
             </h2>
           </div>
 
@@ -185,6 +216,38 @@ export function Landing({
               />
             ))}
           </div>
+
+          {/* Novias y eventos.
+
+              El sábado no está en la grilla de horarios a propósito: Sol
+              atiende novias y eventos de fin de semana, y son trabajos
+              que se conversan antes —fecha, cuántas personas, a qué hora
+              hay que estar lista— no que se eligen de una lista de
+              horarios. Que la clienta escriba por WhatsApp no es una
+              salida de emergencia: es el canal correcto para ese pedido,
+              y el turno termina cargado en la misma agenda que los
+              demás, con su canal de origen. */}
+          {whatsappEventsUrl ? (
+            <div className="mt-8 rounded-3xl border border-border bg-cream/50 px-5 py-6 sm:mt-10 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:px-8 sm:py-7">
+              <div className="max-w-lg">
+                <h3 className="font-serif text-2xl text-foreground sm:text-3xl">
+                  ¿Novia o evento?
+                </h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                  Los peinados de novia y los eventos de fin de semana los coordinamos por WhatsApp:
+                  escribinos y armamos el turno con vos.
+                </p>
+              </div>
+              <a
+                href={whatsappEventsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex shrink-0 items-center justify-center rounded-full bg-primary px-6 py-3 font-serif text-base text-primary-foreground shadow-[0_18px_40px_-22px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-0"
+              >
+                Escribinos por WhatsApp
+              </a>
+            </div>
+          ) : null}
         </section>
 
         {selectedCategory && selectedCategoryData ? (

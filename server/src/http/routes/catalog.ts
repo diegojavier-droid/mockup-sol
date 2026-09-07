@@ -31,6 +31,16 @@ export function createCatalogRoute(env: ServerEnv) {
 
   const repo = () => createCatalogRepository(createSupabaseAnonClient(env));
 
+  // Lo que la portada dice del salón —cuándo atiende, cuánto es la
+  // seña— sale de acá y no de texto escrito a mano en el componente,
+  // que es como terminó anunciando «próximo turno: mañana 11:30» sin
+  // haber mirado nunca la agenda, y turnos los lunes con el salón
+  // cerrado.
+  route.get("/salon", async (c) => {
+    const data = await repo().getSalonInfo();
+    return c.json({ data });
+  });
+
   route.get("/categories", async (c) => {
     const data = await repo().listCategories();
     return c.json({ data });
