@@ -7,6 +7,7 @@
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AgendaScreen } from "@/components/booking/admin/AgendaScreen";
 import { DashboardScreen } from "@/components/booking/admin/DashboardScreen";
@@ -22,9 +23,22 @@ function AgendaRoute() {
   const [hasToken, setHasToken] = useState(() => Boolean(readStaffToken()));
   const [tab, setTab] = useState<"agenda" | "numeros">("agenda");
   const identity = useStaffIdentity();
+  const qc = useQueryClient();
 
   if (!hasToken || identity.isError) {
-    return <SignIn onToken={() => setHasToken(true)} error={identity.error as Error | null} />;
+    return (
+      <SignIn
+        onToken={() => {
+          // Volver a preguntar quién es. Sin esto quedaba el error del
+          // 401 anterior —el de cuando todavía no había token— y la
+          // pantalla seguía mostrando el login para siempre: había que
+          // recargar la página para poder entrar.
+          qc.removeQueries({ queryKey: ["admin", "me"] });
+          setHasToken(true);
+        }}
+        error={hasToken ? ((identity.error as Error | null) ?? null) : null}
+      />
+    );
   }
 
   return (

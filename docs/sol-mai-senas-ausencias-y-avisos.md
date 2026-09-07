@@ -1,6 +1,7 @@
 # Señas, ausencias y avisos automáticos
 
-**Estado:** propuesta de diseño. No implementado.
+**Estado:** puntos 1 y 2 del plan CONSTRUIDOS (2026-09-07). El resto,
+propuesta.
 **Fecha:** 2026-09-07
 **Origen:** dirección de producto (Diego): «Sol sólo se debe preocupar por
 ingresar una validación cuando la clienta llegue al local. El resto deberá
@@ -211,10 +212,16 @@ abierto: hoy hay señas que habría que devolver y nadie las devuelve.
 
 ## 7. Orden de construcción
 
-1. **Lista de señas por devolver en el panel.** Red de seguridad
-   inmediata: hoy hay una promesa sin ejecutor. No depende de nada.
-2. **Marcar la llegada, y la ausencia automática.** Es lo que le saca
-   trabajo a Sol.
+1. ~~**Lista de señas por devolver en el panel.**~~ **HECHO.** Aparece
+   en la agenda sólo cuando hay algo pendiente, con nombre, monto,
+   teléfono y un botón «Ya la devolví». La distinción entre «se decidió
+   devolver» y «la plata volvió» ahora existe en la base
+   (`refund_completed_at`).
+2. ~~**Marcar la llegada, y la ausencia automática.**~~ **HECHO.** Botón
+   «Llegó» en la fila del turno, a un toque y sin desplegar nada. La
+   tarea que corre cada cinco minutos da por ausente los turnos
+   confirmados que nadie marcó, pasado el margen de
+   `no_show_grace_hours` (provisional: 6 h, lo decide Sol).
 3. **Devolución automática contra la API de Mercado Pago.** Necesita
    credenciales. Incluye la prueba que resuelve §2.1.
 4. **Avisos por email.** Recordatorio, cancelación, ausencia.

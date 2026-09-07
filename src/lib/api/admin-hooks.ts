@@ -8,7 +8,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "./admin-client";
-import type { StaffIdentity } from "../staff-session";
+import { readStaffToken, type StaffIdentity } from "../staff-session";
 
 export type BookingSource = "online" | "manual" | "phone" | "whatsapp" | "walk_in";
 
@@ -45,10 +45,22 @@ export interface AgendaPage {
   entries: AgendaEntry[];
 }
 
+/**
+ * Quién está mirando el panel.
+ *
+ * `enabled` importa: sin token guardado la consulta NO se dispara. Antes
+ * salía igual, cobraba un 401 y quedaba marcada como error para siempre
+ * —`retry: false`, sin nada que la reintentara—. Como la pantalla decide
+ * mostrar el login mirando ese error, pegar el token no servía de nada:
+ * había que recargar la página para poder entrar. Le pasaba a cualquiera
+ * que abriera el panel sin sesión, que es la primera vez de todo el
+ * mundo.
+ */
 export function useStaffIdentity() {
   return useQuery({
     queryKey: ["admin", "me"],
     queryFn: () => adminApi.get<StaffIdentity>("/me"),
+    enabled: Boolean(readStaffToken()),
     retry: false,
     staleTime: 5 * 60_000,
   });
@@ -138,6 +150,46 @@ export function useMarkNoShow() {
         message: string;
       }>(`/bookings/${bookingId}/no-show`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "agenda"] }),
+  });
+}
+
+export interface PendingRefund {
+  booking_id: string;
+  amount: number;
+  starts_at: string;
+  cancelled_at: string | null;
+  status: string;
+  customer: string;
+  phone: string | null;
+  email: string | null;
+}
+
+/**
+ * Las señas que se prometió devolver y todavía no volvieron.
+ *
+ * Se refresca seguido a propósito: es una lista de plata ajena esperando,
+ * no un informe.
+ */
+export function usePendingRefunds() {
+  return useQuery({
+    queryKey: ["admin", "refunds-pending"],
+    queryFn: () =>
+      adminApi.get<{ totalAmount: number; items: PendingRefund[] }>("/refunds-pending"),
+    staleTime: 30_000,
+  });
+}
+
+export function useMarkRefundDone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (bookingId: string) =>
+      adminApi.post<{ status: string; amount?: number; message: string }>(
+        `/bookings/${bookingId}/refund-done`,
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "refunds-pending"] });
+      qc.invalidateQueries({ queryKey: ["admin", "agenda"] });
+    },
   });
 }
 
