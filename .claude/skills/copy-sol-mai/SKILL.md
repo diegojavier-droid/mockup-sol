@@ -51,11 +51,18 @@ Buscá cómo resuelven ese mismo texto los salones argentinos de referencia y
 las marcas argentinas que le hablan a la misma clienta. Citá al menos tres
 fuentes reales, con la frase textual que viste y de dónde salió.
 
-Si el entorno bloquea la salida a internet —pasa: en el contenedor de este
-repo sólo funciona la búsqueda web, no abrir los sitios—, **decilo en la
-respuesta y marcá la propuesta como no verificada**. Es una limitación
-molesta pero honesta. Presentar una frase inventada como si fuera producto de
-investigación es exactamente lo que hizo falta corregir.
+**Cómo abrir los sitios en este repo:** con `curl`, y leyendo el HTML. La
+herramienta de fetch del asistente tiene su propia lista de permitidos y
+devuelve «bloqueado» aunque el entorno permita el dominio; `curl` sí pasa.
+La búsqueda web devuelve resúmenes parafraseados, no las palabras del
+sitio: sirve para encontrar a quién mirar, nunca como cita.
+
+Si aun así no podés abrir nada, **decilo en la respuesta y marcá la
+propuesta como no verificada**. Presentar una frase inventada como si fuera
+producto de investigación es exactamente lo que hizo falta corregir. Ya
+pasó una vez que una regla escrita sin mirar las fuentes resultó falsa
+—ver «La corrección» en `corpus-argentino.md`—, así que la duda se
+escribe, no se disimula.
 
 ### 2. Proponé tres caminos, no tres sinónimos
 
