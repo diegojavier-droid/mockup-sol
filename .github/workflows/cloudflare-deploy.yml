@@ -60,6 +60,53 @@ jobs:
           test -d dist/client || {
             echo "::error::el build no generó dist/client (assets del navegador)"; exit 1; }
 
+      # La acción de Cloudflare aborta el despliegue entero si un secreto
+      # de la lista llega vacío: «Value for secret X not found in
+      # environment». Así que la lista se arma en función de lo que
+      # realmente existe, en vez de nombrar siempre todo y confiar en que
+      # esté cargado.
+      #
+      # Consecuencia buscada: mientras Mercado Pago no esté configurado el
+      # sitio se despliega igual y el pago online muestra su mensaje. El
+      # día que se carguen las credenciales, se suben solas sin tocar este
+      # archivo.
+      - name: Armar la lista de secretos según lo que esté cargado
+        id: secretos
+        env:
+          MP_TOKEN: ${{ secrets.MERCADO_PAGO_ACCESS_TOKEN }}
+          MP_WEBHOOK: ${{ secrets.MERCADO_PAGO_WEBHOOK_SECRET }}
+        run: |
+          set -euo pipefail
+          LISTA=$'SUPABASE_URL\nSUPABASE_PUBLISHABLE_KEY\nSUPABASE_SECRET_KEY\nINTERNAL_AUTH_ALLOWED_EMAILS\nAPI_BASE_URL\nPUBLIC_WEB_BASE_URL'
+
+          if [ -n "${MP_TOKEN:-}" ]; then
+            LISTA="$LISTA"$'\nMERCADO_PAGO_ACCESS_TOKEN'
+            echo "Mercado Pago: access token presente, se publica."
+          else
+            echo "Mercado Pago: sin access token; el pago online queda deshabilitado."
+          fi
+
+          if [ -n "${MP_WEBHOOK:-}" ]; then
+            LISTA="$LISTA"$'\nMERCADO_PAGO_WEBHOOK_SECRET'
+            echo "Mercado Pago: clave de webhook presente, se publica."
+          else
+            echo "Mercado Pago: sin clave de webhook; el webhook rechazará todo."
+          fi
+
+          # Un token cargado sin su clave de webhook es peor que nada: se
+          # le cobraría a la clienta y ninguna notificación podría
+          # confirmar el turno, porque sin firma verificable se rechaza.
+          if [ -n "${MP_TOKEN:-}" ] && [ -z "${MP_WEBHOOK:-}" ]; then
+            echo "::error::MERCADO_PAGO_ACCESS_TOKEN está cargado pero falta MERCADO_PAGO_WEBHOOK_SECRET. Con esa combinación se cobra y el turno nunca se confirma."
+            exit 1
+          fi
+
+          {
+            echo "lista<<FIN_DE_LISTA"
+            echo "$LISTA"
+            echo "FIN_DE_LISTA"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Deploy with Wrangler
         uses: cloudflare/wrangler-action@v3
         with:
@@ -69,15 +116,7 @@ jobs:
           # Se cargan en el Worker antes de publicar. El propietario los
           # define una sola vez en los secrets del repositorio y nunca
           # pasan por un chat ni quedan en el código.
-          secrets: |
-            SUPABASE_URL
-            SUPABASE_PUBLISHABLE_KEY
-            SUPABASE_SECRET_KEY
-            INTERNAL_AUTH_ALLOWED_EMAILS
-            API_BASE_URL
-            PUBLIC_WEB_BASE_URL
-            MERCADO_PAGO_ACCESS_TOKEN
-            MERCADO_PAGO_WEBHOOK_SECRET
+          secrets: ${{ steps.secretos.outputs.lista }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
@@ -87,9 +126,9 @@ jobs:
           # despliegue. Hasta que se cargue, se usa la del Worker.
           API_BASE_URL: ${{ vars.PUBLIC_WEB_BASE_URL || 'https://sol-mai-peluqueria.workers.dev' }}
           PUBLIC_WEB_BASE_URL: ${{ vars.PUBLIC_WEB_BASE_URL || 'https://sol-mai-peluqueria.workers.dev' }}
-          # Mercado Pago. Mientras no estén cargados llegan vacíos, el
-          # backend los trata como ausentes y el pago online queda
-          # deshabilitado con su mensaje: no rompe el despliegue.
+          # Mercado Pago. Sólo se suben si el paso anterior los puso en la
+          # lista; acá se exponen para que, cuando eso pase, la acción
+          # encuentre el valor.
           MERCADO_PAGO_ACCESS_TOKEN: ${{ secrets.MERCADO_PAGO_ACCESS_TOKEN }}
           MERCADO_PAGO_WEBHOOK_SECRET: ${{ secrets.MERCADO_PAGO_WEBHOOK_SECRET }}
 
