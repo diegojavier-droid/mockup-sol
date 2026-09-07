@@ -372,7 +372,6 @@ export async function addCustomerNote(
   if (error) throw error;
 }
 
-
 // ---------------------------------------------------------------------
 // Cierre de atención y conciliación
 // ---------------------------------------------------------------------

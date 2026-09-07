@@ -7,10 +7,7 @@
  */
 
 import { Hono } from "hono";
-import {
-  recordAssistedActivityInBackground,
-  waitUntilContextOf,
-} from "../../lib/assisted/record";
+import { recordAssistedActivityInBackground, waitUntilContextOf } from "../../lib/assisted/record";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import type { ServerEnv } from "../../config/env";
@@ -175,11 +172,7 @@ export function createAvailabilityRoute(env: ServerEnv) {
 
     // La web acaba de contestar qué horarios hay, sin que nadie del
     // salón coordinara nada.
-    recordAssistedActivityInBackground(
-      admin,
-      "availability_self_service",
-      waitUntilContextOf(c),
-    );
+    recordAssistedActivityInBackground(admin, "availability_self_service", waitUntilContextOf(c));
     return c.json({ data: { bookableOnline: true, days: slots } });
   });
 

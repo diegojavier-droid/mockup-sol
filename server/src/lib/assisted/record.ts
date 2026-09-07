@@ -64,9 +64,7 @@ export function recordAssistedActivityInBackground(
  * tests y el runtime de Node, por ejemplo—. Preguntarlo así evita tener
  * que rodear cada ruta con un try.
  */
-export function waitUntilContextOf(c: {
-  executionCtx?: unknown;
-}): WaitUntilContext | null {
+export function waitUntilContextOf(c: { executionCtx?: unknown }): WaitUntilContext | null {
   try {
     const ctx = c.executionCtx as WaitUntilContext | undefined;
     return ctx && typeof ctx.waitUntil === "function" ? ctx : null;

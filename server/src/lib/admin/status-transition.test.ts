@@ -20,7 +20,7 @@ describe("traducción del rechazo de transición", () => {
 
   test("lo encuentra aunque PostgREST envuelva el mensaje", () => {
     const r = parseTransitionError(
-      'invalid_transition:confirmed->expired CONTEXT: PL/pgSQL function set_booking_status(uuid,text,uuid,text) line 34 at RAISE',
+      "invalid_transition:confirmed->expired CONTEXT: PL/pgSQL function set_booking_status(uuid,text,uuid,text) line 34 at RAISE",
     );
     expect(r).toEqual({ from: "confirmed", to: "expired" });
   });

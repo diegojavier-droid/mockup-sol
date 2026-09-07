@@ -10,10 +10,7 @@ import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import type { ServerEnv } from "../../config/env";
 import { createSupabaseAnonClient, createSupabaseAdminClient } from "../../lib/supabase";
-import {
-  recordAssistedActivityInBackground,
-  waitUntilContextOf,
-} from "../../lib/assisted/record";
+import { recordAssistedActivityInBackground, waitUntilContextOf } from "../../lib/assisted/record";
 import { createCatalogRepository } from "../../lib/catalog/repository";
 import { composeQuote, computeQuote } from "../../domain/quote";
 import {

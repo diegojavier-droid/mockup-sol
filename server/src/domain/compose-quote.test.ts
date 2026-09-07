@@ -1,11 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { composeQuote, computeQuote } from "./quote";
-import {
-  QuoteError,
-  type QuoteServiceData,
-  type QuoteSettings,
-  type ServiceTier,
-} from "./types";
+import { QuoteError, type QuoteServiceData, type QuoteSettings, type ServiceTier } from "./types";
 
 const settings: QuoteSettings = { depositRatePct: 20, defaultSetupMinutes: 12 };
 
@@ -116,7 +111,10 @@ describe("varias prestaciones en un mismo turno", () => {
     const color = quoteOf({ slug: "color", name: "Color" });
     const corte = quoteOf();
     const items = composeQuote([color, corte], settings).items;
-    expect(items.filter((i) => i.role === "main").map((i) => i.slug)).toEqual(["color", "corte-fem"]);
+    expect(items.filter((i) => i.role === "main").map((i) => i.slug)).toEqual([
+      "color",
+      "corte-fem",
+    ]);
   });
 
   test("componer sin prestaciones es un error, no un turno vacío", () => {
