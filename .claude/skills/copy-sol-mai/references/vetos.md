@@ -77,6 +77,40 @@ persona, y la que da la cara es Sol.
 
 ---
 
+## «Diez años peinando Santa Fe» — portada
+
+> «el copy "diez años peinando santa fe" me parece horrible» — Diego
+
+**Qué falló** (lectura mía, pendiente de que Diego la confirme o la
+corrija):
+
+1. **Es una frase sobre el negocio, no sobre la clienta.** Ahí está el
+   fondo del asunto. La voz real de Sol —ver `marca.md`— empieza cada
+   línea con «Tu»: «Tu relax / Tu tiempo / Tu cuidado». Mi titular
+   empezaba con la antigüedad del salón. Le hablaba de ella misma a
+   alguien que entró a sacar un turno.
+2. **La evidencia decía lo mismo y no la escuché.** BUCLES pone en su
+   portada una instrucción a la clienta («RESERVÁ TU TURNO ONLINE…»), no
+   un mérito propio. Y Cerini, que tiene la antigüedad más fuerte del
+   rubro, **no** pone «desde 1985» en la portada: está en la página de
+   historia. Yo tenía las dos citas transcritas y aun así puse el mérito
+   en el lugar donde el rubro pone otra cosa.
+3. **«Peinando» achica.** El salón hace color, tratamientos, novias,
+   uñas, maquillaje. «Peinar» es lo más barato de la lista.
+4. **«Peinar una ciudad» es una pirueta de publicista.** Se peina a una
+   persona. La figura llama la atención sobre sí misma.
+
+**La lección.** Los diez años no son el problema: es el único número
+confirmado que hay y el rubro los valora. El problema es **hacia dónde
+apunta la frase**. Un dato del negocio entra en la portada sólo si está
+dado vuelta hacia la clienta. «Diez años peinando Santa Fe» es un mérito;
+«Hace diez años que nos elegís» es el mismo dato convertido en
+agradecimiento.
+
+Regla corta: **si el sujeto de la frase es el salón, reescribila.**
+
+---
+
 ## Sobre «espléndida»
 
 No es un veto, es una advertencia. La frase «Diez años dejándolas espléndidas»
