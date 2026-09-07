@@ -97,17 +97,38 @@ async function handleApiRequest(request: Request, env: unknown, ctx: unknown): P
  * para que la agenda del salón no muestre pendientes eternos.
  */
 async function handleScheduled(env: unknown): Promise<void> {
-  const [{ createSupabaseAdminClient }, { loadServerEnv }, { expireStaleBookings }] =
-    await Promise.all([
-      import("../server/src/lib/supabase"),
-      import("../server/src/config/env"),
-      import("../server/src/lib/booking/repository"),
-    ]);
+  const [{ createSupabaseAdminClient }, { loadServerEnv }, booking] = await Promise.all([
+    import("../server/src/lib/supabase"),
+    import("../server/src/config/env"),
+    import("../server/src/lib/booking/repository"),
+  ]);
 
   const serverEnv = loadServerEnv({ ...process.env, ...collectEnvStrings(env) });
-  const expired = await expireStaleBookings(createSupabaseAdminClient(serverEnv));
+  const admin = createSupabaseAdminClient(serverEnv);
+
+  const expired = await booking.expireStaleBookings(admin);
   if (expired > 0) {
     console.log(`[sol-mai-cron] ${expired} reserva(s) vencida(s) sin seña`);
+  }
+
+  // Ausencias.
+  //
+  // Sol sólo tiene que marcar que la clienta LLEGÓ. Un turno confirmado
+  // que nadie marcó y que ya pasó hace rato es, en los hechos, una
+  // ausencia: si esperáramos a que ella se acuerde, la seña no se retiene
+  // ni se devuelve y la plata no figura en ningún lado.
+  //
+  // Va después de vencer los pendientes de seña, no antes: un turno que
+  // nunca se pagó no es una ausencia, es un horario que se liberó.
+  //
+  // Un fallo acá no puede arrastrar al resto de la tarea.
+  try {
+    const marked = await booking.autoMarkNoShows(admin);
+    if (marked > 0) {
+      console.log(`[sol-mai-cron] ${marked} turno(s) marcado(s) como ausencia`);
+    }
+  } catch (error) {
+    console.error("[sol-mai-cron] auto_mark_no_shows falló:", error);
   }
 }
 

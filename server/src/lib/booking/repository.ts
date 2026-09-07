@@ -194,6 +194,62 @@ export async function markNoShow(
   return data as { status: string; deposit_status: string; deposit_amount: number };
 }
 
+export interface PendingRefund {
+  booking_id: string;
+  amount: number;
+  starts_at: string;
+  cancelled_at: string | null;
+  status: string;
+  customer: string;
+  phone: string | null;
+  email: string | null;
+}
+
+/**
+ * Las señas que se decidió devolver y todavía no volvieron.
+ *
+ * `deposit_status = 'refunded'` expresa la DECISIÓN; que la plata haya
+ * salido lo dice `refund_completed_at`. Sin esta lista, la promesa que se
+ * le hizo a la clienta —«te devolvemos la seña»— no tiene quién la
+ * ejecute y puede quedar colgada para siempre.
+ */
+export async function listPendingRefunds(
+  admin: SupabaseAdminClient,
+): Promise<{ totalAmount: number; items: PendingRefund[] }> {
+  const { data, error } = await admin.rpc("pending_refunds");
+  if (error) rethrow(error);
+  const row = data as { total_amount?: number; items?: PendingRefund[] } | null;
+  return { totalAmount: row?.total_amount ?? 0, items: row?.items ?? [] };
+}
+
+export async function markRefundCompleted(
+  admin: SupabaseAdminClient,
+  params: {
+    bookingId: string;
+    actorId?: string | null;
+    actorLabel?: string | null;
+    amount?: number | null;
+    providerRef?: string | null;
+  },
+): Promise<{ status: string; amount?: number; refund_completed_at?: string }> {
+  const { data, error } = await admin.rpc("mark_refund_completed", {
+    p_booking_id: params.bookingId,
+    p_actor_id: params.actorId ?? null,
+    p_actor_label: params.actorLabel ?? null,
+    p_amount: params.amount ?? null,
+    p_provider_ref: params.providerRef ?? null,
+  });
+  if (error) rethrow(error);
+  return data as { status: string; amount?: number; refund_completed_at?: string };
+}
+
+/** Turnos confirmados que nadie marcó y ya pasaron: se dan por ausentes. */
+export async function autoMarkNoShows(admin: SupabaseAdminClient): Promise<number> {
+  const { data, error } = await admin.rpc("auto_mark_no_shows");
+  if (error) rethrow(error);
+  return (data as number) ?? 0;
+}
+
 export async function expireStaleBookings(admin: SupabaseAdminClient): Promise<number> {
   const { data, error } = await admin.rpc("expire_stale_bookings");
   if (error) rethrow(error);

@@ -13,11 +13,13 @@ import {
   useAssignStation,
   useMarkNoShow,
   useStations,
+  useUpdateBookingStatus,
   type AgendaEntry,
 } from "@/lib/api/admin-hooks";
 import { NewBookingDialog } from "./NewBookingDialog";
 import { CloseServiceDialog } from "./CloseServiceDialog";
 import { StationsDialog } from "./StationsDialog";
+import { PendingRefundsPanel } from "./PendingRefundsPanel";
 
 type Range = "hoy" | "manana" | "semana";
 
@@ -174,6 +176,9 @@ export function AgendaScreen() {
         </p>
       )}
 
+      {/* Sólo aparece si hay plata esperando que la devuelvan. */}
+      <PendingRefundsPanel onFeedback={setFeedback} />
+
       {agenda.isError && (
         <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {(agenda.error as Error).message}
@@ -267,6 +272,7 @@ function BookingRow({
   const [closing, setClosing] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const noShow = useMarkNoShow();
+  const updateStatus = useUpdateBookingStatus();
   const open = entry.status === "confirmed" || entry.status === "pending_payment";
 
   return (
@@ -278,9 +284,30 @@ function BookingRow({
             {entry.customer.firstName} {entry.customer.lastName ?? ""}
           </span>
         </div>
-        <span className="text-[11px] uppercase tracking-wider opacity-80">
-          {STATUS_LABEL[entry.status] ?? entry.status}
-        </span>
+        <div className="flex items-center gap-2">
+          {/* La ÚNICA cosa que Sol tiene que acordarse de hacer.
+              Va acá arriba, a un toque, sin desplegar nada: si marcar una
+              llegada cuesta tres clics, no se marca, y de ese dato depende
+              que el sistema no dé por ausente a alguien que sí vino. */}
+          {entry.status === "confirmed" && (
+            <button
+              type="button"
+              disabled={updateStatus.isPending}
+              onClick={() =>
+                updateStatus.mutate(
+                  { bookingId: entry.id, status: "attended" },
+                  { onSuccess: () => onFeedback(`${entry.customer.firstName} llegó.`) },
+                )
+              }
+              className="rounded-full border border-current/30 bg-current/10 px-3 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+            >
+              Llegó
+            </button>
+          )}
+          <span className="text-[11px] uppercase tracking-wider opacity-80">
+            {STATUS_LABEL[entry.status] ?? entry.status}
+          </span>
+        </div>
       </div>
 
       <p className="mt-1 text-xs opacity-85">

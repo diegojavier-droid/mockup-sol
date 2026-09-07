@@ -36,6 +36,8 @@ import {
   createBooking,
   checkCapacity,
   markNoShow,
+  listPendingRefunds,
+  markRefundCompleted,
   BookingError,
   type CapacityCheck,
 } from "../../lib/booking/repository";
@@ -193,6 +195,62 @@ export function createAdminRoute(env: ServerEnv) {
             message: "Sólo se puede marcar ausencia en un turno que estaba tomado.",
           });
         }
+      }
+      throw error;
+    }
+  });
+
+  /**
+   * Señas que hay que devolver y todavía no se devolvieron.
+   *
+   * Cuando una clienta cancela dentro de la ventana, el sistema le dice
+   * «te devolvemos la seña» y marca la reserva. Pero marcarla no mueve la
+   * plata: hasta que exista la devolución automática contra Mercado Pago,
+   * alguien tiene que hacerla. Sin esta lista esa promesa no tenía quién
+   * la ejecutara ni dónde verse.
+   */
+  route.get("/refunds-pending", async (c) => {
+    const data = await listPendingRefunds(createSupabaseAdminClient(env));
+    return c.json({ data });
+  });
+
+  route.post("/bookings/:id/refund-done", async (c) => {
+    const staff = c.get("staff");
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = z
+      .object({
+        amount: z.number().int().min(1).nullish(),
+        providerRef: z.string().max(120).nullish(),
+      })
+      .safeParse(body);
+    if (!parsed.success) {
+      throw new HTTPException(400, { message: "Datos inválidos para registrar la devolución." });
+    }
+
+    try {
+      const result = await markRefundCompleted(createSupabaseAdminClient(env), {
+        bookingId: c.req.param("id"),
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+        amount: parsed.data.amount ?? null,
+        providerRef: parsed.data.providerRef ?? null,
+      });
+
+      const message =
+        result.status === "already_completed"
+          ? "Esta devolución ya estaba registrada."
+          : `Devolución registrada por $${(result.amount ?? 0).toLocaleString("es-AR")}.`;
+      return c.json({ data: { ...result, message } });
+    } catch (error) {
+      const code =
+        error instanceof BookingError ? error.code : error instanceof Error ? error.message : "";
+      if (code === "booking_not_found") {
+        throw new HTTPException(404, { message: "No encontramos ese turno." });
+      }
+      if (code === "refund_not_due") {
+        throw new HTTPException(409, {
+          message: "Ese turno no tiene una devolución pendiente.",
+        });
       }
       throw error;
     }
