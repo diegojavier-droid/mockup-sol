@@ -112,6 +112,30 @@ export function loadServerEnv(source: NodeJS.ProcessEnv = process.env): ServerEn
     SUPABASE_SECRET_KEY: source.SUPABASE_SECRET_KEY ?? source.SUPABASE_SERVICE_ROLE_KEY,
   };
 
+  // Un secreto opcional definido pero VACÍO vale lo mismo que no
+  // definido. Sin esto, el Worker no arranca: el esquema exige `min(1)` y
+  // una cadena vacía falla la validación, así que el sitio entero se cae
+  // por una integración que ni siquiera está en uso.
+  //
+  // No es hipotético: el despliegue publica estos secretos desde GitHub,
+  // y un secreto creado sin valor —o borrado a medias— llega como "".
+  //
+  // Se limita a esta lista a propósito. Hacerlo con TODAS las variables
+  // sería más prolijo y más peligroso: en `INTERNAL_AUTH_ALLOWED_EMAILS`
+  // una cadena vacía puede significar «nadie», y convertirla en «no
+  // definida» dejaría que se aplique un default más permisivo.
+  const OPTIONAL_SECRETS = [
+    "MERCADO_PAGO_ACCESS_TOKEN",
+    "MERCADO_PAGO_WEBHOOK_SECRET",
+    "EMAIL_PROVIDER_API_KEY",
+    "WHATSAPP_PROVIDER_TOKEN",
+    "INTERNAL_SIGNING_SECRET",
+  ] as const;
+
+  for (const key of OPTIONAL_SECRETS) {
+    if (normalizedSource[key]?.trim() === "") delete normalizedSource[key];
+  }
+
   const parsed = serverEnvSchema.safeParse(normalizedSource);
   if (!parsed.success) {
     const issues = parsed.error.issues

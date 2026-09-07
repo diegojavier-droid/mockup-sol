@@ -76,6 +76,8 @@ jobs:
             INTERNAL_AUTH_ALLOWED_EMAILS
             API_BASE_URL
             PUBLIC_WEB_BASE_URL
+            MERCADO_PAGO_ACCESS_TOKEN
+            MERCADO_PAGO_WEBHOOK_SECRET
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
@@ -85,6 +87,11 @@ jobs:
           # despliegue. Hasta que se cargue, se usa la del Worker.
           API_BASE_URL: ${{ vars.PUBLIC_WEB_BASE_URL || 'https://sol-mai-peluqueria.workers.dev' }}
           PUBLIC_WEB_BASE_URL: ${{ vars.PUBLIC_WEB_BASE_URL || 'https://sol-mai-peluqueria.workers.dev' }}
+          # Mercado Pago. Mientras no estén cargados llegan vacíos, el
+          # backend los trata como ausentes y el pago online queda
+          # deshabilitado con su mensaje: no rompe el despliegue.
+          MERCADO_PAGO_ACCESS_TOKEN: ${{ secrets.MERCADO_PAGO_ACCESS_TOKEN }}
+          MERCADO_PAGO_WEBHOOK_SECRET: ${{ secrets.MERCADO_PAGO_WEBHOOK_SECRET }}
 
       - name: Dónde quedó publicado
         run: |
