@@ -2,7 +2,7 @@
 
 **Estado:** definición de arquitectura. Reemplaza el encuadre de
 `docs/sol-mai-crm.md`, que trataba al CRM como si fuera todo el panel. El
-CRM pasa a ser **uno de nueve módulos**, no el centro.
+CRM deja de ser el centro: pasa a ser parte del módulo Clientas (§8.1).
 **Fecha:** 2026-09-08
 **Origen:** dirección de producto (Diego): «quiero hacerlo más modular con
 módulos como calendario, clientas, finanzas, CRM, productos, empleados,
@@ -13,13 +13,13 @@ trazabilidad**.
 
 ## 1. La decisión y lo que la hace difícil
 
-El sistema se organiza en nueve módulos con límites explícitos. Cada uno
+El sistema se organiza en ocho módulos con límites explícitos. Cada uno
 es dueño de sus datos y nadie escribe en las tablas de otro.
 
 La tensión que hay que resolver, y que este documento resuelve de una
 manera concreta: **más módulos en la pantalla es más trabajo para Sol**, y
 el norte del producto desde el primer día es que Sol toque menos cosas,
-no más. Nueve pestañas en un panel que hoy tiene dos serían un retroceso
+no más. Ocho pestañas en un panel que hoy tiene dos serían un retroceso
 si cada una pidiera carga manual.
 
 La salida no es construir menos módulos. Es que **los módulos sean vistas
@@ -40,7 +40,6 @@ criterio con el que está armado todo lo que sigue.
 | **Calendario** | Completo | Completa | **Sí** (`/agenda`) |
 | **Clientas** | Completo | Completa | **No** |
 | **Finanzas** | Parcial | Parcial | Parcial (`/operaciones`) |
-| **CRM** | Se deriva de Clientas | No | No |
 | **Productos** | **No existe** | No | No |
 | **Empleados** | Parcial | No | No |
 | **Proveedores** | **No existe** | No | No |
@@ -60,7 +59,7 @@ Dos lecturas importantes de esta tabla:
 
 ## 3. La pieza que sostiene la modularidad: el registro de hechos
 
-Sin esto, nueve módulos son nueve islas que se contradicen.
+Sin esto, ocho módulos son ocho islas que se contradicen.
 
 Todo lo que pasa en la peluquería es un hecho con fecha, autor y motivo:
 se reservó un turno, se pagó una seña, la clienta llegó, se cerró a tal
@@ -168,7 +167,7 @@ descargando trabajo o sólo moviéndolo de lugar.
 
 ---
 
-## 5. Los nueve módulos
+## 5. Los ocho módulos
 
 ### 5.1. Calendario
 
@@ -198,6 +197,11 @@ cierre real, el historial, y un campo libre para notas.
 etiquetas, campos personalizados. El detalle y los motivos están en
 `docs/sol-mai-crm.md` §4 y siguen valiendo.
 
+**Absorbe lo que iba a ser el módulo CRM** (§8.1): un filtro de quiénes se
+pasaron de su propio ritmo, y un botón que abre WhatsApp con el mensaje ya
+redactado. Tres reglas que no se negocian: la IA no inventa un dato, no le
+escribe a nadie sola —redacta, manda Sol— y no clasifica personas.
+
 ---
 
 ### 5.3. Finanzas
@@ -220,24 +224,7 @@ estén cargados.** Si no hay dato, dice «no disponible», no lo estima.
 
 ---
 
-### 5.4. CRM
-
-**No es dueño de ninguna tabla.** Es lo que se *hace* con Clientas.
-
-La distinción con la que trabajo, y que corregí si no es la tuya:
-**Clientas es el registro** —quién es, qué se le hizo, cuánto pagó—;
-**CRM es el seguimiento** —a quién conviene escribirle y con qué texto—.
-Mismos datos, dos trabajos distintos, y por eso dos módulos.
-
-**Qué hace:** la lista de quienes se pasaron de su propio ritmo, y el
-botón que abre WhatsApp con el mensaje ya redactado.
-
-**Las tres reglas que no se negocian:** la IA no inventa un dato, no le
-escribe a nadie sola —redacta, manda Sol—, y no clasifica personas.
-
----
-
-### 5.5. Productos
+### 5.4. Productos
 
 **No existe nada.** Tablas nuevas: productos, movimientos de stock.
 
@@ -253,7 +240,7 @@ el movimiento es inequívoco y el número se sostiene solo.
 
 ---
 
-### 5.6. Empleados
+### 5.5. Empleados
 
 **Es dueño de:** `staff_members`, `staff_schedules`, `staff_specialties`.
 
@@ -270,17 +257,17 @@ persona en un período, porque `service_execution_records` ya guarda
 
 ---
 
-### 5.7. Proveedores
+### 5.6. Proveedores
 
 **No existe nada.** Tabla nueva: proveedores, y compras asociadas a
 proveedor y a producto.
 
-Es el módulo con menos urgencia de los nueve: hoy no hay ningún dato de
+Es el módulo con menos urgencia de los ocho: hoy no hay ningún dato de
 proveedor en el sistema ni ningún flujo que lo pida.
 
 ---
 
-### 5.8. Usuarios y roles
+### 5.7. Usuarios y roles
 
 **Es dueño de:** `staff_members.role` (`owner` | `staff`) y la lista de
 emails habilitados.
@@ -302,7 +289,7 @@ Regla que se mantiene: **el teléfono no es autenticación.**
 
 ---
 
-### 5.9. Trazabilidad
+### 5.8. Trazabilidad
 
 **Es dueño de:** `audit_log`.
 
@@ -318,32 +305,45 @@ pantalla de log que nadie mira.
 
 ## 6. Orden de construcción
 
-El criterio no es la dificultad: es **cuánto trabajo administrativo le
-saca a Sol cada bloque**, con las dependencias respetadas.
+**La recomendación central: un bloque por vez, y se mira funcionando antes
+de elegir el siguiente.** Una lista de once bloques no es un plan que una
+persona pueda sostener; es una lista que genera culpa. Lo que sigue es el
+orden que recomiendo, pero el compromiso es sólo con el primero.
 
-| # | Bloque | Por qué acá |
+**Los agujeros de auditoría no son un bloque aparte.** Cada acción se
+audita en el bloque que la construye: el precio de cierre cuando se toque
+el cierre, la reprogramación cuando se construya, la excepción cuando se
+toque la agenda. Separarlo era ordenado en un documento y molesto en la
+práctica.
+
+| # | Bloque | Por qué |
 |---|---|---|
-| 1 | Cerrar los agujeros de auditoría (precio, reprogramación, excepciones) | Es barato, es lo que se pidió, y todo lo demás se apoya en esto |
-| 2 | Ver el historial de un turno y de una clienta | Convierte el registro invisible en algo que se usa |
-| 3 | **El panel pregunta lo mismo que la web al tomar un turno** | Reutiliza un motor que ya existe; es la mitad del producto que dirección quiere descargar, y hoy está al revés (§4.1) |
-| 4 | **Usuarios y roles de verdad** | Sin esto no se puede mostrar plata en un panel compartido |
-| 5 | **Finanzas: caja del día** | Es lo que Sol mira todos los días, y ya se puede calcular sin datos nuevos |
-| 6 | **Clientas: la pantalla de la ficha** | El backend está entero; es la mayor devolución por el menor trabajo |
-| 7 | Finanzas: gastos | Primera tabla nueva |
-| 8 | CRM: quiénes se pasaron de su ritmo + WhatsApp redactado | Necesita historial suficiente para no equivocarse |
-| 9 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol |
-| 10 | Productos, arrancando por lo que se vende | El de mayor riesgo de abandono |
-| 11 | Proveedores | Ninguna urgencia hoy |
+| 1 | **Caja del día, visible sólo para Sol** | Es lo que mira todos los días, ya se puede calcular sin tablas nuevas ni carga manual, y prueba la arquitectura entera con algo chico |
+| 2 | El panel pregunta lo mismo que la web al tomar un turno | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1) |
+| 3 | La ficha de la clienta | El backend está entero; falta sólo la pantalla |
+| 4 | El aviso de cancelación con sus dos momentos (§8.4) | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo |
+| 5 | Finanzas: gastos | Primera tabla nueva |
+| 6 | Clientas: quiénes se pasaron de su ritmo + WhatsApp redactado | Necesita historial suficiente para no equivocarse |
+| 7 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol (§9) |
+| 8 | Productos, sólo reventa | El de mayor riesgo de abandono |
+| 9 | Proveedores | Ninguna urgencia hoy |
 
-Reordenar esto es una decisión de dirección, no técnica. Lo único que no
-recomiendo mover es el 4 antes del 5: mostrar facturación en un panel sin
-roles es exponerla a quien no corresponde.
+### 6.1. Por qué la caja va primera sin construir un módulo de roles
 
----
+La objeción evidente es que mostrar facturación exige roles, y roles es un
+módulo entero. No lo exige: **`staff_members.role` ya existe con los
+valores `owner` y `staff`.** Lo que falta no es un módulo, es un guard de
+una línea en un endpoint.
+
+Construir el ABM de usuarios para proteger una pantalla sería hacer el
+trabajo al revés. El módulo de Usuarios y roles —altas, bajas, cambiar
+permisos desde la interfaz— se gana cuando haya varias pantallas que
+proteger y alguien que necesite administrarlas. Hoy hay dos personas y una
+pantalla.
 
 ## 7. Riesgos abiertos
 
-- **Nueve pestañas.** El fracaso posible de esta arquitectura no es
+- **Ocho pestañas.** El fracaso posible de esta arquitectura no es
   técnico: es que el panel se vuelva un ERP y Sol vuelva al cuaderno. El
   antídoto está en §1 y hay que sostenerlo bloque por bloque: si un módulo
   pide carga manual que no nace de un turno, hay que discutirlo antes de
@@ -356,15 +356,69 @@ roles es exponerla a quien no corresponde.
 
 ---
 
-## 8. Decisiones que necesito de dirección
+## 8. Decisiones tomadas
 
-1. **¿Clientas y CRM son dos módulos o uno?** Trabajo con la separación de
-   §5.4: registro vs. seguimiento. Decime si tu división es otra.
-2. **¿Qué ve la secretaria y qué no?** Mi propuesta: Calendario y Clientas
-   sí; Finanzas, Empleados, Proveedores y Trazabilidad no.
-3. **¿Productos arranca por reventa o también por consumo interno?**
-   Recomiendo sólo reventa.
-4. **Sigue abierta de antes:** ¿«marcar el aviso es obligatorio» significa
-   la llegada, o registrar cuando una clienta avisa por WhatsApp que no
-   viene? La segunda esconde un defecto real: hoy la ventana de 24 h se
-   cuenta desde que Sol carga el aviso, no desde que la clienta avisó.
+Dirección pidió recomendaciones en vez de preguntas: «no sé cómo encarar
+esto». Tenía razón en el reclamo. Tres de las cuatro preguntas abiertas
+eran técnicas y me correspondía resolverlas. Quedan resueltas acá, con el
+motivo, para que se puedan revocar con conocimiento.
+
+### 8.1. Clientas y CRM son un solo módulo
+
+**Revierte lo que propuse el 2026-09-07.** La división entre «registro» y
+«seguimiento» es una distinción de manual, no una necesidad de este
+salón. Con 150 clientas, un módulo de CRM separado de la ficha sería una
+pantalla vacía la mayor parte del tiempo.
+
+La lista de quiénes se pasaron de su ritmo **es un filtro dentro de
+Clientas**, no un módulo. Quedan ocho módulos, no nueve.
+
+### 8.2. La secretaria ve el turno completo, no la plata del salón
+
+La línea no pasa por «finanzas sí o no», pasa por otro lado:
+
+- **La plata del turno la ve**: si pagó la seña, cuánto falta, si hay que
+  devolverle. Sin eso no puede atender.
+- **La plata del salón no la ve**: cuánto se facturó, gastos, sueldos,
+  comisiones, proveedores.
+
+### 8.3. Productos arranca sólo por reventa
+
+Lo que se vende a la clienta. El consumo interno queda afuera hasta que
+alguien lo pida con un problema concreto: es lo que obliga a contar
+stock todas las semanas y lo que hace que el módulo se abandone.
+
+### 8.4. El aviso de la clienta no se pregunta: se hace irrelevante
+
+La duda era si «marcar el aviso es obligatorio» significaba la llegada o
+el aviso de cancelación. **La forma correcta de resolverlo no es
+preguntar, es que la respuesta no cambie nada.**
+
+Se guardan dos momentos distintos, no uno:
+
+- **cuándo avisó la clienta** (lo dice ella: «te escribí ayer a la
+  noche»);
+- **cuándo lo registró Sol** (lo pone el sistema solo).
+
+La ventana de 24 h se calcula **sobre el primero**. Con eso, que Sol
+cargue el aviso tarde deja de perjudicar a una clienta que avisó a
+tiempo, y el defecto desaparece bajo las dos lecturas de la instrucción.
+
+El segundo dato queda para auditoría: si la diferencia entre los dos es
+grande y seguida, es una señal operativa, no una acusación.
+
+---
+
+## 9. Lo único que Sol tiene que responder
+
+No son decisiones de arquitectura. Son datos que sólo ella tiene, y
+ninguno frena el trabajo: se construye la capacidad y el valor se carga
+cuando llegue.
+
+1. **Fotos de las clientas en la ficha: ¿sí o no?** Es la funcionalidad
+   más usada en salones de color y la que más compromete: hay que
+   guardar imágenes de personas, decidir quién las ve y cuándo se borran.
+2. **¿Cómo le paga a quien la ayuda?** Sin ese porcentaje no hay
+   liquidación posible. No lo vamos a inventar.
+3. **¿A las cuántas semanas una clienta «hace mucho que no viene»?** Si
+   no lo sabe, se puede medir sobre su propio historial en unos meses.
