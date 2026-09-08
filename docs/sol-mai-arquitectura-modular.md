@@ -530,7 +530,123 @@ total que alguien escribe a mano.
 
 ---
 
-## 7. Orden de construcción
+## 7. Bucle cerrado: qué se puede borrar y qué no
+
+Dirección lo pidió así: «todos los módulos y sus bases de datos necesitan
+poder ser borrados, actualizados, cargados, eliminados y controlados a
+bucle cerrado».
+
+**Bucle cerrado, en términos operables**, es que cada cambio cumpla cuatro
+cosas: queda registrado con autor, fecha y motivo; se puede revertir; su
+efecto se mide; y el desvío vuelve a quien lo hizo. Sin la cuarta no hay
+bucle, hay formulario.
+
+Ejemplo de bucle que sí cierra, y que ya está diseñado: Sol carga cuánto
+consume un color, el sistema descuenta solo, ella cuenta cuando quiere, el
+sistema le muestra cuánto se desvió, ella ajusta el consumo. Cada vuelta
+achica el error.
+
+### 7.1. El choque que hay que resolver antes de construir
+
+**«Poder ser borrados» contradice «todo número se abre hasta el hecho»**
+(§6.2). Las dos cosas las pidió dirección, con dos días de diferencia, y
+no pueden ser verdad a la vez:
+
+- Si se borra un servicio, ¿qué pasa con los turnos cerrados que lo
+  nombran?
+- Si se borra una clienta, ¿qué pasa con la plata que pagó y que está en
+  la caja de ese día?
+- Si se borra un producto, ¿qué justifica el precio que se cobró?
+
+**Resolución: nada se borra físicamente; se archiva.** Un servicio
+archivado deja de ofrecerse y sigue explicando el pasado. Es la única
+forma de tener las dos cosas, y el repo ya lo viene haciendo a medias:
+`is_active` aparece 456 veces en las migraciones y `deleted_at` 111.
+
+Lo que la persona ve es «eliminar». Lo que el sistema hace es archivar. No
+es un engaño: es que «eliminar» significa «sacalo de mi vista», no «hacé
+desaparecer la historia de la plata».
+
+### 7.2. Las dos excepciones
+
+**1. Datos personales de una clienta: eso sí se borra de verdad.** Si
+alguien pide que borren sus datos, se borran nombre, teléfono y mail, y
+quedan los hechos anonimizados: hubo un turno, entró esa plata, se usó ese
+producto. Las dos cosas se cumplen. En Argentina esto lo regula la Ley
+25.326 de Protección de Datos Personales; **el alcance exacto hay que
+confirmarlo con el contador o un abogado, no conmigo.**
+
+**2. Trazabilidad no tiene CRUD, y no es negociable.** Un registro de
+auditoría que se puede editar o borrar no es auditoría: es un cuaderno.
+Ese módulo es de sólo agregar. Si alguien pudiera borrar de ahí, todo el
+resto del control deja de valer, empezando por el control sobre quien
+tenga la contraseña.
+
+---
+
+## 8. Módulos que la investigación sumó, y los que descarto
+
+Investigación de septiembre 2026 sobre plataformas del rubro (Vagaro,
+Meevo, Boulevard, MyTime y las argentinas ya relevadas). Resúmenes de
+prensa y de los blogs de los proveedores, no citas de producto.
+
+### 8.1. Lo que aparece en el rubro y no teníamos
+
+| Módulo | Qué es | Veredicto |
+|---|---|---|
+| **Bonos, paquetes y gift cards** | Sesiones pagadas por adelantado; tarjeta de regalo | **Va.** Es plata que entra antes del servicio y genera saldo a favor. Muy usado en Argentina |
+| **Facturación electrónica ARCA (ex AFIP)** | Emitir comprobantes con QR obligatorio desde 2024 (RG 5309/2023) | **Va si Sol factura.** Ver §12 |
+| **Propinas** | Quién se la lleva, en efectivo o por Mercado Pago | **Va.** No lo habíamos considerado y toca Caja y Empleados |
+| **Lista de espera** | Llenar los huecos que dejan las cancelaciones | **Va.** Barato y encaja con lo automático |
+| **Cuenta corriente de la clienta** | Saldo a favor por seña no usada o bono pendiente | **Va**, y sale casi solo de bonos y señas |
+| Marketing masivo y campañas | Envíos a toda la base | **No.** Ya vetado: es la forma más rápida de que bloqueen el WhatsApp del salón |
+| Fidelidad con puntos | Puntos canjeables | **No.** Con 150 clientas que Sol conoce por nombre, es burocracia. La fidelidad acá es que se acuerde de su fórmula |
+| Reseñas y reputación | Reseñas dentro del sistema | **No.** Eso vive en Google y en Instagram |
+| Multi-sucursal | Varios locales | **No** |
+
+**Un aporte de vocabulario:** la industria llama **backbar** al consumo
+interno de producto, y las plataformas descuentan stock tanto por venta
+como por backbar. El diseño de §5.4 coincide con la práctica del rubro.
+
+### 8.2. Reportes y KPI: acá no le doy la razón a dirección
+
+Dirección propuso un módulo de reportes y KPI. **Recomiendo no
+construirlo**, por tres motivos.
+
+**Primero, ya existe y probablemente no se vio.** La pantalla
+`/operaciones` muestra cobrado, facturado, ticket promedio, ocupación,
+clientas nuevas y señas retenidas, con cortes por canal —web, mostrador,
+teléfono, WhatsApp, sin turno— y por estado, con esta semana, este mes y
+mes anterior. Es un tablero de KPIs funcionando.
+
+**Segundo, la investigación es una advertencia, no un modelo.** Las
+plataformas del rubro traen alrededor de **treinta informes** en seis
+categorías. Treinta informes no es potencia: es que nadie supo cuál
+servía y los pusieron todos. Sol no va a abrir un menú de treinta
+informes, y si lo abre, no va a saber cuál mirar.
+
+**Tercero, y es el que más pesa: con este volumen, un KPI mal leído es
+peor que ninguno.** Un mes con tres ausencias y otro con cinco no es una
+tendencia, es ruido. Un tablero que invita a decidir sobre ruido hace
+tomar peores decisiones que no tener tablero.
+
+**La contrapropuesta:**
+
+1. **Cada módulo muestra su propio número donde está el trabajo.** La
+   ocupación se mira en el calendario, no en un informe de ocupación.
+2. **Un tablero chico** —el que ya está—, con todo número abrible hasta el
+   hecho (§6.2).
+3. **Exportar a Excel desde cada módulo.** Es lo que en un negocio chico
+   se usa realmente como «reportes», porque el destino real es el
+   contador.
+4. **Pocos indicadores y accionables.** Uno que no cambia una decisión es
+   decoración. Los que la cambian acá: ocupación —¿abro más horas o
+   menos?—, ausencias —¿la seña está funcionando?—, reposición —¿me quedo
+   sin producto?— y quiénes no volvieron.
+
+---
+
+## 9. Orden de construcción
 
 **La recomendación central: un bloque por vez, y se mira funcionando antes
 de elegir el siguiente.** Una lista de once bloques no es un plan que una
@@ -549,14 +665,14 @@ práctica.
 | 2 | **Editar precios y servicios sin un deploy** | Hoy Sol no puede subir un precio sin que yo intervenga (§5.5). Con la inflación argentina es un bloqueo operativo, no una comodidad |
 | 3 | El panel pregunta lo mismo que la web al tomar un turno | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1) |
 | 4 | La ficha de la clienta | El backend está entero; falta sólo la pantalla |
-| 5 | El aviso de cancelación con sus dos momentos (§9.4) | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo |
+| 5 | El aviso de cancelación con sus dos momentos (§11.4) | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo |
 | 6 | **Productos, y el precio que sale del producto usado** | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación |
 | 7 | Finanzas: gastos | Primera tabla nueva |
 | 8 | Clientas: quiénes se pasaron de su ritmo + WhatsApp redactado | Necesita historial suficiente para no equivocarse |
-| 9 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol (§10) |
+| 9 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol (§12) |
 | 10 | Proveedores | Ninguna urgencia hoy |
 
-### 7.1. Por qué la caja va primera sin construir un módulo de roles
+### 9.1. Por qué la caja va primera sin construir un módulo de roles
 
 La objeción evidente es que mostrar facturación exige roles, y roles es un
 módulo entero. No lo exige: **`staff_members.role` ya existe con los
@@ -569,7 +685,7 @@ permisos desde la interfaz— se gana cuando haya varias pantallas que
 proteger y alguien que necesite administrarlas. Hoy hay dos personas y una
 pantalla.
 
-## 8. Riesgos abiertos
+## 10. Riesgos abiertos
 
 - **Ocho pestañas.** El fracaso posible de esta arquitectura no es
   técnico: es que el panel se vuelva un ERP y Sol vuelva al cuaderno. El
@@ -584,13 +700,17 @@ pantalla.
 - **Productos e inventario** sigue siendo el candidato número uno a
   abandonarse, aun con este diseño.
 - **Comisiones** depende de un dato que Sol todavía no dio.
+- **Facturación electrónica** es el riesgo de alcance más grande que
+  apareció: si hace falta, no es una pantalla, es integrarse con un
+  organismo y cumplir reglas que cambian solas. Hasta tener la
+  respuesta de §12, no se puede estimar el trabajo.
 - **`docs/sol-mai-crm.md`** queda vigente en su contenido (qué muestra y
   qué no la ficha), pero su encuadre —«el CRM es el panel»— lo reemplaza
   este documento.
 
 ---
 
-## 9. Decisiones tomadas
+## 11. Decisiones tomadas
 
 Dirección pidió recomendaciones en vez de preguntas: «no sé cómo encarar
 esto». Tenía razón en el reclamo. Tres de las cuatro preguntas abiertas
@@ -643,7 +763,7 @@ grande y seguida, es una señal operativa, no una acusación.
 
 ---
 
-## 10. Lo único que Sol tiene que responder
+## 12. Lo único que Sol tiene que responder
 
 No son decisiones de arquitectura. Son datos que sólo ella tiene, y
 ninguno frena el trabajo: se construye la capacidad y el valor se carga
@@ -654,5 +774,9 @@ cuando llegue.
    guardar imágenes de personas, decidir quién las ve y cuándo se borran.
 2. **¿Cómo le paga a quien la ayuda?** Sin ese porcentaje no hay
    liquidación posible. No lo vamos a inventar.
-3. **¿A las cuántas semanas una clienta «hace mucho que no viene»?** Si
+3. **¿Facturás, y bajo qué condición?** Es la que más puede cambiar el
+   trabajo: si hay que emitir comprobantes electrónicos, ARCA es un
+   módulo entero y con reglas que no fijamos nosotros. La respuesta la
+   da su contador, no nosotros.
+4. **¿A las cuántas semanas una clienta «hace mucho que no viene»?** Si
    no lo sabe, se puede medir sobre su propio historial en unos meses.
