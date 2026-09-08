@@ -40,7 +40,7 @@ criterio con el que está armado todo lo que sigue.
 | **Calendario** | Completo | Completa | **Sí** (`/agenda`) |
 | **Clientas** | Completo | Completa | **No** |
 | **Finanzas** | Parcial | Parcial | Parcial (`/operaciones`) |
-| **Productos** | **No existe** | No | No |
+| **Productos y stock** | **No existe** | No | No |
 | **El salón** (servicios, estaciones, horarios) | Completo | **Sólo lectura** | No |
 | **Empleados** | Parcial | No | No |
 | **Proveedores** | **No existe** | No | No |
@@ -254,30 +254,63 @@ estén cargados.** Si no hay dato, dice «no disponible», no lo estima.
 
 ---
 
-### 5.4. Productos
+### 5.4. Productos y stock
 
-**No existe nada.** Tablas nuevas: productos y movimientos.
+**No existe nada.** Tablas nuevas: productos y movimientos de stock.
 
-Dos usos distintos, y los dos importan:
+Dirección pidió explícitamente el stock. Va, y el trabajo de diseño está
+en que **sobreviva**, porque el inventario es el módulo que más se
+abandona en un negocio chico.
 
-- **Reventa:** Sol le vende productos a la clienta. Entra por Caja como
-  cualquier cobro.
-- **Consumo en el servicio:** el producto que se usa **cambia el precio del
-  turno**. Ver §5.10, que es donde está el modelo real.
+**Tres usos, y los tres importan:**
 
-**Corrección respecto del 2026-09-08.** Recomendé arrancar sólo por
-reventa y dejar el consumo interno afuera, porque es lo que obliga a
-contar stock y lo que hace que estos módulos se abandonen. Con el modelo
-de precio de §5.10 eso queda mal: **el consumo no es inventario, es lo que
-determina cuánto se cobra**, y se registra en el momento en que Sol ya
-está cerrando el turno. El motivo del abandono —tener que contar— no
-aplica cuando nadie tiene que contar.
+- **Reventa:** Sol le vende productos a la clienta. Entra por Caja.
+- **Consumo en el servicio:** el producto usado **cambia el precio del
+  turno** (§5.10). Es el motivo por el que este módulo existe.
+- **Reposición:** avisar antes de que se acabe.
 
-**La distinción que sí se mantiene:** registrar **qué** producto se usó es
-barato y da precio, fórmula y frecuencia de reposición. Registrar
-**cuánto** se usó —30 ml de tal tintura— es lo que se abandona a los dos
-meses. Va lo primero. El resultado no es stock exacto: es «cada cuánto se
-repone», que para dos personas alcanza.
+#### El stock no se carga: se deriva
+
+Nadie escribe «quedan 4». El número sale de los movimientos, y los tres
+movimientos ya ocurren por otro motivo:
+
+| Movimiento | De dónde sale |
+|---|---|
+| Entra | Una compra a un proveedor |
+| Sale por venta | El cobro que ya se registra en Caja |
+| Sale por consumo | El cierre del turno, donde Sol ya elige qué usó |
+
+**Ninguno agrega una carga nueva.** Ése es el criterio de §4 regla 6
+aplicado al módulo que más lo necesita.
+
+#### El problema real, dicho antes de construirlo
+
+Elegir «usé tal tintura» no dice **cuánta** se usó. Sin cantidad, el stock
+se desvía. Y un stock que se desvía en silencio es peor que no tener
+stock: dice un número que nadie puede creer, y por eso se abandona.
+
+**Cómo se resuelve sin obligar a contar:**
+
+1. **Consumo estándar por servicio.** Sol carga una vez cuánto lleva un
+   color de raíz. Después el consumo se descuenta solo. Es un dato que da
+   ella, no un valor inventado por nosotros.
+2. **El recuento es un ajuste, no una obligación semanal.** Cuando Sol
+   cuenta, corrige. Nadie le pide que cuente.
+3. **El desvío se muestra.** Al corregir, el sistema dice cuánto se había
+   desviado. Sirve para dos cosas: ajustar el consumo estándar, y ver si
+   algo se está yendo por otro lado.
+4. **El número nunca se muestra solo.** Se muestra con la fecha del último
+   recuento: «quedan 4, contados hace tres semanas». Un stock derivado
+   siempre tiene error; **lo único inaceptable es esconderlo.**
+
+#### Qué hace que valga la pena
+
+No es el informe de inventario: es **«te queda poco de esto»** antes de
+que se acabe, y saber cuánto cuesta de verdad un servicio. Si el módulo no
+da esas dos cosas, no justifica existir.
+
+**Stock y Productos son un solo módulo.** El producto y cuánto queda son
+la misma pantalla; separarlos son dos listas iguales en dos lugares.
 
 ---
 
@@ -336,8 +369,11 @@ persona en un período, porque `service_execution_records` ya guarda
 **No existe nada.** Tabla nueva: proveedores, y compras asociadas a
 proveedor y a producto.
 
-Es el módulo con menos urgencia de los ocho: hoy no hay ningún dato de
-proveedor en el sistema ni ningún flujo que lo pida.
+Deja de ser el módulo sin motivo: **es de donde entra el stock** (§5.4).
+Una compra es lo que hace subir la existencia y lo que da el costo real
+del producto. Sigue siendo el último en el orden, pero ya no por falta de
+razón, sino porque las compras se pueden registrar desde Productos hasta
+que haya suficientes proveedores como para necesitar su propia pantalla.
 
 ---
 
@@ -421,7 +457,80 @@ skill de copy, no por acá.
 
 ---
 
-## 6. Orden de construcción
+## 6. Cómo se integran los módulos
+
+Dirección lo pidió así: «que los módulos tengan relación entre ellos, para
+hacer una integración de gestión de datos e información horizontal y
+vertical».
+
+Traducido a algo que se pueda construir y verificar:
+
+- **Horizontal** es que un hecho actualice a todos los módulos que lo
+  tocan, sin que nadie cargue lo mismo dos veces.
+- **Vertical** es que cualquier número se pueda abrir hacia abajo hasta el
+  hecho concreto que lo produjo, sin cortes en el camino.
+
+Las dos salen de la misma pieza: el registro de hechos de §3. Esto es lo
+que significa en la práctica.
+
+### 6.1. Horizontal: una acción de Sol, seis módulos
+
+Sol cierra un turno. Es **una** acción, la que ya hace hoy:
+
+| Módulo | Qué se actualiza solo |
+|---|---|
+| Calendario | El turno queda cerrado y libera la estación |
+| Clientas | La ficha suma el servicio, la fórmula y el precio real |
+| Productos y stock | Sale lo que se usó |
+| Caja | Entra lo cobrado, con su medio de pago |
+| Empleados | Suma a la producción de quien atendió |
+| Trazabilidad | Queda quién cerró, cuándo, a qué precio y por qué subió |
+
+**Seis módulos actualizados, cero cargas.** Si algún módulo necesitara que
+alguien vuelva a escribir un dato que ya se escribió, ese módulo está mal
+diseñado. Es el mismo criterio de §4, mirado desde la integración.
+
+Lo mismo con los otros tres hechos que mueven todo:
+
+| Hecho | Qué se actualiza |
+|---|---|
+| Entra una compra | Stock sube · Caja registra la salida de plata · Proveedores suma el movimiento |
+| Se vende un producto | Stock baja · Caja registra el cobro · la ficha de la clienta lo guarda |
+| Se paga una seña | El turno queda confirmado · Caja la registra · queda a cuenta del precio final |
+
+### 6.2. Vertical: todo número se abre hasta el hecho
+
+«Entraron $X hoy» → qué turnos lo formaron → un turno → qué se hizo y qué
+productos se usaron → de qué compra vino ese producto → a qué proveedor se
+le compró.
+
+Sin cortes y sin callejones sin salida. Ésa es la trazabilidad que se
+pidió el 08/09, dicha en términos de módulos.
+
+### 6.3. Las dos reglas que hacen que esto sea verdad
+
+Son las que separan esta arquitectura de un ERP que se desincroniza.
+
+**1. Ningún módulo guarda el total de otro.** Nada de un campo «facturado
+del mes» que se actualiza por trigger. Ése es exactamente el mecanismo por
+el que un ERP termina diciendo dos cosas distintas sobre la misma plata, y
+por el que alguien tiene que «recalcular». Los totales se calculan al
+leerlos.
+
+**2. Si un número no se puede abrir, no se muestra.** Un número que no
+lleva a los hechos que lo formaron no es información: es una afirmación
+que nadie puede verificar. Y con el volumen de este salón, no hay ninguna
+excusa de rendimiento para guardarlo.
+
+**El costo de esto, dicho de frente:** calcular al leer es más lento que
+guardar el total. A la escala de Sol Mai —150 clientas, cuatro días de
+atención por semana— es irrelevante. Si algún día dejara de serlo, la
+solución es una caché que se reconstruye desde los hechos, **nunca** un
+total que alguien escribe a mano.
+
+---
+
+## 7. Orden de construcción
 
 **La recomendación central: un bloque por vez, y se mira funcionando antes
 de elegir el siguiente.** Una lista de once bloques no es un plan que una
@@ -440,14 +549,14 @@ práctica.
 | 2 | **Editar precios y servicios sin un deploy** | Hoy Sol no puede subir un precio sin que yo intervenga (§5.5). Con la inflación argentina es un bloqueo operativo, no una comodidad |
 | 3 | El panel pregunta lo mismo que la web al tomar un turno | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1) |
 | 4 | La ficha de la clienta | El backend está entero; falta sólo la pantalla |
-| 5 | El aviso de cancelación con sus dos momentos (§8.4) | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo |
+| 5 | El aviso de cancelación con sus dos momentos (§9.4) | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo |
 | 6 | **Productos, y el precio que sale del producto usado** | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación |
 | 7 | Finanzas: gastos | Primera tabla nueva |
 | 8 | Clientas: quiénes se pasaron de su ritmo + WhatsApp redactado | Necesita historial suficiente para no equivocarse |
-| 9 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol (§9) |
+| 9 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol (§10) |
 | 10 | Proveedores | Ninguna urgencia hoy |
 
-### 6.1. Por qué la caja va primera sin construir un módulo de roles
+### 7.1. Por qué la caja va primera sin construir un módulo de roles
 
 La objeción evidente es que mostrar facturación exige roles, y roles es un
 módulo entero. No lo exige: **`staff_members.role` ya existe con los
@@ -460,14 +569,20 @@ permisos desde la interfaz— se gana cuando haya varias pantallas que
 proteger y alguien que necesite administrarlas. Hoy hay dos personas y una
 pantalla.
 
-## 7. Riesgos abiertos
+## 8. Riesgos abiertos
 
 - **Ocho pestañas.** El fracaso posible de esta arquitectura no es
   técnico: es que el panel se vuelva un ERP y Sol vuelva al cuaderno. El
   antídoto está en §1 y hay que sostenerlo bloque por bloque: si un módulo
   pide carga manual que no nace de un turno, hay que discutirlo antes de
   construirlo.
-- **Productos e inventario** es el candidato número uno a abandonarse.
+- **El stock derivado se desvía siempre.** El diseño de §5.4 lo asume y
+  lo muestra en vez de esconderlo, pero el riesgo no desaparece: si el
+  consumo estándar que carga Sol está muy lejos de la realidad, el
+  número deja de servir. La señal de alarma es que el desvío de cada
+  recuento no baje con el tiempo.
+- **Productos e inventario** sigue siendo el candidato número uno a
+  abandonarse, aun con este diseño.
 - **Comisiones** depende de un dato que Sol todavía no dio.
 - **`docs/sol-mai-crm.md`** queda vigente en su contenido (qué muestra y
   qué no la ficha), pero su encuadre —«el CRM es el panel»— lo reemplaza
@@ -475,7 +590,7 @@ pantalla.
 
 ---
 
-## 8. Decisiones tomadas
+## 9. Decisiones tomadas
 
 Dirección pidió recomendaciones en vez de preguntas: «no sé cómo encarar
 esto». Tenía razón en el reclamo. Tres de las cuatro preguntas abiertas
@@ -528,7 +643,7 @@ grande y seguida, es una señal operativa, no una acusación.
 
 ---
 
-## 9. Lo único que Sol tiene que responder
+## 10. Lo único que Sol tiene que responder
 
 No son decisiones de arquitectura. Son datos que sólo ella tiene, y
 ninguno frena el trabajo: se construye la capacidad y el valor se carga
