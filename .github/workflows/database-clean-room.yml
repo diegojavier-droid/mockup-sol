@@ -251,8 +251,9 @@ jobs:
             -- Baseline operativo sembrado
             select count(*) into n from public.areas;
             if n <> 4 then raise exception 'areas expected 4, got %', n; end if;
+            -- 9 desde que se agregó no_show_grace_hours (ausencia automática).
             select count(*) into n from public.business_settings;
-            if n <> 8 then raise exception 'business_settings expected 8, got %', n; end if;
+            if n <> 9 then raise exception 'business_settings expected 9, got %', n; end if;
             select count(*) into n from public.service_parameters;
             if n <> 43 then raise exception 'service_parameters expected 43, got %', n; end if;
             select count(*) into n from public.service_price_tiers;
