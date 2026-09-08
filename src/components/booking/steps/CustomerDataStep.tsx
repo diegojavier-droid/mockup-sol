@@ -16,13 +16,20 @@ export function CustomerDataStep({
   customer,
   errors,
   isRecognized,
+  acceptedTerms,
+  showTermsRequired,
   onChangeCustomerField,
+  onChangeAcceptedTerms,
   onMobileInputFocusChange,
 }: {
   customer: CustomerFormState;
   errors: CustomerErrors;
   isRecognized: boolean;
+  acceptedTerms: boolean;
+  /** Se enciende recién cuando intentó avanzar sin tildar: no la reta antes. */
+  showTermsRequired: boolean;
   onChangeCustomerField: (field: CustomerField, value: string) => void;
+  onChangeAcceptedTerms: (accepted: boolean) => void;
   onMobileInputFocusChange?: (isFocused: boolean) => void;
 }) {
   const handleFocusCapture = (event: FocusEvent<HTMLDivElement>) => {
@@ -103,6 +110,42 @@ export function CustomerDataStep({
             value={customer.email}
           />
         </div>
+
+        {/*
+          El consentimiento va acá, antes de que los datos salgan del
+          teléfono. En este paso ya se preguntó por alergias, que es un
+          dato de salud: la ley pide que la persona sepa qué se guarda y
+          para qué ANTES, no en la pantalla de gracias.
+
+          Sin tilde previa. Un casillero premarcado no es consentimiento
+          libre y expreso, es una trampa que además no sirve como prueba.
+        */}
+        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-cream/50 p-4">
+          <input
+            aria-describedby="terminos-detalle"
+            checked={acceptedTerms}
+            className="mt-0.5 size-5 shrink-0 accent-champagne-deep"
+            onChange={(event) => onChangeAcceptedTerms(event.target.checked)}
+            type="checkbox"
+          />
+          <span className="text-sm leading-relaxed text-foreground" id="terminos-detalle">
+            Acepto que Sol Mai guarde mis datos para gestionar mi turno.{" "}
+            <a
+              className="font-medium text-champagne-deep underline underline-offset-2"
+              href="/privacidad"
+              rel="noreferrer"
+              target="_blank"
+            >
+              Ver cómo los cuidamos
+            </a>
+          </span>
+        </label>
+
+        {showTermsRequired && !acceptedTerms && (
+          <p className="mt-2 text-sm text-primary" role="alert">
+            Necesitamos que lo aceptes para poder guardar tu turno.
+          </p>
+        )}
       </div>
     </StepShell>
   );

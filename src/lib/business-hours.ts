@@ -126,6 +126,8 @@ export function toClosedDays(hours: ApiBusinessHour[]): string {
 export interface ApiSalonInfo {
   hours: ApiBusinessHour[];
   depositRatePct: number | null;
+  /** Versión vigente de los términos. Se devuelve tal cual al reservar. */
+  termsVersion: string;
 }
 
 export function useSalonInfo() {
@@ -143,6 +145,11 @@ export function useSalonInfo() {
     scheduleLines: toScheduleLines(hours),
     closedDays: toClosedDays(hours),
     depositRatePct: query.data?.depositRatePct ?? null,
+    // El front NO tiene su propia copia de la versión: usa la que le da el
+    // servidor. Si están desincronizados, el servidor rechaza y pide
+    // recargar, en vez de registrar una aceptación de un texto que la
+    // clienta no vio.
+    termsVersion: query.data?.termsVersion ?? null,
     isLoading: query.isLoading,
   };
 }

@@ -33,8 +33,10 @@ import {
   cancelBooking,
   createBooking,
   getBookingByToken,
+  recordBookingConsent,
   type CreateBookingItem,
 } from "../../lib/booking/repository";
+import { TERMS_VERSION } from "../../config/legal";
 import { checkOfferedSlot } from "../../domain/offered-slot";
 import {
   loadArea,
@@ -66,6 +68,17 @@ const createSchema = z.object({
     acceptsMarketing: z.boolean().default(false),
   }),
   note: z.string().max(500).optional(),
+  /**
+   * Aceptación de los términos y la política de privacidad.
+   *
+   * Obligatorio, y a propósito no tiene default: si algún cliente de la
+   * API dejara de mandarlo, tiene que fallar de manera ruidosa. Un
+   * default silencioso acá significaría guardar datos personales —y de
+   * salud, por las alergias— sin poder probar que la persona aceptó.
+   */
+  consent: z.object({
+    termsVersion: z.string().min(1).max(32),
+  }),
 });
 
 /** Mensajes en lenguaje humano: la UI muestra esto tal cual (§29). */
@@ -287,6 +300,16 @@ export function createBookingsRoute(env: ServerEnv) {
     );
 
     try {
+      // Guard: la versión aceptada tiene que ser la vigente. Una pestaña
+      // abierta hace dos semanas muestra el texto viejo, y registrar eso
+      // como aceptación del texto nuevo sería fabricar una prueba falsa.
+      if (body.consent.termsVersion !== TERMS_VERSION) {
+        throw new HTTPException(422, {
+          message:
+            "Actualizamos los términos mientras reservabas. Recargá la página y confirmá de nuevo, así queda todo en orden.",
+        });
+      }
+
       const booking = await createBooking(admin, {
         areaSlug: context.areaSlug,
         startsAt,
@@ -308,6 +331,29 @@ export function createBookingsRoute(env: ServerEnv) {
         customerNote: body.note ?? null,
         source: "online",
       });
+
+      // El turno ya existe. Si esto fallara, quedaría un turno sin la
+      // prueba del consentimiento: no se le rompe la reserva a la clienta
+      // por eso, pero tiene que quedar gritado en el log para poder
+      // repararlo. `pendientes_de_consentimiento` es lo que hay que
+      // buscar.
+      try {
+        await recordBookingConsent(admin, {
+          bookingId: booking.id,
+          version: body.consent.termsVersion,
+          channel: "web",
+        });
+      } catch (consentError) {
+        console.error(
+          JSON.stringify({
+            evento: "pendientes_de_consentimiento",
+            bookingId: booking.id,
+            version: body.consent.termsVersion,
+            detalle: consentError instanceof Error ? consentError.message : String(consentError),
+            ts: new Date().toISOString(),
+          }),
+        );
+      }
 
       return c.json(
         {

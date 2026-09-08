@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PrivacidadRouteImport } from './routes/privacidad'
 import { Route as OperacionesRouteImport } from './routes/operaciones'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReservaTokenRouteImport } from './routes/reserva.$token'
 
+const PrivacidadRoute = PrivacidadRouteImport.update({
+  id: '/privacidad',
+  path: '/privacidad',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OperacionesRoute = OperacionesRouteImport.update({
   id: '/operaciones',
   path: '/operaciones',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/operaciones': typeof OperacionesRoute
+  '/privacidad': typeof PrivacidadRoute
   '/reserva/$token': typeof ReservaTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/operaciones': typeof OperacionesRoute
+  '/privacidad': typeof PrivacidadRoute
   '/reserva/$token': typeof ReservaTokenRoute
 }
 export interface FileRoutesById {
@@ -52,25 +60,45 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/operaciones': typeof OperacionesRoute
+  '/privacidad': typeof PrivacidadRoute
   '/reserva/$token': typeof ReservaTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/agenda' | '/operaciones' | '/reserva/$token'
+  fullPaths:
+    | '/'
+    | '/agenda'
+    | '/operaciones'
+    | '/privacidad'
+    | '/reserva/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/agenda' | '/operaciones' | '/reserva/$token'
-  id: '__root__' | '/' | '/agenda' | '/operaciones' | '/reserva/$token'
+  to: '/' | '/agenda' | '/operaciones' | '/privacidad' | '/reserva/$token'
+  id:
+    | '__root__'
+    | '/'
+    | '/agenda'
+    | '/operaciones'
+    | '/privacidad'
+    | '/reserva/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgendaRoute: typeof AgendaRoute
   OperacionesRoute: typeof OperacionesRoute
+  PrivacidadRoute: typeof PrivacidadRoute
   ReservaTokenRoute: typeof ReservaTokenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/privacidad': {
+      id: '/privacidad'
+      path: '/privacidad'
+      fullPath: '/privacidad'
+      preLoaderRoute: typeof PrivacidadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/operaciones': {
       id: '/operaciones'
       path: '/operaciones'
@@ -106,6 +134,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRoute,
   OperacionesRoute: OperacionesRoute,
+  PrivacidadRoute: PrivacidadRoute,
   ReservaTokenRoute: ReservaTokenRoute,
 }
 export const routeTree = rootRouteImport

@@ -158,6 +158,9 @@ export function BookingWizard({
                 customer={wizard.customer}
                 errors={wizard.customerErrors}
                 isRecognized={wizard.isCustomerRecognized}
+                acceptedTerms={wizard.acceptedTerms}
+                showTermsRequired={wizard.showTermsRequired}
+                onChangeAcceptedTerms={wizard.chooseAcceptedTerms}
                 onChangeCustomerField={wizard.chooseCustomerField}
                 onMobileInputFocusChange={setIsMobileInputFocused}
               />
