@@ -90,6 +90,8 @@ export interface CreateBookingInput extends QuoteInput {
     acceptsMarketing?: boolean;
   };
   note?: string;
+  /** Versión de los términos que la clienta tenía en pantalla al aceptar. */
+  termsVersion: string;
 }
 
 export function useCreateBooking() {
@@ -103,6 +105,7 @@ export function useCreateBooking() {
         startsAt: input.startsAt,
         customer: input.customer,
         note: input.note,
+        consent: { termsVersion: input.termsVersion },
       }),
   });
 }

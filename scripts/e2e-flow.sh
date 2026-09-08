@@ -78,10 +78,30 @@ echo "    primer horario: $FIRST"
 
 echo ""
 echo "── 3. La clienta reserva sola por la web"
+# La versión de los términos la manda el servidor: el script la lee de la
+# misma fuente que el navegador en vez de fijarla acá, así el día que
+# cambie el texto la prueba sigue siendo válida sin tocarla.
+TERMS=$(curl -s -m 10 "$API/catalog/salon" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['termsVersion'])")
+ok "el salón publica la versión de los términos ($TERMS)" "$([ -n "$TERMS" ] && echo 1 || echo 0)" "$TERMS"
+
+# Test negativo: sin aceptación no se reserva. Es el guard que impide
+# guardar datos personales —y de salud, por las alergias— sin prueba.
+SIN=$(curl -s -m 15 -o /dev/null -w '%{http_code}' -X POST -H "content-type: application/json" \
+  -d "{\"serviceSlug\":\"corte-fem\",\"lengthTier\":\"medio\",\"startsAt\":\"$FIRST\",\"customer\":{\"firstName\":\"Sin\",\"phone\":\"3424556699\",\"email\":\"sin@example.com\"}}" \
+  "$API/bookings")
+ok "sin aceptar los términos NO se crea el turno (HTTP $SIN)" "$([ "$SIN" = "400" ] || [ "$SIN" = "422" ] && echo 1 || echo 0)" "$SIN"
+
+# Test negativo: una versión vieja tampoco pasa.
+VIEJA=$(curl -s -m 15 -o /dev/null -w '%{http_code}' -X POST -H "content-type: application/json" \
+  -d "{\"serviceSlug\":\"corte-fem\",\"lengthTier\":\"medio\",\"startsAt\":\"$FIRST\",\"customer\":{\"firstName\":\"Vieja\",\"phone\":\"3424556688\",\"email\":\"vieja@example.com\"},\"consent\":{\"termsVersion\":\"1999-01-01\"}}" \
+  "$API/bookings")
+ok "una versión vieja de los términos se rechaza (HTTP $VIEJA)" "$([ "$VIEJA" = "422" ] && echo 1 || echo 0)" "$VIEJA"
+
 BODY=$(python3 -c "
 import json
 print(json.dumps({'serviceSlug':'corte-fem','lengthTier':'medio','startsAt':'$FIRST',
- 'customer':{'firstName':'Valentina','lastName':'Rios','phone':'3424556677','email':'vale@example.com','acceptsMarketing':False}}))")
+ 'customer':{'firstName':'Valentina','lastName':'Rios','phone':'3424556677','email':'vale@example.com','acceptsMarketing':False},
+ 'consent':{'termsVersion':'$TERMS'}}))")
 RES=$(curl -s -m 15 -X POST -H "content-type: application/json" -d "$BODY" "$API/bookings")
 TOKEN_PUB=$(echo "$RES" | python3 -c "import sys,json;print(json.load(sys.stdin).get('data',{}).get('publicToken',''))" 2>/dev/null)
 STATUS=$(echo "$RES" | python3 -c "import sys,json;print(json.load(sys.stdin).get('data',{}).get('status',''))" 2>/dev/null)

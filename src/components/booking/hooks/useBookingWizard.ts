@@ -14,6 +14,7 @@ import {
 } from "@/lib/booking-data";
 import { useCatalog, type CatalogData } from "@/lib/catalog-context";
 import { useAvailability, useCreateBooking, useQuote } from "@/lib/api/booking-hooks";
+import { useSalonInfo } from "@/lib/business-hours";
 import type { ApiCreatedBooking, LengthTier } from "@/lib/api/catalog-types";
 import { computeBookingOperationalTotals } from "@/lib/booking-totals";
 import {
@@ -362,6 +363,12 @@ export function useBookingWizard(
     email: restoredDraft?.customer.email ?? "",
   });
   const [customerTouched, setCustomerTouched] = useState<CustomerTouched>({});
+  // Aceptación de los términos. Vive en el wizard y no en el borrador que
+  // se guarda en el teléfono: un consentimiento restaurado de un
+  // localStorage de hace dos semanas no es una aceptación, es una
+  // suposición.
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsRequired, setShowTermsRequired] = useState(false);
   const [isCustomerRecognized, setIsCustomerRecognized] = useState(false);
   const [paymentPending, setPaymentPending] = useState(restoredDraft?.paymentPending ?? false);
   const [bookingRequestError, setBookingRequestError] = useState<string | null>(null);
@@ -422,6 +429,11 @@ export function useBookingWizard(
   }, [availableDays]);
 
   const createBookingMutation = useCreateBooking();
+  // La versión de los términos la manda el servidor; el front no tiene
+  // copia propia. Si todavía no llegó, no se reserva: es preferible pedir
+  // un reintento a guardar datos personales sin poder decir qué texto
+  // aceptó la clienta.
+  const { termsVersion } = useSalonInfo();
 
   const availabilityRequest = useMemo(() => {
     return {
@@ -626,6 +638,13 @@ export function useBookingWizard(
     }
 
     try {
+      if (!termsVersion) {
+        setBookingRequestError(
+          "No pudimos cargar los términos. Revisá la conexión y probá de nuevo en un momento.",
+        );
+        return;
+      }
+
       const created = await createBookingMutation.mutateAsync({
         serviceSlug: service.id,
         lengthTier,
@@ -640,6 +659,7 @@ export function useBookingWizard(
           acceptsMarketing: false,
         },
         note: additionalComments.trim() || undefined,
+        termsVersion,
       });
 
       setConfirmedBooking(created);
@@ -655,6 +675,16 @@ export function useBookingWizard(
 
   const next = () => {
     if (stepKey === "customerData") {
+      // Los datos válidos no alcanzan: sin aceptación no se sigue. Es el
+      // único punto del wizard donde una casilla frena el avance, y es
+      // deliberado: acá es donde se decide si el salón puede guardar los
+      // datos de la clienta.
+      if (!acceptedTerms) {
+        setShowTermsRequired(true);
+        requestCustomerRequiredFeedback();
+        return;
+      }
+
       if (Object.keys(customerValidationErrors).length === 0) {
         setStep((currentStep) => clampWizardStep(currentStep + 1, visibleStepKeys));
         return;
@@ -698,6 +728,12 @@ export function useBookingWizard(
     chooseCategoryAndContinue,
     chooseDate,
     chooseCustomerField,
+    acceptedTerms,
+    showTermsRequired,
+    chooseAcceptedTerms: (accepted: boolean) => {
+      setAcceptedTerms(accepted);
+      if (accepted) setShowTermsRequired(false);
+    },
     choosePersonalization,
     chooseService,
     chosenExtras,

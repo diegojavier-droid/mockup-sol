@@ -29,7 +29,8 @@ for s in json.load(sys.stdin)['data']:
         print(s['slug']); break
 else:
     print(json.load(sys.stdin)['data'][0]['slug'])")
-BODY="{\"serviceSlug\":\"$SVC\",\"lengthTier\":\"medio\",\"startsAt\":\"${DAY}T13:00:00.000Z\",\"source\":\"manual\",\"customer\":{\"firstName\":\"Testina\",\"phone\":\"3424111222\"}}"
+TERMS=$(curl -s -m 10 "$API/catalog/salon" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['termsVersion'])")
+BODY="{\"serviceSlug\":\"$SVC\",\"lengthTier\":\"medio\",\"startsAt\":\"${DAY}T13:00:00.000Z\",\"source\":\"manual\",\"customer\":{\"firstName\":\"Testina\",\"phone\":\"3424111222\"},\"consent\":{\"termsVersion\":\"$TERMS\"}}"
 CREATE=$(curl -s -m 15 -X POST -H "$H" -H "content-type: application/json" -d "$BODY" "$API/bookings")
 BID=$(echo "$CREATE" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('data',{}).get('id',''))" 2>/dev/null)
 if [ -z "$BID" ]; then echo "no se pudo crear el turno: $CREATE"; exit 1; fi

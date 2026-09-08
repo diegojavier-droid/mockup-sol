@@ -132,6 +132,32 @@ export async function createBooking(
   return data as CreatedBooking;
 }
 
+/**
+ * Deja registrado que la clienta aceptó los términos al reservar.
+ *
+ * Se llama DESPUÉS de crear el turno porque el consentimiento se ancla al
+ * turno y a la clienta, y ninguno de los dos existe antes. La ventana de
+ * riesgo —turno creado, consentimiento no— se cubre en la ruta, que
+ * rechaza el pedido antes de crear nada si la aceptación no vino o vino
+ * con una versión que no es la vigente.
+ */
+export async function recordBookingConsent(
+  admin: SupabaseAdminClient,
+  params: {
+    bookingId: string;
+    version: string;
+    channel: "web" | "mostrador" | "telefono" | "whatsapp";
+  },
+): Promise<{ recorded: boolean }> {
+  const { data, error } = await admin.rpc("record_booking_consent", {
+    p_booking_id: params.bookingId,
+    p_version: params.version,
+    p_channel: params.channel,
+  });
+  if (error) rethrow(error);
+  return data as { recorded: boolean };
+}
+
 export async function cancelBooking(
   admin: SupabaseAdminClient,
   params: { publicToken: string; reason?: string | null },

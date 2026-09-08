@@ -24,6 +24,7 @@ import type {
   ServiceSummaryDTO,
   ServiceTierDTO,
 } from "./dto";
+import { TERMS_VERSION } from "../../config/legal";
 
 type CategoryRow = {
   slug: string;
@@ -154,6 +155,8 @@ export interface SalonInfoDTO {
   hours: BusinessHourDTO[];
   /** Porcentaje de seña. `null` si no está configurado: se prefiere callar a inventarlo. */
   depositRatePct: number | null;
+  /** Versión vigente de los términos. El front la devuelve al reservar. */
+  termsVersion: string;
 }
 
 export interface CatalogRepository {
@@ -206,7 +209,7 @@ export function createCatalogRepository(client: SupabaseAnonServerClient): Catal
       const parsed = typeof raw === "number" ? raw : Number(raw);
       const depositRatePct = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 
-      return { hours, depositRatePct };
+      return { hours, depositRatePct, termsVersion: TERMS_VERSION };
     },
 
     listBusinessHours: () => loadBusinessHours(client),
