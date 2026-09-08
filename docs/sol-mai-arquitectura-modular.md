@@ -41,6 +41,7 @@ criterio con el que está armado todo lo que sigue.
 | **Clientas** | Completo | Completa | **No** |
 | **Finanzas** | Parcial | Parcial | Parcial (`/operaciones`) |
 | **Productos** | **No existe** | No | No |
+| **El salón** (servicios, estaciones, horarios) | Completo | **Sólo lectura** | No |
 | **Empleados** | Parcial | No | No |
 | **Proveedores** | **No existe** | No | No |
 | **Usuarios y roles** | Parcial | Parcial | No |
@@ -167,7 +168,36 @@ descargando trabajo o sólo moviéndolo de lugar.
 
 ---
 
-## 5. Los ocho módulos
+## 5. Los módulos, agrupados por con qué frecuencia se tocan
+
+Dirección sumó tres módulos que faltaban: **servicios**, **estaciones** y
+**productos**, con un motivo explícito —«los servicios pueden cambiar, las
+estaciones también y los productos también»— y con el modelo de precio
+real del salón, que está en §5.10.
+
+Eso llevaría la cuenta a once, y once pestañas al mismo nivel es
+exactamente el retroceso que §1 quiere evitar. La salida no es recortar
+módulos: es **ordenarlos por cada cuánto se tocan**, que es como los
+ordena en la cabeza quien los usa.
+
+| Se toca | Módulos |
+|---|---|
+| **Todos los días** | Calendario · Clientas · Caja · Productos |
+| **Cada tanto** | El salón (servicios, estaciones, horarios) · Empleados · Proveedores |
+| **Casi nunca, pero tiene que estar** | Usuarios y roles · Trazabilidad |
+
+Dos consecuencias de esta agrupación:
+
+- **Servicios y estaciones son un mismo módulo, «El salón».** Los dos son
+  «cómo está armado esto», los dos se tocan cada varios meses, y separarlos
+  produce dos pantallas casi vacías. Los horarios, que ya se editan por
+  migración, se suman ahí.
+- **Productos es módulo propio y de uso diario**, porque entra mercadería,
+  se vende y se usa en cada turno. No es configuración: es operación.
+
+---
+
+### 5.0. Módulo por módulo
 
 ### 5.1. Calendario
 
@@ -226,21 +256,65 @@ estén cargados.** Si no hay dato, dice «no disponible», no lo estima.
 
 ### 5.4. Productos
 
-**No existe nada.** Tablas nuevas: productos, movimientos de stock.
+**No existe nada.** Tablas nuevas: productos y movimientos.
 
-**Dónde se conecta:** al cierre de un turno. Si un servicio consumió
-producto, sale del stock ahí, sin una carga aparte. Y la venta de un
-producto a una clienta entra por Finanzas como cualquier otro cobro.
+Dos usos distintos, y los dos importan:
 
-**El riesgo, dicho de frente:** el inventario es el módulo que más se
-abandona en un salón chico. Si exige contar todo cada semana, a los dos
-meses el número miente y es peor que no tenerlo. Recomiendo arrancar sólo
-con **lo que se vende**, no con lo que se consume: son pocos artículos,
-el movimiento es inequívoco y el número se sostiene solo.
+- **Reventa:** Sol le vende productos a la clienta. Entra por Caja como
+  cualquier cobro.
+- **Consumo en el servicio:** el producto que se usa **cambia el precio del
+  turno**. Ver §5.10, que es donde está el modelo real.
+
+**Corrección respecto del 2026-09-08.** Recomendé arrancar sólo por
+reventa y dejar el consumo interno afuera, porque es lo que obliga a
+contar stock y lo que hace que estos módulos se abandonen. Con el modelo
+de precio de §5.10 eso queda mal: **el consumo no es inventario, es lo que
+determina cuánto se cobra**, y se registra en el momento en que Sol ya
+está cerrando el turno. El motivo del abandono —tener que contar— no
+aplica cuando nadie tiene que contar.
+
+**La distinción que sí se mantiene:** registrar **qué** producto se usó es
+barato y da precio, fórmula y frecuencia de reposición. Registrar
+**cuánto** se usó —30 ml de tal tintura— es lo que se abandona a los dos
+meses. Va lo primero. El resultado no es stock exacto: es «cada cuánto se
+repone», que para dos personas alcanza.
 
 ---
 
-### 5.5. Empleados
+### 5.5. El salón (servicios, estaciones y horarios)
+
+**Es dueño de:** `services`, `categories`, `service_price_tiers`, `extras`,
+`service_parameters`, las tablas de personalización, `resources` y
+`business_hours`.
+
+**Hallazgo (verificado en el código, 2026-09-08):** **no existe un solo
+endpoint que escriba en el catálogo.** Cambiar un precio, un servicio, una
+duración, un extra, una estación o un horario requiere hoy una migración
+SQL y un deploy.
+
+Dicho sin vueltas: **Sol no puede subir un precio sin que yo intervenga.**
+En un país con la inflación que tiene Argentina eso no es una incomodidad,
+es un bloqueo operativo, y explica por qué dirección pidió «libertad para
+cambiar esto». La pedía porque hoy no la tiene.
+
+Lo mismo con las estaciones: existen `GET /stations`, asignar un turno a
+una estación y bloquearla, pero el alta, la baja y el renombre salen de
+`20260823180000_resources.sql`. Si Sol suma un lavatorio, hace falta un
+deploy.
+
+**Lo que hay que cuidar al abrirlo:** el catálogo tiene reglas de
+integridad reales —209 reglas de personalización, tramos de precio por
+largo, modificadores— y una pantalla de edición ingenua las rompe en
+silencio. Editar precio y duración es simple y va primero. Editar la
+estructura de preguntas de un servicio es otro problema y va después.
+
+**Regla que se mantiene:** un precio que cambia no reescribe el pasado. Lo
+que se cobró en un turno cerrado ya está guardado en el cierre y no se
+toca.
+
+---
+
+### 5.6. Empleados
 
 **Es dueño de:** `staff_members`, `staff_schedules`, `staff_specialties`.
 
@@ -257,7 +331,7 @@ persona en un período, porque `service_execution_records` ya guarda
 
 ---
 
-### 5.6. Proveedores
+### 5.7. Proveedores
 
 **No existe nada.** Tabla nueva: proveedores, y compras asociadas a
 proveedor y a producto.
@@ -267,7 +341,7 @@ proveedor en el sistema ni ningún flujo que lo pida.
 
 ---
 
-### 5.7. Usuarios y roles
+### 5.8. Usuarios y roles
 
 **Es dueño de:** `staff_members.role` (`owner` | `staff`) y la lista de
 emails habilitados.
@@ -289,7 +363,7 @@ Regla que se mantiene: **el teléfono no es autenticación.**
 
 ---
 
-### 5.8. Trazabilidad
+### 5.9. Trazabilidad
 
 **Es dueño de:** `audit_log`.
 
@@ -300,6 +374,50 @@ cambió esto?» cuando algo no cuadra, y es lo que pediste explícitamente.
 historial de una entidad, y mostrarlo dentro de cada módulo —la historia
 del turno en el turno, la de la clienta en su ficha— en vez de una
 pantalla de log que nadie mira.
+
+---
+
+### 5.10. El modelo de precio: estimado en la web, real en el mostrador
+
+Dirección lo definió así: «el precio que se muestre a la clienta es un
+estimativo al pagar la seña, y luego, en la operación del servicio, según
+las recomendaciones de Sol y el gusto de la clienta, se incrementa de
+acuerdo al producto utilizado. Sería una locura dejar que las clientas
+elijan los productos en la web.»
+
+**La mitad de esto ya está construida.** El sistema distingue el precio
+estimado (`bookings.price_estimated_min`, con `price_display_mode` en
+`fixed`, `from` o `subject_to_confirmation`) del precio real
+(`service_execution_records.final_price_amount`), y el diálogo de cierre
+ya deja ajustar precio final, duración real y costo de insumos.
+
+**Lo que falta es el porqué.** Hoy el precio final es **un número que Sol
+tipea**. Nada dice qué producto se usó ni por qué subió. Tres
+consecuencias:
+
+1. la clienta no tiene explicación —«¿por qué me salió más?»—;
+2. Sol no puede repetir el mismo criterio dos meses después;
+3. el costo de insumos es otro número a mano, que se va a dejar vacío casi
+   siempre: el propio campo dice «dejalo vacío si no lo sabés».
+
+**La corrección:** el incremento no se tipea, **sale de elegir el producto
+usado**. Sol elige lo que aplicó y el sistema suma lo que ese producto
+suma. Con eso el precio final queda justificado y auditable, la fórmula
+queda escrita sin trabajo extra, y el consumo se registra solo.
+
+**Por qué la clienta no elige el producto —y coincido—:** el precio que ve
+al pagar la seña es una promesa. Si ella elige el producto, elige el
+precio, y el ajuste en el mostrador se vuelve una discusión. Mientras el
+producto sea recomendación de Sol, el ajuste es criterio profesional. Es
+la diferencia entre «te cobro más porque elegiste caro» y «te recomendé
+esto y cuesta esto».
+
+**Lo que sí hay que decirle a la clienta, y hoy no está dicho con
+suficiente claridad:** que el precio es estimativo y puede subir según lo
+que se use. Si eso no está escrito **antes** de que pague la seña, el
+ajuste en el mostrador es una sorpresa, y una sorpresa con la plata es lo
+único que no se puede defender. Es un texto que ve la clienta: pasa por la
+skill de copy, no por acá.
 
 ---
 
@@ -319,14 +437,15 @@ práctica.
 | # | Bloque | Por qué |
 |---|---|---|
 | 1 | **Caja del día, visible sólo para Sol** | Es lo que mira todos los días, ya se puede calcular sin tablas nuevas ni carga manual, y prueba la arquitectura entera con algo chico |
-| 2 | El panel pregunta lo mismo que la web al tomar un turno | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1) |
-| 3 | La ficha de la clienta | El backend está entero; falta sólo la pantalla |
-| 4 | El aviso de cancelación con sus dos momentos (§8.4) | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo |
-| 5 | Finanzas: gastos | Primera tabla nueva |
-| 6 | Clientas: quiénes se pasaron de su ritmo + WhatsApp redactado | Necesita historial suficiente para no equivocarse |
-| 7 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol (§9) |
-| 8 | Productos, sólo reventa | El de mayor riesgo de abandono |
-| 9 | Proveedores | Ninguna urgencia hoy |
+| 2 | **Editar precios y servicios sin un deploy** | Hoy Sol no puede subir un precio sin que yo intervenga (§5.5). Con la inflación argentina es un bloqueo operativo, no una comodidad |
+| 3 | El panel pregunta lo mismo que la web al tomar un turno | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1) |
+| 4 | La ficha de la clienta | El backend está entero; falta sólo la pantalla |
+| 5 | El aviso de cancelación con sus dos momentos (§8.4) | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo |
+| 6 | **Productos, y el precio que sale del producto usado** | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación |
+| 7 | Finanzas: gastos | Primera tabla nueva |
+| 8 | Clientas: quiénes se pasaron de su ritmo + WhatsApp redactado | Necesita historial suficiente para no equivocarse |
+| 9 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol (§9) |
+| 10 | Proveedores | Ninguna urgencia hoy |
 
 ### 6.1. Por qué la caja va primera sin construir un módulo de roles
 
