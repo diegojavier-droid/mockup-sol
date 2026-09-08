@@ -87,9 +87,90 @@ Esto además es lo que habilita a la IA. La IA lee hechos, no pantallas.
 
 ---
 
-## 4. Los nueve módulos
+## 4. Cómo se ven los módulos
 
-### 4.1. Calendario
+Dirección lo planteó así: «un formato estilo Odoo pero simple, para que le
+den uso personas que no tienen educación formal en esto. Estoy viendo
+muchos sistemas que seguramente son difíciles de vender, porque parece que
+tenés que ser ingeniero aeroespacial para entenderlos.»
+
+Vale la pena precisar por qué esos sistemas son difíciles, porque el
+diagnóstico decide el remedio. **No son difíciles por tener muchos
+módulos. Son difíciles porque exigen modelar el negocio antes de poder
+usarlo** —plan de cuentas, diarios, impuestos, unidades de medida— y
+porque hablan en vocabulario contable, no en el del oficio. Por eso
+necesitan un consultor que los implemente, y por eso cuestan lo que
+cuestan. La versión simple no es «lo mismo con menos botones»: es que esa
+exigencia no exista.
+
+De ahí seis reglas. Cada módulo se aprueba o se rechaza contra ellas.
+
+1. **El vocabulario es el del salón.** Sol dice turno, seña, compré
+   shampoo, le devolví la plata. Nunca asiento, tercero, orden de compra,
+   partida, ejercicio.
+2. **Cero configuración antes de usar.** Cada módulo funciona el primer
+   día con lo que ya hay en la base. La configuración aparece cuando la
+   persona choca con la necesidad, no antes.
+3. **Cada pantalla contesta una pregunta que alguien dice en voz alta.**
+   «¿Cuánto entró hoy?», «¿quién viene mañana?», «¿qué le hice la última
+   vez?». Si una pantalla no contesta una pregunta hablada, no va.
+4. **No hay una secuencia que haya que aprender.** En un ERP hay que saber
+   que primero va el presupuesto, después el pedido, después el remito,
+   después la factura. Acá todo cuelga del turno, que es algo que pasa
+   solo.
+5. **Se puede deshacer.** Quien no estudió esto aprende probando. Un
+   sistema que castiga probar no se aprende: se evita. Deshacer, no
+   carteles de confirmación.
+6. **Los números salen de hechos, no de cargas.** Nadie «cierra el mes».
+   Si un número necesita que alguien lo cargue para existir, ese número
+   está mal diseñado.
+
+**La prueba que resuelve las discusiones:** la secretaria que entró ayer se
+sienta sola frente a la pantalla. Si necesita que alguien le explique,
+la pantalla está mal. No la persona.
+
+### 4.1. Las dos mitades del producto no son lo mismo
+
+Dirección también separó dos cosas que veníamos tratando juntas:
+
+- **La web de las clientas** existe para que Sol y la secretaria se
+  descarguen de las charlas largas explicando servicios.
+- **Los módulos de gestión** existen para operar el salón.
+
+La separación es correcta y tiene una consecuencia que conviene aprovechar:
+**las dos mitades necesitan el mismo conocimiento.** Lo que la web le
+pregunta a la clienta —largo, estado del pelo, alergias— es exactamente lo
+que la secretaria tiene que preguntar cuando atiende el teléfono.
+
+**Hallazgo (verificado en el código, 2026-09-08):** hoy no se aprovecha, y
+está al revés. La web pregunta 14 campos de personalización con 49
+opciones y 209 reglas por servicio. El diálogo de turno nuevo del panel
+—el que usa la secretaria al teléfono— pregunta cinco cosas: servicio,
+largo del pelo, nombre, teléfono y cuándo. **La persona que atiende
+recibe menos ayuda que la clienta que reserva sola**, y tiene que acordarse
+de memoria de lo que el sistema ya sabe preguntar.
+
+Corregirlo es reutilizar el motor que ya existe, no escribir uno nuevo. Y
+es la forma más directa de que el panel se sienta asistido en vez de
+burocrático: la primera pantalla de gestión que mejora es la que ya está.
+
+### 4.2. Lo que ya se está midiendo de esto
+
+`assisted_activity_daily` cuenta lo que la web resolvió sin que
+interviniera una persona: `quote_self_service` y
+`availability_self_service`. Es la métrica de carga administrativa
+evitada, y ya está corriendo.
+
+Le faltan dos cosas para servir a la separación de arriba: no cuenta las
+reservas completadas sin intervención, y no cuenta nada de lo que pasa por
+el panel. Sin ese segundo número no se puede saber si la web está
+descargando trabajo o sólo moviéndolo de lugar.
+
+---
+
+## 5. Los nueve módulos
+
+### 5.1. Calendario
 
 **Es dueño de:** `bookings`, `booking_items`, `business_hours`,
 `schedule_exceptions`, `resources`, `resource_blocks`.
@@ -102,7 +183,7 @@ quede auditada.
 
 ---
 
-### 4.2. Clientas
+### 5.2. Clientas
 
 **Es dueño de:** `customers`, `customer_identities`, `customer_notes`.
 
@@ -119,7 +200,7 @@ etiquetas, campos personalizados. El detalle y los motivos están en
 
 ---
 
-### 4.3. Finanzas
+### 5.3. Finanzas
 
 **Es dueño de:** `payments`, y la parte de dinero de
 `service_execution_records` (`final_price_amount`, `payment_method`).
@@ -139,7 +220,7 @@ estén cargados.** Si no hay dato, dice «no disponible», no lo estima.
 
 ---
 
-### 4.4. CRM
+### 5.4. CRM
 
 **No es dueño de ninguna tabla.** Es lo que se *hace* con Clientas.
 
@@ -156,7 +237,7 @@ escribe a nadie sola —redacta, manda Sol—, y no clasifica personas.
 
 ---
 
-### 4.5. Productos
+### 5.5. Productos
 
 **No existe nada.** Tablas nuevas: productos, movimientos de stock.
 
@@ -172,7 +253,7 @@ el movimiento es inequívoco y el número se sostiene solo.
 
 ---
 
-### 4.6. Empleados
+### 5.6. Empleados
 
 **Es dueño de:** `staff_members`, `staff_schedules`, `staff_specialties`.
 
@@ -189,7 +270,7 @@ persona en un período, porque `service_execution_records` ya guarda
 
 ---
 
-### 4.7. Proveedores
+### 5.7. Proveedores
 
 **No existe nada.** Tabla nueva: proveedores, y compras asociadas a
 proveedor y a producto.
@@ -199,7 +280,7 @@ proveedor en el sistema ni ningún flujo que lo pida.
 
 ---
 
-### 4.8. Usuarios y roles
+### 5.8. Usuarios y roles
 
 **Es dueño de:** `staff_members.role` (`owner` | `staff`) y la lista de
 emails habilitados.
@@ -221,7 +302,7 @@ Regla que se mantiene: **el teléfono no es autenticación.**
 
 ---
 
-### 4.9. Trazabilidad
+### 5.9. Trazabilidad
 
 **Es dueño de:** `audit_log`.
 
@@ -235,31 +316,32 @@ pantalla de log que nadie mira.
 
 ---
 
-## 5. Orden de construcción
+## 6. Orden de construcción
 
 El criterio no es la dificultad: es **cuánto trabajo administrativo le
 saca a Sol cada bloque**, con las dependencias respetadas.
 
 | # | Bloque | Por qué acá |
 |---|---|---|
-| 1 | Cerrar los agujeros de auditoría (precio, reprogramación, excepciones) | Es barato, es lo que pediste, y todo lo demás se apoya en esto |
+| 1 | Cerrar los agujeros de auditoría (precio, reprogramación, excepciones) | Es barato, es lo que se pidió, y todo lo demás se apoya en esto |
 | 2 | Ver el historial de un turno y de una clienta | Convierte el registro invisible en algo que se usa |
-| 3 | **Usuarios y roles de verdad** | Sin esto no se puede mostrar plata en un panel compartido |
-| 4 | **Finanzas: caja del día** | Es lo que Sol mira todos los días, y ya se puede calcular sin datos nuevos |
-| 5 | **Clientas: la pantalla de la ficha** | El backend está entero; es la mayor devolución por el menor trabajo |
-| 6 | Finanzas: gastos | Primera tabla nueva |
-| 7 | CRM: quiénes se pasaron de su ritmo + WhatsApp redactado | Necesita historial suficiente para no equivocarse |
-| 8 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol |
-| 9 | Productos, arrancando por lo que se vende | El de mayor riesgo de abandono |
-| 10 | Proveedores | Ninguna urgencia hoy |
+| 3 | **El panel pregunta lo mismo que la web al tomar un turno** | Reutiliza un motor que ya existe; es la mitad del producto que dirección quiere descargar, y hoy está al revés (§4.1) |
+| 4 | **Usuarios y roles de verdad** | Sin esto no se puede mostrar plata en un panel compartido |
+| 5 | **Finanzas: caja del día** | Es lo que Sol mira todos los días, y ya se puede calcular sin datos nuevos |
+| 6 | **Clientas: la pantalla de la ficha** | El backend está entero; es la mayor devolución por el menor trabajo |
+| 7 | Finanzas: gastos | Primera tabla nueva |
+| 8 | CRM: quiénes se pasaron de su ritmo + WhatsApp redactado | Necesita historial suficiente para no equivocarse |
+| 9 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol |
+| 10 | Productos, arrancando por lo que se vende | El de mayor riesgo de abandono |
+| 11 | Proveedores | Ninguna urgencia hoy |
 
 Reordenar esto es una decisión de dirección, no técnica. Lo único que no
-recomiendo mover es el 3 antes del 4: mostrar facturación en un panel sin
+recomiendo mover es el 4 antes del 5: mostrar facturación en un panel sin
 roles es exponerla a quien no corresponde.
 
 ---
 
-## 6. Riesgos abiertos
+## 7. Riesgos abiertos
 
 - **Nueve pestañas.** El fracaso posible de esta arquitectura no es
   técnico: es que el panel se vuelva un ERP y Sol vuelva al cuaderno. El
@@ -274,10 +356,10 @@ roles es exponerla a quien no corresponde.
 
 ---
 
-## 7. Decisiones que necesito de dirección
+## 8. Decisiones que necesito de dirección
 
 1. **¿Clientas y CRM son dos módulos o uno?** Trabajo con la separación de
-   §4.4: registro vs. seguimiento. Decime si tu división es otra.
+   §5.4: registro vs. seguimiento. Decime si tu división es otra.
 2. **¿Qué ve la secretaria y qué no?** Mi propuesta: Calendario y Clientas
    sí; Finanzas, Empleados, Proveedores y Trazabilidad no.
 3. **¿Productos arranca por reventa o también por consumo interno?**
