@@ -1,6 +1,10 @@
 # El CRM de Sol Mai: qué muestra y qué se niega a mostrar
 
 **Estado:** documento de definición. Nada de esto está construido todavía.
+**Encuadre reemplazado (2026-09-08):** este documento trataba al CRM como
+si fuera todo el panel. Pasó a ser uno de nueve módulos; ver
+`docs/sol-mai-arquitectura-modular.md`. Lo que sigue vigente acá es el
+contenido: qué muestra y qué no muestra la ficha de la clienta.
 **Fecha:** 2026-09-07
 **Origen:** dirección de producto (Diego): «estoy viendo por primera vez el
 CRM en imágenes y nunca nos pusimos de acuerdo de lo que mostrará o no.
