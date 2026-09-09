@@ -24,6 +24,12 @@ import {
   SALON_EDIT_MESSAGES,
 } from "../../lib/admin/salon-repository";
 import {
+  aplicarCambios,
+  asistenteDisponible,
+  interpretarInstruccion,
+  proponerCambios,
+} from "../../lib/admin/price-assist";
+import {
   addCustomerNote,
   getBookingForStaff,
   getCustomerDetail,
@@ -877,6 +883,83 @@ export function createAdminRoute(env: ServerEnv) {
         actorId: staff.staffId,
         actorLabel: staff.email,
       }),
+    );
+  });
+
+  /**
+   * El asistente de precios.
+   *
+   * Sol escribe «subí un 15% todo peluquería» y el panel le muestra qué
+   * quedaría. Nada se guarda con esta llamada: propone, y recién la
+   * confirmación escribe.
+   *
+   * El modelo entiende la frase; las cuentas las hace el servidor. Ver
+   * `price-assist.ts` para por qué es así y no al revés.
+   */
+  owner.get("/salon/asistente", (c) => c.json({ data: { disponible: asistenteDisponible(env) } }));
+
+  owner.post("/salon/price-assist", async (c) => {
+    const parsed = z
+      .object({ instruccion: z.string().min(3).max(500) })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+      throw new HTTPException(400, { message: "Escribí qué querés cambiar." });
+    }
+    if (!asistenteDisponible(env)) {
+      throw new HTTPException(503, {
+        message: "El asistente no está configurado. Podés cambiar los precios a mano igual.",
+      });
+    }
+
+    const admin = createSupabaseAdminClient(env);
+    const filas = await listServiceTiers(admin);
+    let intencion;
+    try {
+      intencion = await interpretarInstruccion(env, parsed.data.instruccion, filas);
+    } catch (error) {
+      // Que el asistente se caiga no puede tumbar la pantalla: Sol
+      // sigue editando a mano, que es como funcionó siempre.
+      console.error(
+        JSON.stringify({
+          evento: "asistente_precios_caido",
+          detalle: error instanceof Error ? error.message : String(error),
+          ts: new Date().toISOString(),
+        }),
+      );
+      throw new HTTPException(502, {
+        message: "No pude consultar al asistente. Probá de nuevo o cambialo a mano.",
+      });
+    }
+    return c.json({ data: proponerCambios(intencion, filas) });
+  });
+
+  owner.post("/salon/price-assist/apply", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({
+        cambios: z
+          .array(
+            z.object({
+              slug: z.string().min(1).max(120),
+              lengthTier: z.string().min(1).max(16),
+              precioAntes: z.number().int().positive(),
+              precioAhora: z.number().int().positive(),
+              duracionAntes: z.number().int().positive().max(600),
+              duracionAhora: z.number().int().positive().max(600),
+            }),
+          )
+          .min(1)
+          .max(200),
+      })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) throw new HTTPException(400, { message: "No llegó qué cambiar." });
+
+    return salon(c, () =>
+      aplicarCambios(
+        createSupabaseAdminClient(env),
+        parsed.data.cambios.map((x) => ({ ...x, name: "", area: "" })),
+        { actorId: staff.staffId, actorLabel: staff.email },
+      ),
     );
   });
 

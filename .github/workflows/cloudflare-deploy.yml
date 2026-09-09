@@ -75,6 +75,7 @@ jobs:
         env:
           MP_TOKEN: ${{ secrets.MERCADO_PAGO_ACCESS_TOKEN }}
           MP_WEBHOOK: ${{ secrets.MERCADO_PAGO_WEBHOOK_SECRET }}
+          IA_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           set -euo pipefail
           LISTA=$'SUPABASE_URL\nSUPABASE_PUBLISHABLE_KEY\nSUPABASE_SECRET_KEY\nINTERNAL_AUTH_ALLOWED_EMAILS\nAPI_BASE_URL\nPUBLIC_WEB_BASE_URL'
@@ -91,6 +92,16 @@ jobs:
             echo "Mercado Pago: clave de webhook presente, se publica."
           else
             echo "Mercado Pago: sin clave de webhook; el webhook rechazará todo."
+          fi
+
+          # El asistente de precios. Es la misma lógica que Mercado Pago y por
+          # la misma razón: sin clave el panel se despliega igual y el campo
+          # del asistente no aparece. Nadie ve un botón que falla.
+          if [ -n "${IA_KEY:-}" ]; then
+            LISTA="$LISTA"$'\nANTHROPIC_API_KEY'
+            echo "Asistente de precios: clave presente, se publica."
+          else
+            echo "Asistente de precios: sin clave; el panel esconde el campo y se edita a mano."
           fi
 
           # Un token cargado sin su clave de webhook es peor que nada: se
@@ -131,6 +142,9 @@ jobs:
           # encuentre el valor.
           MERCADO_PAGO_ACCESS_TOKEN: ${{ secrets.MERCADO_PAGO_ACCESS_TOKEN }}
           MERCADO_PAGO_WEBHOOK_SECRET: ${{ secrets.MERCADO_PAGO_WEBHOOK_SECRET }}
+          # Igual que arriba: sólo se sube si el paso anterior la puso en la
+          # lista, pero tiene que estar expuesta para que la acción la lea.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
       - name: Dónde quedó publicado
         run: |
