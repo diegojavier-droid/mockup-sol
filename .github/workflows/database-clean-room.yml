@@ -426,6 +426,79 @@ jobs:
               end if;
             end;
           end $$;
+
+          -- Corregir una ausencia que marcó el sistema, y no una persona.
+          --
+          -- La marca automática puede equivocarse de una sola manera: la
+          -- clienta vino y nadie tocó "Llegó". Sin corrección, esa clienta
+          -- queda anotada como ausente y sin su seña.
+          do $$
+          declare v_id uuid; v_staff uuid; v_r jsonb; v_st text; v_dep text;
+          begin
+            select id into v_staff from public.staff_members limit 1;
+            if v_staff is null then
+              insert into public.staff_members (slug, display_name, email, role, is_active)
+              values ('ci-invariantes', 'CI', 'ci-invariantes@sol-mai.test', 'owner', true)
+              returning id into v_staff;
+            end if;
+
+            select public.create_booking('depilacion', now() - interval '2 days',
+              now() - interval '2 days' + interval '30 minutes', 30, 'fixed', 30000, null, 20, 6000,
+              '{"first_name":"Vino","phone_e164":"+5493420007001"}'::jsonb, '[]'::jsonb, null, 'online')
+              ->> 'id' into v_id;
+            perform public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-REV-1', 6000, 'approved', '{}'::jsonb);
+            perform public.mark_no_show(v_id, null, 'sistema');
+
+            v_r := public.revert_auto_no_show(v_id, v_staff, 'ci@sol-mai.test');
+            select status, deposit_status into v_st, v_dep from public.bookings where id = v_id;
+            if v_st <> 'attended' or v_dep <> 'paid' then
+              raise exception 'la corrección dejó el turno en % / %', v_st, v_dep;
+            end if;
+
+            -- Dos clics no son dos correcciones.
+            if (public.revert_auto_no_show(v_id, v_staff, 'ci@sol-mai.test'))->>'status'
+                 <> 'already_attended' then
+              raise exception 'revert_auto_no_show no es idempotente';
+            end if;
+
+            if not exists (select 1 from public.audit_log
+                            where entity_id = v_id and action = 'auto_no_show_reverted') then
+              raise exception 'la corrección no quedó auditada';
+            end if;
+
+            -- Una ausencia que decidió una persona NO se deshace desde acá.
+            select public.create_booking('depilacion', now() - interval '3 days',
+              now() - interval '3 days' + interval '30 minutes', 30, 'fixed', 30000, null, 20, 6000,
+              '{"first_name":"NoVino","phone_e164":"+5493420007002"}'::jsonb, '[]'::jsonb, null, 'online')
+              ->> 'id' into v_id;
+            perform public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-REV-2', 6000, 'approved', '{}'::jsonb);
+            perform public.mark_no_show(v_id, v_staff, 'ci@sol-mai.test');
+            begin
+              perform public.revert_auto_no_show(v_id, v_staff, 'ci@sol-mai.test');
+              raise exception 'se revirtió una ausencia marcada por una persona';
+            exception when others then
+              if sqlerrm <> 'no_show_manual' then raise; end if;
+            end;
+
+            -- La devolución es la seña completa: un monto distinto se rechaza.
+            select public.create_booking('depilacion', now() + interval '9 days',
+              now() + interval '9 days' + interval '30 minutes', 30, 'fixed', 30000, null, 20, 6000,
+              '{"first_name":"Devol","phone_e164":"+5493420007003"}'::jsonb, '[]'::jsonb, null, 'online')
+              ->> 'id' into v_id;
+            perform public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-REV-3', 6000, 'approved', '{}'::jsonb);
+            perform public.cancel_booking((select public_token from public.bookings where id = v_id), null);
+            begin
+              perform public.mark_refund_completed(v_id, v_staff, 'ci@sol-mai.test', 1, null);
+              raise exception 'aceptó devolver 1 sobre una seña de 6000';
+            exception when others then
+              if sqlerrm <> 'refund_amount_mismatch' then raise; end if;
+            end;
+
+            if (public.mark_refund_completed(v_id, v_staff, 'ci@sol-mai.test', null, null))->>'amount'
+                 <> '6000' then
+              raise exception 'sin monto, la devolución no usó la seña completa';
+            end if;
+          end $$;
           SQL
 
           # anon no puede leer el dominio de reservas ni ejecutar las RPCs

@@ -254,19 +254,41 @@ export async function markRefundCompleted(
     bookingId: string;
     actorId?: string | null;
     actorLabel?: string | null;
-    amount?: number | null;
     providerRef?: string | null;
   },
 ): Promise<{ status: string; amount?: number; refund_completed_at?: string }> {
+  // Sin `p_amount`: la devolución es la seña completa y la calcula la
+  // base. Que el monto viajara desde afuera permitía registrar una
+  // devolución parcial como terminada.
   const { data, error } = await admin.rpc("mark_refund_completed", {
     p_booking_id: params.bookingId,
     p_actor_id: params.actorId ?? null,
     p_actor_label: params.actorLabel ?? null,
-    p_amount: params.amount ?? null,
+    p_amount: null,
     p_provider_ref: params.providerRef ?? null,
   });
   if (error) rethrow(error);
   return data as { status: string; amount?: number; refund_completed_at?: string };
+}
+
+/**
+ * Deshace una ausencia que marcó el sistema, cuando la clienta sí vino.
+ *
+ * Sólo revierte las automáticas. Una ausencia que marcó una persona la
+ * rechaza la base con `no_show_manual`: ahí alguien miró y decidió, y eso
+ * no se pisa desde acá.
+ */
+export async function revertAutoNoShow(
+  admin: SupabaseAdminClient,
+  params: { bookingId: string; actorId: string; actorLabel?: string | null },
+): Promise<{ status: string; deposit_status?: string }> {
+  const { data, error } = await admin.rpc("revert_auto_no_show", {
+    p_booking_id: params.bookingId,
+    p_actor_id: params.actorId,
+    p_actor_label: params.actorLabel ?? null,
+  });
+  if (error) rethrow(error);
+  return data as { status: string; deposit_status?: string };
 }
 
 /** Turnos confirmados que nadie marcó y ya pasaron: se dan por ausentes. */
