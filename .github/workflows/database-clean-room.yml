@@ -433,14 +433,16 @@ jobs:
           -- clienta vino y nadie tocó "Llegó". Sin corrección, esa clienta
           -- queda anotada como ausente y sin su seña.
           do $$
-          declare v_id uuid; v_staff uuid; v_r jsonb; v_st text; v_dep text;
+          declare v_id uuid; v_staff uuid; v_r jsonb; v_st text; v_dep text; v_ids uuid[];
           begin
-            select id into v_staff from public.staff_members limit 1;
-            if v_staff is null then
-              insert into public.staff_members (slug, display_name, email, role, is_active)
-              values ('ci-invariantes', 'CI', 'ci-invariantes@sol-mai.test', 'owner', true)
-              returning id into v_staff;
-            end if;
+            -- Actor de prueba, creado y borrado acá mismo, como el resto de
+            -- los bloques. Dejarlo vivo rompe el arranque del panel:
+            -- `bootstrap_first_staff` sólo crea a la primera persona cuando
+            -- todavía no hay ninguna activa, así que un staff sobrante hace
+            -- que el email de CI nunca reciba su fila y el token dé 403.
+            insert into public.staff_members (slug, display_name, email, role, is_active)
+            values ('ci-reversa', 'CI', 'ci-reversa@solmai.test', 'staff', true)
+            returning id into v_staff;
 
             select public.create_booking('depilacion', now() - interval '2 days',
               now() - interval '2 days' + interval '30 minutes', 30, 'fixed', 30000, null, 20, 6000,
@@ -498,6 +500,18 @@ jobs:
                  <> '6000' then
               raise exception 'sin monto, la devolución no usó la seña completa';
             end if;
+
+            -- Limpieza: el actor de prueba no puede sobrevivir al bloque.
+            select array_agg(id) into v_ids from public.bookings
+              where customer_id in (select id from public.customers
+                                     where phone_e164 in ('+5493420007001','+5493420007002','+5493420007003'));
+            delete from public.audit_log where entity_id = any(v_ids);
+            delete from public.payments  where booking_id = any(v_ids);
+            delete from public.booking_items where booking_id = any(v_ids);
+            delete from public.bookings  where id = any(v_ids);
+            delete from public.customers where phone_e164 in
+              ('+5493420007001','+5493420007002','+5493420007003');
+            delete from public.staff_members where id = v_staff;
           end $$;
           SQL
 
