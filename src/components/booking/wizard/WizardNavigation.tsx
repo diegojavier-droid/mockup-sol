@@ -1,10 +1,12 @@
 import { SummaryPanel, type SummaryData } from "../SummaryPanel";
+import type { ApiQuote } from "@/lib/api/catalog-types";
 import { BOOKING_STEP_INDEX } from "./booking-steps";
 
 export function WizardNavigation({
   canNext,
   canRequestCustomerRequiredFeedback = false,
   data,
+  quote,
   onBack,
   onNext,
   step,
@@ -14,6 +16,7 @@ export function WizardNavigation({
   canNext: boolean;
   canRequestCustomerRequiredFeedback?: boolean;
   data: SummaryData;
+  quote?: ApiQuote | null;
   onBack: () => void;
   onNext: () => void;
   step: number;
@@ -33,7 +36,7 @@ export function WizardNavigation({
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2 backdrop-blur-md lg:hidden">
         {showMobileSummary && (
           <div className="mb-2">
-            <SummaryPanel data={data} variant="bottom" />
+            <SummaryPanel data={data} quote={quote} variant="bottom" />
           </div>
         )}
         <div className="flex gap-2">
