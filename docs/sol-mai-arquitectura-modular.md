@@ -2,7 +2,7 @@
 
 **Estado:** definición de arquitectura. Reemplaza el encuadre de
 `docs/sol-mai-crm.md`, que trataba al CRM como si fuera todo el panel. El
-CRM deja de ser el centro: pasa a ser parte del módulo Clientas (§8.1).
+CRM deja de ser el centro: pasa a ser parte del módulo Clientas (§11.1).
 **Fecha:** 2026-09-08
 **Origen:** dirección de producto (Diego): «quiero hacerlo más modular con
 módulos como calendario, clientas, finanzas, CRM, productos, empleados,
@@ -227,7 +227,7 @@ cierre real, el historial, y un campo libre para notas.
 etiquetas, campos personalizados. El detalle y los motivos están en
 `docs/sol-mai-crm.md` §4 y siguen valiendo.
 
-**Absorbe lo que iba a ser el módulo CRM** (§8.1): un filtro de quiénes se
+**Absorbe lo que iba a ser el módulo CRM** (§11.1): un filtro de quiénes se
 pasaron de su propio ritmo, y un botón que abre WhatsApp con el mensaje ya
 redactado. Tres reglas que no se negocian: la IA no inventa un dato, no le
 escribe a nadie sola —redacta, manda Sol— y no clasifica personas.
@@ -601,7 +601,7 @@ prensa y de los blogs de los proveedores, no citas de producto.
 | Módulo | Qué es | Veredicto |
 |---|---|---|
 | **Bonos, paquetes y gift cards** | Sesiones pagadas por adelantado; tarjeta de regalo | **Va.** Es plata que entra antes del servicio y genera saldo a favor. Muy usado en Argentina |
-| **Facturación electrónica ARCA (ex AFIP)** | Emitir comprobantes con QR obligatorio desde 2024 (RG 5309/2023) | **Va si Sol factura.** Ver §12 |
+| **Facturación electrónica ARCA (ex AFIP)** | Emitir comprobantes | **Sol factura, y NO integramos.** Ver §8.3 |
 | **Propinas** | Quién se la lleva, en efectivo o por Mercado Pago | **Va.** No lo habíamos considerado y toca Caja y Empleados |
 | **Lista de espera** | Llenar los huecos que dejan las cancelaciones | **Va.** Barato y encaja con lo automático |
 | **Cuenta corriente de la clienta** | Saldo a favor por seña no usada o bono pendiente | **Va**, y sale casi solo de bonos y señas |
@@ -649,6 +649,82 @@ tomar peores decisiones que no tener tablero.
    decoración. Los que la cambian acá: ocupación —¿abro más horas o
    menos?—, ausencias —¿la seña está funcionando?—, reposición —¿me quedo
    sin producto?— y quiénes no volvieron.
+### 8.3. Facturación: por qué NO integramos ARCA
+
+**El dato (dirección, 2026-09-09):** la titular está inscripta en ARCA
+como **monotributista categoría E**, prestadora de servicios. Emite
+**factura C** por la web de ARCA o por la app del celular.
+
+**La decisión: no integramos.** Y no es por dificultad técnica.
+
+#### Lo que costaría integrar
+
+Emitir desde nuestro sistema exige un **certificado digital (.pem) atado
+al CUIT de Sol**, un punto de venta habilitado para web services, y el
+circuito WSAA —autenticación, con tokens que vencen— más WSFEv1 para
+pedir el CAE de cada comprobante.
+
+Tres cosas pesan más que el trabajo:
+
+1. **El certificado es una llave que emite documentos fiscales a nombre
+   de Sol.** Viviría en nuestra infraestructura. Si se filtra, alguien
+   puede facturar como ella. Es el secreto más peligroso que manejaría
+   este sistema, y hoy no manejamos ninguno de esa naturaleza.
+2. **ARCA se cae.** Si el sistema no consigue el CAE, la clienta está
+   parada en el mostrador esperando. Habría que construir toda una
+   política de reintentos y de qué hacer mientras tanto.
+3. **La numeración es correlativa por punto de venta.** Si Sol sigue
+   facturando desde la app, hacen falta dos puntos de venta y su
+   contabilidad pasa a tener dos corrientes que alguien tiene que
+   conciliar.
+
+#### Lo que ganaría
+
+Ahorrarle a Sol los treinta segundos que tarda en emitir una factura C
+desde el celular, unas cuantas veces por día.
+
+**Ese canje no cierra.** No hoy.
+
+#### Lo que sí hace falta, y hoy no existe
+
+El problema real no es emitir: es **no saber qué falta emitir**. Al
+cerrar el día, nada le dice a Sol qué atenciones todavía no tienen
+comprobante.
+
+- **Marcar el turno como facturado**, con el importe y la fecha que ella
+  usó. Un campo y un botón.
+- **La caja del día muestra lo que falta facturar**, no sólo lo que
+  entró.
+- El panel le da el importe final y el nombre listos para tipear en la
+  app de ARCA.
+
+**Esto no es trabajo desechable si algún día integramos.** Es el mismo
+campo que la integración escribiría sola en vez de a mano: cambia quién
+lo llena, no el modelo.
+
+#### Dos cosas que conviene mirar, sin inventar números
+
+**Mercado Pago informa a ARCA.** Lo que entra por ahí es visible para el
+organismo. Una diferencia entre lo cobrado por Mercado Pago y lo
+facturado es justamente lo que se nota, y por eso llevar el registro vale
+más que prolijidad contable.
+
+**El tope de la categoría.** Superar el límite de facturación anual
+obliga a recategorizarse. La caja ya sabe lo que entró, así que el
+sistema puede mostrar el acumulado contra el tope —**cargado por el
+contador de Sol, nunca escrito por nosotros**: cambia con la inflación y
+un número viejo es peor que ninguno—. Si no está cargado, dice NO
+DISPONIBLE.
+
+#### Lo que NO decide este documento
+
+Cuándo corresponde emitir el comprobante cuando hubo una seña por
+adelantado y un saldo en el local. Eso lo responde el contador de Sol. El
+diseño no fuerza ninguna respuesta: ella marca el comprobante cuando lo
+emitió, con el importe que usó.
+
+---
+
 
 ---
 
@@ -668,15 +744,18 @@ práctica.
 | # | Bloque | Por qué |
 |---|---|---|
 | 1 | ~~Caja del día, visible sólo para Sol~~ · **HECHO** (2026-09-09) | Salió entera de `payments`, sin tablas nuevas ni carga manual, como estaba previsto |
-| 2 | **Editar precios y servicios sin un deploy** | Hoy Sol no puede subir un precio sin que yo intervenga (§5.5). Con la inflación argentina es un bloqueo operativo, no una comodidad |
-| 3 | El panel pregunta lo mismo que la web al tomar un turno | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1) |
-| 4 | La ficha de la clienta | El backend está entero; falta sólo la pantalla |
-| 5 | El aviso de cancelación con sus dos momentos (§11.4) | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo |
-| 6 | **Productos, y el precio que sale del producto usado** | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación |
-| 7 | Finanzas: gastos | Primera tabla nueva |
-| 8 | Clientas: quiénes se pasaron de su ritmo + WhatsApp redactado | Necesita historial suficiente para no equivocarse |
-| 9 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol (§12) |
-| 10 | Proveedores | Ninguna urgencia hoy |
+| 2 | **Marcar qué falta facturar** | Sale de la caja que ya está y cierra el hueco real de §8.3: hoy nada le dice a Sol qué atenciones no tienen comprobante |
+| 3 | **Editar precios y servicios sin un deploy** | Hoy Sol no puede subir un precio sin que yo intervenga (§5.5). Con la inflación argentina es un bloqueo operativo, no una comodidad |
+| 4 | El panel pregunta lo mismo que la web al tomar un turno | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1) |
+| 5 | La ficha de la clienta | El backend está entero; falta sólo la pantalla |
+| 6 | El aviso de cancelación con sus dos momentos (§11.4) | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo |
+| 7 | **Productos, y el precio que sale del producto usado** | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación |
+| 8 | Finanzas: gastos | Primera tabla nueva |
+| 9 | Clientas: quiénes se pasaron de su ritmo + WhatsApp redactado | Necesita historial suficiente para no equivocarse |
+| 10 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol (§12) |
+| 11 | Proveedores | Ninguna urgencia hoy |
+
+Reordenar esto es una decisión de dirección, no técnica.
 
 ### 9.1. Por qué la caja va primera sin construir un módulo de roles
 
@@ -709,10 +788,10 @@ pantalla.
 - **Productos e inventario** sigue siendo el candidato número uno a
   abandonarse, aun con este diseño.
 - **Comisiones** depende de un dato que Sol todavía no dio.
-- **Facturación electrónica** es el riesgo de alcance más grande que
-  apareció: si hace falta, no es una pantalla, es integrarse con un
-  organismo y cumplir reglas que cambian solas. Hasta tener la
-  respuesta de §12, no se puede estimar el trabajo.
+- **Facturación electrónica** dejó de ser un riesgo de alcance: se
+  decidió no integrar (§8.3). El riesgo que queda es el opuesto y es
+  chico: que el registro de «facturado» se llene a medias y termine
+  mintiendo. Se mitiga mostrándolo en la caja del día, donde se ve solo.
 - **`docs/sol-mai-crm.md`** queda vigente en su contenido (qué muestra y
   qué no la ficha), pero su encuadre —«el CRM es el panel»— lo reemplaza
   este documento.
@@ -726,7 +805,7 @@ esto». Tenía razón en el reclamo. Tres de las cuatro preguntas abiertas
 eran técnicas y me correspondía resolverlas. Quedan resueltas acá, con el
 motivo, para que se puedan revocar con conocimiento.
 
-### 8.1. Clientas y CRM son un solo módulo
+### 11.1. Clientas y CRM son un solo módulo
 
 **Revierte lo que propuse el 2026-09-07.** La división entre «registro» y
 «seguimiento» es una distinción de manual, no una necesidad de este
@@ -736,7 +815,7 @@ pantalla vacía la mayor parte del tiempo.
 La lista de quiénes se pasaron de su ritmo **es un filtro dentro de
 Clientas**, no un módulo. Quedan ocho módulos, no nueve.
 
-### 8.2. La secretaria ve el turno completo, no la plata del salón
+### 11.2. La secretaria ve el turno completo, no la plata del salón
 
 La línea no pasa por «finanzas sí o no», pasa por otro lado:
 
@@ -745,13 +824,13 @@ La línea no pasa por «finanzas sí o no», pasa por otro lado:
 - **La plata del salón no la ve**: cuánto se facturó, gastos, sueldos,
   comisiones, proveedores.
 
-### 8.3. Productos arranca sólo por reventa
+### 11.3. Productos arranca sólo por reventa
 
 Lo que se vende a la clienta. El consumo interno queda afuera hasta que
 alguien lo pida con un problema concreto: es lo que obliga a contar
 stock todas las semanas y lo que hace que el módulo se abandone.
 
-### 8.4. El aviso de la clienta no se pregunta: se hace irrelevante
+### 11.4. El aviso de la clienta no se pregunta: se hace irrelevante
 
 La duda era si «marcar el aviso es obligatorio» significaba la llegada o
 el aviso de cancelación. **La forma correcta de resolverlo no es
@@ -783,9 +862,10 @@ cuando llegue.
    guardar imágenes de personas, decidir quién las ve y cuándo se borran.
 2. **¿Cómo le paga a quien la ayuda?** Sin ese porcentaje no hay
    liquidación posible. No lo vamos a inventar.
-3. **¿Facturás, y bajo qué condición?** Es la que más puede cambiar el
-   trabajo: si hay que emitir comprobantes electrónicos, ARCA es un
-   módulo entero y con reglas que no fijamos nosotros. La respuesta la
-   da su contador, no nosotros.
+3. ~~**¿Facturás, y bajo qué condición?**~~ **RESPONDIDA (2026-09-09):**
+   monotributista categoría E, factura C por la web o la app de ARCA.
+   Decisión tomada en §8.3: no integramos; llevamos el registro de qué
+   falta facturar. Queda un dato para su contador: **el tope de
+   facturación de la categoría**, que el sistema no va a inventar.
 4. **¿A las cuántas semanas una clienta «hace mucho que no viene»?** Si
    no lo sabe, se puede medir sobre su propio historial en unos meses.
