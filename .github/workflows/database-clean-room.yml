@@ -513,6 +513,95 @@ jobs:
               ('+5493420007001','+5493420007002','+5493420007003');
             delete from public.staff_members where id = v_staff;
           end $$;
+
+          -- La caja del día: sale de `payments`, sin tablas nuevas.
+          do $$
+          declare
+            v_id uuid; v_staff uuid; v_caja jsonb; v_ids uuid[]; v_svc text; v_items jsonb;
+            v_antes jsonb; v_movs_antes int; v_efectivo_antes bigint;
+          begin
+            insert into public.staff_members (slug, display_name, email, role, is_active)
+            values ('ci-caja', 'CI', 'ci-caja@solmai.test', 'staff', true)
+            returning id into v_staff;
+
+            -- Foto de la caja ANTES. Los bloques anteriores dejan plata del
+            -- mismo día, así que se mide lo que agregan estos tres
+            -- movimientos y no el total, que depende de qué más corrió.
+            v_antes := public.cash_register(current_date);
+            v_movs_antes := jsonb_array_length(v_antes->'movimientos');
+            select coalesce(sum((m->>'monto')::bigint), 0) into v_efectivo_antes
+              from jsonb_array_elements(v_antes->'por_medio') m where m->>'medio' = 'efectivo';
+
+            -- Seña por Mercado Pago de un turno futuro: entra HOY. Es el
+            -- caso que se pierde si la caja se agrupa por el día del turno.
+            select public.create_booking('depilacion', now() + interval '6 days',
+              now() + interval '6 days' + interval '30 minutes', 30, 'fixed', 30000, null, 20, 6000,
+              '{"first_name":"CajaSena","phone_e164":"+5493420008001"}'::jsonb, '[]'::jsonb, null, 'online')
+              ->> 'id' into v_id;
+            perform public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-CAJA-1', 6000, 'approved', '{}'::jsonb);
+
+            -- Atención cobrada en efectivo.
+            select s.slug into v_svc from public.services s
+              join public.categories c on c.id = s.category_id
+             where c.slug = 'peluqueria' and s.is_active order by s.slug limit 1;
+            v_items := jsonb_build_array(jsonb_build_object('role','main','service_slug',v_svc,
+              'name','Corte','price_amount',24000,'duration_min',60,'process_min',0,'setup_min',0));
+            select public.create_booking('peluqueria', now() - interval '2 hours',
+              now() - interval '1 hour', 60, 'fixed', 24000, null, 0, 0,
+              '{"first_name":"CajaEfectivo","phone_e164":"+5493420008002"}'::jsonb, v_items, null, 'walk_in')
+              ->> 'id' into v_id;
+            perform public.close_service(
+              p_booking_id => v_id, p_final_price => 24000, p_services_done => 'Corte',
+              p_staff_id => v_staff, p_duration_min => 60,
+              p_payments => jsonb_build_array(jsonb_build_object('amount',24000,'method','efectivo','kind','balance')),
+              p_actor_id => v_staff, p_actor_label => 'ci-caja@solmai.test');
+
+            -- Una seña cobrada y devuelta el mismo día: sale.
+            select public.create_booking('depilacion', now() + interval '10 days',
+              now() + interval '10 days' + interval '30 minutes', 30, 'fixed', 30000, null, 20, 6000,
+              '{"first_name":"CajaDevuelta","phone_e164":"+5493420008003"}'::jsonb, '[]'::jsonb, null, 'online')
+              ->> 'id' into v_id;
+            perform public.confirm_booking_payment(v_id, 'mercado_pago', 'CI-CAJA-2', 6000, 'approved', '{}'::jsonb);
+            perform public.cancel_booking((select public_token from public.bookings where id = v_id), null);
+            perform public.mark_refund_completed(v_id, v_staff, 'ci-caja@solmai.test', null, null);
+
+            v_caja := public.cash_register(current_date);
+            if (v_caja->>'entro')::bigint - (v_antes->>'entro')::bigint <> 36000 then
+              raise exception 'la caja sumó % y esperaba 36000',
+                (v_caja->>'entro')::bigint - (v_antes->>'entro')::bigint;
+            end if;
+            if (v_caja->>'devuelto')::bigint - (v_antes->>'devuelto')::bigint <> 6000 then
+              raise exception 'la caja restó % y esperaba 6000',
+                (v_caja->>'devuelto')::bigint - (v_antes->>'devuelto')::bigint;
+            end if;
+            if (v_caja->>'queda')::bigint - (v_antes->>'queda')::bigint <> 30000 then
+              raise exception 'a la caja le quedaron % de más y esperaba 30000',
+                (v_caja->>'queda')::bigint - (v_antes->>'queda')::bigint;
+            end if;
+            -- El detalle tiene que existir: un número que no se puede abrir
+            -- no se puede verificar.
+            if jsonb_array_length(v_caja->'movimientos') - v_movs_antes <> 4 then
+              raise exception 'la caja agregó % movimientos y esperaba 4',
+                jsonb_array_length(v_caja->'movimientos') - v_movs_antes;
+            end if;
+            if (select coalesce(sum((m->>'monto')::bigint), 0)
+                  from jsonb_array_elements(v_caja->'por_medio') m
+                 where m->>'medio' = 'efectivo') - v_efectivo_antes <> 24000 then
+              raise exception 'la caja no separó los 24000 en efectivo: %', v_caja->'por_medio';
+            end if;
+
+            select array_agg(id) into v_ids from public.bookings
+              where customer_id in (select id from public.customers
+                                     where phone_e164 in ('+5493420008001','+5493420008002','+5493420008003'));
+            delete from public.service_execution_records where booking_id = any(v_ids);
+            delete from public.audit_log where entity_id = any(v_ids);
+            delete from public.payments  where booking_id = any(v_ids);
+            delete from public.booking_items where booking_id = any(v_ids);
+            delete from public.bookings  where id = any(v_ids);
+            delete from public.customers where phone_e164 in
+              ('+5493420008001','+5493420008002','+5493420008003');
+            delete from public.staff_members where id = v_staff;
+          end $$;
           SQL
 
           # anon no puede leer el dominio de reservas ni ejecutar las RPCs

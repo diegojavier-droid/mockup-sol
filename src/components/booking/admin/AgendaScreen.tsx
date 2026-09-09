@@ -21,6 +21,7 @@ import { NewBookingDialog } from "./NewBookingDialog";
 import { CloseServiceDialog } from "./CloseServiceDialog";
 import { StationsDialog } from "./StationsDialog";
 import { PendingRefundsPanel } from "./PendingRefundsPanel";
+import { CashRegisterPanel } from "./CashRegisterPanel";
 
 type Range = "hoy" | "manana" | "semana";
 
@@ -179,6 +180,9 @@ export function AgendaScreen() {
 
       {/* Sólo aparece si hay plata esperando que la devuelvan. */}
       <PendingRefundsPanel onFeedback={setFeedback} />
+
+      {/* La caja del día, sólo para Sol y sólo si hubo movimientos. */}
+      <CashRegisterPanel />
 
       {agenda.isError && (
         <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">

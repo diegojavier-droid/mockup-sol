@@ -241,10 +241,16 @@ escribe a nadie sola —redacta, manda Sol— y no clasifica personas.
 
 **Estado:** entra plata y se registra. **No hay caja.**
 
-**Hallazgo:** `service_execution_records` ya guarda `payment_method` en
-cada cierre. **La caja del día se puede calcular hoy mismo, sin una tabla
-nueva y sin que Sol cargue nada:** cuánto entró, por qué medio, cuánto
-fue seña y cuánto se cobró en el local.
+**La caja del día está construida (2026-09-09)** y confirmó el hallazgo:
+salió entera de `payments`, que ya guarda medio, concepto y momento de
+cada cobro. Cero tablas nuevas, cero carga manual.
+
+Una decisión que quedó tomada al construirla: **la caja se agrupa por
+cuándo entró la plata, no por el día del turno.** El dashboard responde
+«cuánto generó la jornada del martes»; la caja responde «qué hay hoy», y
+una seña pagada hoy por un turno de la semana que viene entró hoy.
+También muestra las devoluciones aparte en vez de netearlas en silencio:
+entró, salió, queda.
 
 **Falta como tabla nueva:** gastos. Es lo único de Finanzas que no se
 deriva de un turno, porque no nace de un turno.
@@ -661,7 +667,7 @@ práctica.
 
 | # | Bloque | Por qué |
 |---|---|---|
-| 1 | **Caja del día, visible sólo para Sol** | Es lo que mira todos los días, ya se puede calcular sin tablas nuevas ni carga manual, y prueba la arquitectura entera con algo chico |
+| 1 | ~~Caja del día, visible sólo para Sol~~ · **HECHO** (2026-09-09) | Salió entera de `payments`, sin tablas nuevas ni carga manual, como estaba previsto |
 | 2 | **Editar precios y servicios sin un deploy** | Hoy Sol no puede subir un precio sin que yo intervenga (§5.5). Con la inflación argentina es un bloqueo operativo, no una comodidad |
 | 3 | El panel pregunta lo mismo que la web al tomar un turno | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1) |
 | 4 | La ficha de la clienta | El backend está entero; falta sólo la pantalla |
@@ -675,9 +681,12 @@ práctica.
 ### 9.1. Por qué la caja va primera sin construir un módulo de roles
 
 La objeción evidente es que mostrar facturación exige roles, y roles es un
-módulo entero. No lo exige: **`staff_members.role` ya existe con los
-valores `owner` y `staff`.** Lo que falta no es un módulo, es un guard de
-una línea en un endpoint.
+módulo entero. No lo exige, y **menos de lo que yo mismo escribí acá el
+2026-09-08**: dije que faltaba «un guard de una línea» y ni eso faltaba.
+`staff_members.role` ya existe con `owner` y `staff`, el middleware
+`requireOwner()` ya está escrito y el dashboard ya está detrás de él. La
+caja del día se colgó de ese mismo router y quedó protegida sin agregar
+nada.
 
 Construir el ABM de usuarios para proteger una pantalla sería hacer el
 trabajo al revés. El módulo de Usuarios y roles —altas, bajas, cambiar
