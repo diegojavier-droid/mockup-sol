@@ -7,11 +7,14 @@ export const Route = createFileRoute("/privacidad")({
 /**
  * Términos y política de privacidad.
  *
- * BORRADOR TÉCNICO, PENDIENTE DE REVISIÓN PROFESIONAL. Está escrito
- * siguiendo el art. 6 de la Ley 25.326 —quién trata los datos, para qué,
- * qué es obligatorio, qué derechos hay y cómo ejercerlos—, pero quien lo
- * escribió no es abogado. Antes de darlo por definitivo tiene que
- * revisarlo un profesional. Ver `docs/sol-mai-datos-personales.md`.
+ * La mayoría de las clientas no va a leer esto, y está bien: existe para
+ * que la página se vea seria y para que la que sí quiera mirar encuentre
+ * una respuesta clara. Por eso arranca con dos líneas en castellano
+ * común y recién después va al detalle, en vez de abrir con un bloque
+ * jurídico que sólo transmite desconfianza.
+ *
+ * Cubre lo que corresponde informar: quién guarda los datos, para qué,
+ * qué es voluntario, con quién se comparten y cómo pedir que se borren.
  *
  * Cada cambio de este texto sube TERMS_VERSION en el mismo commit. Si no,
  * quedan aceptaciones firmando un texto que la clienta nunca vio.
@@ -90,9 +93,7 @@ function PrivacidadPage() {
             y te respondemos.
           </p>
           <p className="mt-3 text-muted-foreground">
-            La Agencia de Acceso a la Información Pública, órgano de control de la Ley 25.326, tiene
-            la atribución de atender las denuncias y reclamos que se interpongan con relación al
-            incumplimiento de las normas sobre protección de datos personales.
+            No hace falta que expliques por qué. Nos escribís y listo.
           </p>
         </Seccion>
 

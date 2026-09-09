@@ -63,8 +63,7 @@ export function CustomerDataStep({
   return (
     <StepShell title="¿Cómo podemos contactarte?">
       <p className="-mt-1 text-sm leading-relaxed text-muted-foreground">
-        Usaremos estos datos para enviarte la confirmación, el enlace de seña y el recordatorio del
-        turno.
+        Con esto te llega la confirmación, el link para pagar la seña y el recordatorio del turno.
       </p>
       <div
         className="mt-5 rounded-3xl border border-border bg-card p-5 shadow-sm lg:p-6"
@@ -129,15 +128,18 @@ export function CustomerDataStep({
             type="checkbox"
           />
           <span className="text-sm leading-relaxed text-foreground" id="terminos-detalle">
-            Acepto que Sol Mai guarde mis datos para gestionar mi turno.{" "}
-            <a
-              className="font-medium text-champagne-deep underline underline-offset-2"
-              href="/privacidad"
-              rel="noreferrer"
-              target="_blank"
-            >
-              Ver cómo los cuidamos
-            </a>
+            Acepto los términos y la política de privacidad.
+            <span className="mt-1 block text-xs text-muted-foreground">
+              Tus datos los usamos sólo para tu turno.{" "}
+              <a
+                className="font-medium text-champagne-deep underline underline-offset-2"
+                href="/privacidad"
+                rel="noreferrer"
+                target="_blank"
+              >
+                Leer el detalle
+              </a>
+            </span>
           </span>
         </label>
 

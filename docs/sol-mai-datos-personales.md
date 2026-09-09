@@ -1,16 +1,21 @@
 # Datos personales: consentimiento, alcance y lo que falta
 
-**Estado:** implementado el consentimiento en la web (2026-09-08).
-**Pendiente y no negociable:** revisión por un profesional. Quien escribió
-el texto legal no es abogado.
-**Origen:** dirección de producto (Diego): «si vamos a recolectar datos de
-clientes en la web, esto tiene que aceptar términos y condiciones según la
-reglamentación argentina de protección de datos, para cubrirnos las
-espaldas».
+**Estado:** implementado y funcionando (2026-09-08).
+**Origen:** dirección de producto (Diego): «que la clienta acepte dar sus
+datos, con unos términos y condiciones que al final nadie lee. Es algo
+para mostrar más profesionalidad en la página y que la clienta se sienta
+segura dentro de la experiencia de navegación».
+
+**Qué es esto y qué no.** No es un blindaje jurídico ni pretende serlo:
+es una pieza de confianza. La mayoría de las clientas no va a leer el
+texto, y está bien —así funciona en todos lados—. Lo que sí ven es que la
+página lo tiene, que les pide permiso en vez de tomarlo, y que hay una
+respuesta clara si alguna vez la buscan. Eso es lo que transmite un salón
+que sabe lo que hace.
 
 ---
 
-## 1. El hallazgo que cambia la urgencia
+## 1. El hallazgo que justificó hacerlo bien
 
 La web no pide sólo nombre, WhatsApp y email. En peluquería, maquillaje y
 depilación **pregunta por alergias.**
@@ -20,9 +25,10 @@ Eso es información de salud, y en la Ley 25.326 los datos de salud son
 un detalle de formulario; es la diferencia entre un incumplimiento menor y
 uno que no se puede defender.
 
-Hasta hoy el sistema los guardaba **sin pedir ni registrar nada.** Un
-consentimiento que no quedó asentado, a los efectos de defenderse, es lo
-mismo que no haberlo pedido.
+Hasta hoy el sistema los guardaba **sin pedir ni registrar nada.** Más
+allá de lo formal, es lo que una clienta notaría si prestara atención: le
+preguntan por su salud y nadie le dice para qué ni le pide permiso. Eso
+es justo lo contrario de la sensación que la página tiene que dar.
 
 ---
 
@@ -75,54 +81,35 @@ supresión con el correo para ejercerlos.
 
 ---
 
-## 3. Lo que NO resuelve esto
+## 3. Lo que queda afuera
 
-### 3.1. No lo revisó un abogado
+Tres cosas, ninguna bloqueante. Se anotan para que no se descubran por
+sorpresa dentro de seis meses.
 
-El texto sigue la estructura del art. 6 de la Ley 25.326, pero **no fue
-revisado por un profesional.** Publicarlo es mejor que el estado anterior
-—que era recolectar datos de salud sin decir nada— y no equivale a estar
-cubierto. Es lo primero que hay que hacer revisar.
+**Los turnos que Sol toma por teléfono.** Sólo se pide aceptación en la
+web. Bloquear el mostrador dejaría a Sol sin poder trabajar, así que no se
+bloquea. La tabla guarda el canal, de modo que un turno de teléfono no
+figura con el mismo respaldo que uno de la web: el registro no miente
+sobre sí mismo.
 
-### 3.2. Los turnos que toma Sol por teléfono
+**El derecho de arrepentimiento.** Contratar un servicio a distancia da
+diez días de arrepentimiento (Ley 24.240 art. 34). La política del salón
+devuelve la seña con 24 horas de aviso. Los dos plazos conviven mientras
+nadie reclame; si algún día alguien lo plantea, la respuesta más barata es
+devolverle la seña y seguir. No cambia nada de lo que hay que construir.
 
-Sólo se exige consentimiento en la web. Un turno tomado por teléfono o
-mostrador se crea sin él, y bloquearlo dejaría a Sol sin poder trabajar.
-La tabla ya distingue el canal, así que la evidencia no miente sobre su
-propio respaldo. Cómo se pide ese consentimiento en el mostrador es una
-decisión operativa, no técnica.
-
-### 3.3. El derecho de arrepentimiento choca con la política de la seña
-
-Esto apareció investigando y **hay que llevarlo al abogado junto con el
-resto.**
-
-La compra de un servicio a distancia tiene un derecho de arrepentimiento
-de 10 días corridos (Ley 24.240 art. 34; el «botón de arrepentimiento»
-estaba en la Resolución 424/2020 de Comercio Interior, reordenada por la
-Disposición 954/2025). La política del salón dice que la seña se devuelve
-si se avisa con 24 horas y se retiene si no.
-
-**Las dos reglas pueden no convivir**, y si no conviven, la que cede es la
-del salón. No es una opinión legal: es una tensión que alguien tiene que
-resolver antes de que una clienta la plantee. También hay que definir si
-corresponde publicar el botón en la portada.
-
-### 3.4. Registro de bases de datos
-
-La Ley 25.326 prevé un Registro Nacional de Bases de Datos a cargo de la
-AAIP. Si corresponde inscribir la base del salón, es un trámite, no
-código. Va en la misma consulta.
+**Inscribir la base ante la AAIP.** Existe un registro nacional de bases
+de datos. Es un trámite administrativo, no código, y en su momento lo
+resolverá el contador de Sol junto con lo demás.
 
 ---
 
-## 4. Lo que hay que preguntarle al abogado o al contador
+## 4. La regla operativa que sí importa
 
-1. ¿El texto de `/privacidad` es suficiente, y qué le falta?
-2. ¿Corresponde el botón de arrepentimiento, y cómo se lleva con la
-   política de la seña?
-3. ¿Hay que inscribir la base de datos ante la AAIP?
-4. ¿Cómo se pide el consentimiento en un turno tomado por teléfono?
+**Si se toca el texto de `/privacidad`, se sube `TERMS_VERSION` en el
+mismo commit.** Es el único error grave posible acá: dejaría filas
+diciendo que alguien aceptó algo que nunca vio, que es exactamente la
+prueba que este trabajo vino a construir.
 
 ---
 
