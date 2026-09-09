@@ -34,7 +34,12 @@ describe("el precio que ve la clienta", () => {
   });
 
   it("si el servidor cambia el precio, cambia lo que se muestra", () => {
-    const masCaro = { ...base, estimatedMinAmount: 25000, depositAmount: 5000, remainingAmount: 20000 };
+    const masCaro = {
+      ...base,
+      estimatedMinAmount: 25000,
+      depositAmount: 5000,
+      remainingAmount: 20000,
+    };
     const view = priceViewFromQuote(masCaro);
     expect(view?.price).toBe("$25.000");
     expect(view?.depositPrice).toBe("$5.000");
