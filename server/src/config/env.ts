@@ -89,6 +89,22 @@ const serverEnvSchema = z.object({
   WHATSAPP_PROVIDER_TOKEN: z.string().min(1).optional(),
   INTERNAL_SIGNING_SECRET: z.string().min(1).optional(),
 
+  /**
+   * Clave de la API de Claude, para el asistente de precios del panel.
+   *
+   * Es opcional a propósito: sin ella el panel sigue entero y Sol edita
+   * precio por precio como siempre. Lo único que desaparece es el campo
+   * donde se le escribe la instrucción en castellano, y desaparece
+   * entero —no queda un botón que falle—.
+   */
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  /**
+   * Modelo a usar. Existe como variable para poder cambiarlo sin
+   * desplegar código, no porque haya que tocarlo: el default alcanza.
+   * La tarea es entender una frase corta, no razonar.
+   */
+  ANTHROPIC_MODEL: z.string().min(1).default("claude-haiku-4-5"),
+
   // Optional network binding
   PORT: z
     .string()
@@ -130,6 +146,8 @@ export function loadServerEnv(source: NodeJS.ProcessEnv = process.env): ServerEn
     "EMAIL_PROVIDER_API_KEY",
     "WHATSAPP_PROVIDER_TOKEN",
     "INTERNAL_SIGNING_SECRET",
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_MODEL",
   ] as const;
 
   for (const key of OPTIONAL_SECRETS) {

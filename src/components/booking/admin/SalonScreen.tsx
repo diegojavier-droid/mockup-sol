@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import {
+  useAplicarPropuesta,
+  useAsistenteDisponible,
+  usePropuestaDePrecios,
   useSalonProducts,
   useSalonServices,
   useSetProductActive,
@@ -8,6 +11,7 @@ import {
   useStations,
   useUpsertProduct,
   useUpsertStation,
+  type CambioPropuesto,
   type ProductRow,
   type ServiceTierRow,
 } from "@/lib/api/admin-hooks";
@@ -101,6 +105,8 @@ function Servicios({ onAviso }: { onAviso: Aviso }) {
         Tocá el número y escribí el nuevo. Se guarda al salir del campo.
       </p>
 
+      <Asistente onAviso={onAviso} />
+
       {servicios.isLoading && <p className="mt-4 text-sm text-muted-foreground">Cargando…</p>}
 
       {porArea.map(([area, filas]) => (
@@ -158,6 +164,169 @@ function Servicios({ onAviso }: { onAviso: Aviso }) {
         rompería el cálculo del precio. Si hay que cambiar alguna, avisanos.
       </p>
     </section>
+  );
+}
+
+/**
+ * El asistente: Sol escribe lo que quiere cambiar y ve qué quedaría.
+ *
+ * Existe por una razón concreta. Cambiar un precio es fácil —es un campo,
+ * está ahí—. Cambiar treinta es una tarde. Cuando aumenta el costo de un
+ * producto o el alquiler, Sol no cambia un precio: cambia la lista, y esa
+ * es la tarea que hoy no se hace y termina en una lista desactualizada.
+ *
+ * Tres decisiones de forma:
+ *
+ * - **Primero muestra, después escribe.** Es la única pantalla del panel
+ *   con un paso de confirmación, y se lo gana: en un cambio de a uno el
+ *   error se ve solo, en uno de treinta no. La lista completa —cada
+ *   servicio, antes y ahora— es el producto acá, no un trámite.
+ * - **Se puede deshacer igual.** Después de aplicar queda el botón, como
+ *   en cualquier otro cambio de esta pantalla.
+ * - **Si no entiende, lo dice.** No hay «lo intenté igual». Una propuesta
+ *   a medias sobre precios es peor que ninguna.
+ */
+function Asistente({ onAviso }: { onAviso: Aviso }) {
+  const disponible = useAsistenteDisponible(true);
+  const proponer = usePropuestaDePrecios();
+  const aplicar = useAplicarPropuesta();
+  const [texto, setTexto] = useState("");
+
+  if (!disponible.data?.disponible) return null;
+
+  const propuesta = proponer.data;
+  const pedir = () => {
+    const instruccion = texto.trim();
+    if (instruccion.length < 3) return;
+    proponer.mutate(instruccion);
+  };
+
+  const aplicarTodo = (cambios: CambioPropuesto[]) => {
+    aplicar.mutate(cambios, {
+      onSuccess: (r) => {
+        proponer.reset();
+        setTexto("");
+        const sobraron = r.sinAplicar.length;
+        onAviso({
+          texto:
+            `Listo: ${r.aplicados} ${r.aplicados === 1 ? "cambio aplicado" : "cambios aplicados"}.` +
+            (sobraron > 0 ? ` ${sobraron} quedaron sin tocar porque habían cambiado.` : ""),
+          // Deshacer es la misma operación con los valores dados vuelta.
+          deshacer: () =>
+            aplicar.mutate(
+              cambios.map((c) => ({
+                ...c,
+                precioAntes: c.precioAhora,
+                precioAhora: c.precioAntes,
+                duracionAntes: c.duracionAhora,
+                duracionAhora: c.duracionAntes,
+              })),
+            ),
+        });
+      },
+      onError: (e) => onAviso({ texto: e instanceof Error ? e.message : "No se pudo aplicar." }),
+    });
+  };
+
+  return (
+    <div className="mt-4 rounded-2xl border border-champagne-deep/30 bg-cream/40 p-4">
+      <label className="block text-sm text-foreground/85" htmlFor="asistente-precios">
+        Cambiar varios de una vez
+      </label>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Escribilo como se lo dirías a alguien. Antes de guardar nada, te mostramos qué quedaría.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <input
+          className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          id="asistente-precios"
+          onChange={(e) => setTexto(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") pedir();
+          }}
+          placeholder="Subí un 15% todo peluquería"
+          value={texto}
+        />
+        <button
+          className="shrink-0 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+          disabled={proponer.isPending || texto.trim().length < 3}
+          onClick={pedir}
+          type="button"
+        >
+          {proponer.isPending ? "Pensando…" : "Ver qué cambia"}
+        </button>
+      </div>
+
+      {proponer.isError && (
+        <p className="mt-3 text-sm text-foreground/85">
+          {proponer.error instanceof Error
+            ? proponer.error.message
+            : "No pude consultar al asistente."}
+        </p>
+      )}
+
+      {propuesta && !propuesta.entiendo && (
+        <p className="mt-3 text-sm text-foreground/85">{propuesta.motivo}</p>
+      )}
+
+      {propuesta?.entiendo && (
+        <div className="mt-3">
+          {propuesta.explicacion && (
+            <p className="text-sm text-foreground/85">{propuesta.explicacion}</p>
+          )}
+          <ul className="mt-2 max-h-64 divide-y divide-border overflow-y-auto rounded-xl border border-border bg-card">
+            {propuesta.cambios.map((c) => (
+              <li
+                className="flex flex-wrap items-baseline justify-between gap-x-3 px-3 py-2 text-sm"
+                key={`${c.slug}-${c.lengthTier}`}
+              >
+                <span className="min-w-0 truncate">
+                  {c.name}
+                  <span className="text-muted-foreground">
+                    {" · "}
+                    {LARGO_LABEL[c.lengthTier] ?? c.lengthTier}
+                  </span>
+                </span>
+                <span className="tabular-nums">
+                  {c.precioAntes === c.precioAhora ? (
+                    <>
+                      <span className="text-muted-foreground">{c.duracionAntes} min</span>
+                      {" → "}
+                      {c.duracionAhora} min
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-muted-foreground">{pesos(c.precioAntes)}</span>
+                      {" → "}
+                      {pesos(c.precioAhora)}
+                    </>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+              disabled={aplicar.isPending}
+              onClick={() => aplicarTodo(propuesta.cambios)}
+              type="button"
+            >
+              {aplicar.isPending
+                ? "Guardando…"
+                : `Aplicar ${propuesta.cambios.length} ${propuesta.cambios.length === 1 ? "cambio" : "cambios"}`}
+            </button>
+            <button
+              className="rounded-full border border-border px-4 py-2 text-sm"
+              onClick={() => proponer.reset()}
+              type="button"
+            >
+              Dejarlo como está
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

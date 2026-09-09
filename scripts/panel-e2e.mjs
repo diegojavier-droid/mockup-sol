@@ -26,12 +26,28 @@ const browser = await chromium.launch({
   ],
 });
 
-async function abrirPanel(token) {
+async function abrirPanel(token, { sinAsistente = false } = {}) {
   const page = await browser.newPage({ viewport: { width: 420, height: 950 } });
   await page.route("**/*", (r) => {
     const u = r.request().url();
     return u.includes("127.0.0.1") || u.includes("localhost") ? r.continue() : r.abort();
   });
+  if (sinAsistente) {
+    // Simula un despliegue sin ANTHROPIC_API_KEY. Es el estado por
+    // defecto y el que más importa: si el campo se mostrara igual, Sol
+    // tocaría un botón que falla, y eso enseña a no tocar nada.
+    //
+    // Va DESPUÉS del comodín a propósito: Playwright prueba las rutas en
+    // orden inverso al de registro, así que la última que se agrega es la
+    // primera que gana.
+    await page.route("**/admin/salon/asistente", (r) =>
+      r.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { disponible: false } }),
+      }),
+    );
+  }
   await page.goto(`${BASE}/agenda`, { waitUntil: "domcontentloaded" });
   await page.evaluate((t) => window.sessionStorage.setItem("sol-mai-staff-token", t), token);
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -81,6 +97,48 @@ if (await campo.count()) {
       .inputValue();
     ok(`deshacer devuelve el precio anterior (${antes})`, vuelto === antes, `quedó ${vuelto}`);
   }
+}
+
+// El asistente de precios. La clave que corre en esta prueba es falsa a
+// propósito: lo que se verifica es que el campo esté, que el error se
+// cuente en castellano y que la pantalla siga viva. Que el modelo
+// entienda bien una frase es otra prueba y necesita una clave real.
+console.log("\n── El asistente de precios");
+{
+  const t3 = await sol.locator("body").innerText();
+  ok("con clave configurada, ofrece cambiar varios de una vez", t3.includes("Cambiar varios"));
+
+  const campoIA = sol.locator("#asistente-precios");
+  ok("hay dónde escribir la instrucción", (await campoIA.count()) > 0);
+  if (await campoIA.count()) {
+    const boton = sol.locator("button", { hasText: /Ver qué cambia/ }).first();
+    ok("el botón arranca deshabilitado hasta que hay algo escrito", await boton.isDisabled());
+    await campoIA.fill("subí un 15% todo peluquería");
+    ok("y se habilita al escribir", !(await boton.isDisabled()));
+    await boton.click();
+    await sol.waitForTimeout(6000);
+    const t4 = await sol.locator("body").innerText();
+    ok(
+      "si el asistente falla, lo dice en castellano y sin tecnicismos",
+      /No pude consultar al asistente/.test(t4),
+      t4.slice(0, 200),
+    );
+    ok(
+      "y la pantalla sigue en pie: los precios siguen editables",
+      t4.includes("Precios y tiempos"),
+    );
+  }
+}
+
+// Sin clave, el campo no existe.
+{
+  const sinIA = await abrirPanel(TOKEN_SOL, { sinAsistente: true });
+  await sinIA.locator("button").filter({ hasText: "El salón" }).first().click();
+  await sinIA.waitForTimeout(2500);
+  const t5 = await sinIA.locator("body").innerText();
+  ok("sin asistente configurado, el campo no aparece", !t5.includes("Cambiar varios"));
+  ok("y los precios se siguen editando a mano", t5.includes("Precios y tiempos"));
+  await sinIA.close();
 }
 
 console.log("\n── Quien atiende");

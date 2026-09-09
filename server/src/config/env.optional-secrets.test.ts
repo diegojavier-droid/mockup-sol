@@ -47,6 +47,22 @@ describe("secretos opcionales vacíos", () => {
     expect(env.MERCADO_PAGO_ACCESS_TOKEN).toBe("APP_USR-token");
   });
 
+  it("arranca sin la clave del asistente de precios", () => {
+    const env = loadServerEnv({ ...BASE, ANTHROPIC_API_KEY: "" });
+
+    expect(env.ANTHROPIC_API_KEY).toBeUndefined();
+    // El modelo tiene default: que falte no puede ser un motivo para no
+    // arrancar, ni para que el asistente quede a medias configurado.
+    expect(env.ANTHROPIC_MODEL).toBe("claude-haiku-4-5");
+  });
+
+  it("un modelo vacío cae en el default en vez de romper el arranque", () => {
+    const env = loadServerEnv({ ...BASE, ANTHROPIC_API_KEY: "sk-ant-x", ANTHROPIC_MODEL: "  " });
+
+    expect(env.ANTHROPIC_API_KEY).toBe("sk-ant-x");
+    expect(env.ANTHROPIC_MODEL).toBe("claude-haiku-4-5");
+  });
+
   it("no toca las variables donde una cadena vacía puede significar algo", () => {
     // `INTERNAL_AUTH_ALLOWED_EMAILS` vacío podría querer decir «nadie».
     // Convertirlo en «no definido» aplicaría un default más permisivo, así

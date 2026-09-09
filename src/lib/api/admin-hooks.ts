@@ -232,6 +232,72 @@ export function useSetServicePrice() {
   });
 }
 
+export interface CambioPropuesto {
+  slug: string;
+  name: string;
+  area: string;
+  lengthTier: string;
+  precioAntes: number;
+  precioAhora: number;
+  duracionAntes: number;
+  duracionAhora: number;
+}
+
+export interface PropuestaDePrecios {
+  entiendo: boolean;
+  explicacion: string;
+  motivo?: string;
+  cambios: CambioPropuesto[];
+}
+
+/**
+ * Si el asistente no está configurado, el campo no se muestra.
+ *
+ * Es la diferencia entre «esto no está» y «esto está roto». Un botón que
+ * falla cuando lo tocás enseña a no tocarlo nunca más, y esa lección se
+ * la lleva puesta el resto de la pantalla.
+ */
+export function useAsistenteDisponible(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "salon", "asistente"],
+    queryFn: () => adminApi.get<{ disponible: boolean }>("/salon/asistente"),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Propone. No guarda nada: eso lo hace `useAplicarPropuesta`. */
+export function usePropuestaDePrecios() {
+  return useMutation({
+    mutationFn: (instruccion: string) =>
+      adminApi.post<PropuestaDePrecios>("/salon/price-assist", { instruccion }),
+  });
+}
+
+export function useAplicarPropuesta() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (cambios: CambioPropuesto[]) =>
+      adminApi.post<{ aplicados: number; sinAplicar: { slug: string; lengthTier: string }[] }>(
+        "/salon/price-assist/apply",
+        {
+          cambios: cambios.map((c) => ({
+            slug: c.slug,
+            lengthTier: c.lengthTier,
+            precioAntes: c.precioAntes,
+            precioAhora: c.precioAhora,
+            duracionAntes: c.duracionAntes,
+            duracionAhora: c.duracionAhora,
+          })),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "salon", "services"] });
+      qc.invalidateQueries({ queryKey: ["catalog"] });
+    },
+  });
+}
+
 export function useSalonProducts(enabled: boolean) {
   return useQuery({
     queryKey: ["admin", "salon", "products"],

@@ -16,16 +16,16 @@ here — the frontend under `src/` must never read them.
 
 ## Required to boot the current backend
 
-| Variable                       | Purpose |
-| ------------------------------ | ------- |
-| `NODE_ENV`                     | `development` \| `test` \| `production` |
-| `APP_ENV`                      | `local` \| `staging` \| `production` |
-| `API_BASE_URL`                 | Public URL of this API |
-| `PUBLIC_WEB_BASE_URL`          | Public URL of the web frontend |
-| `SUPABASE_URL`                 | Supabase project API URL |
+| Variable                       | Purpose                                                      |
+| ------------------------------ | ------------------------------------------------------------ |
+| `NODE_ENV`                     | `development` \| `test` \| `production`                      |
+| `APP_ENV`                      | `local` \| `staging` \| `production`                         |
+| `API_BASE_URL`                 | Public URL of this API                                       |
+| `PUBLIC_WEB_BASE_URL`          | Public URL of the web frontend                               |
+| `SUPABASE_URL`                 | Supabase project API URL                                     |
 | `SUPABASE_PUBLISHABLE_KEY`     | Supabase publishable key (`sb_publishable_*`). Respects RLS. |
-| `INTERNAL_AUTH_JWT_AUDIENCE`   | Expected `aud` claim for future internal JWTs |
-| `INTERNAL_AUTH_ALLOWED_EMAILS` | CSV allow-list reserved for future staff/owner auth |
+| `INTERNAL_AUTH_JWT_AUDIENCE`   | Expected `aud` claim for future internal JWTs                |
+| `INTERNAL_AUTH_ALLOWED_EMAILS` | CSV allow-list reserved for future staff/owner auth          |
 
 The current Hono application exposes only health and read-only public catalog
 routes. Those catalog reads use the publishable/RLS path, so an administrative
@@ -72,6 +72,12 @@ These are validated as optional. The backend still boots without them:
 - `EMAIL_PROVIDER_API_KEY` — Phase: notifications
 - `WHATSAPP_PROVIDER_TOKEN` — Phase: notifications
 - `INTERNAL_SIGNING_SECRET` — Phase: internal signed URLs
+- `ANTHROPIC_API_KEY` — asistente de precios del panel. Sin la clave el
+  endpoint contesta 503 y la pantalla esconde el campo: Sol sigue editando
+  precio por precio. Es un secreto: se carga en los secrets del repositorio
+  y el despliegue la sube al Worker.
+- `ANTHROPIC_MODEL` — opcional, por si hay que cambiar de modelo sin
+  desplegar. Default: `claude-haiku-4-5`. No es un secreto.
 
 Do **not** set optional secrets to placeholder strings in production — leave
 them unset until the feature ships.

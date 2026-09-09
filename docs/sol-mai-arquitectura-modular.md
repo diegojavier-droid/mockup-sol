@@ -35,17 +35,22 @@ criterio con el que está armado todo lo que sigue.
 28 tablas, 9 módulos de rutas HTTP, 10 de librería, 4 rutas de frontend
 (`/`, `/agenda`, `/operaciones`, `/reserva/$token`).
 
-| Módulo | Datos | API | Pantalla |
-|---|---|---|---|
-| **Calendario** | Completo | Completa | **Sí** (`/agenda`) |
-| **Clientas** | Completo | Completa | **No** |
-| **Finanzas** | Parcial | Parcial | Parcial (`/operaciones`) |
-| **Productos y stock** | **No existe** | No | No |
-| **El salón** (servicios, estaciones, horarios) | Completo | **Sólo lectura** | No |
-| **Empleados** | Parcial | No | No |
-| **Proveedores** | **No existe** | No | No |
-| **Usuarios y roles** | Parcial | Parcial | No |
-| **Trazabilidad** | Parcial | **No existe** | No |
+| Módulo                                         | Datos         | API                 | Pantalla                 |
+| ---------------------------------------------- | ------------- | ------------------- | ------------------------ |
+| **Calendario**                                 | Completo      | Completa            | **Sí** (`/agenda`)       |
+| **Clientas**                                   | Completo      | Completa            | **No**                   |
+| **Finanzas**                                   | Parcial       | Parcial             | Parcial (`/operaciones`) |
+| **Productos y stock**                          | Parcial       | Parcial             | Parcial (`/agenda`)      |
+| **El salón** (servicios, estaciones, horarios) | Completo      | Lectura y escritura | **Sí** (`/agenda`)       |
+| **Empleados**                                  | Parcial       | No                  | No                       |
+| **Proveedores**                                | **No existe** | No                  | No                       |
+| **Usuarios y roles**                           | Parcial       | Parcial             | No                       |
+| **Trazabilidad**                               | Parcial       | **No existe**       | No                       |
+
+La tabla se actualizó el 2026-09-09, cuando el bloque 2 abrió la escritura
+del catálogo: «El salón» ya no es de sólo lectura y tiene pantalla, y
+Productos existe con alta, precio y archivado —falta el stock, que es la
+otra mitad del módulo—.
 
 Dos lecturas importantes de esta tabla:
 
@@ -180,11 +185,11 @@ exactamente el retroceso que §1 quiere evitar. La salida no es recortar
 módulos: es **ordenarlos por cada cuánto se tocan**, que es como los
 ordena en la cabeza quien los usa.
 
-| Se toca | Módulos |
-|---|---|
-| **Todos los días** | Calendario · Clientas · Caja · Productos |
-| **Cada tanto** | El salón (servicios, estaciones, horarios) · Empleados · Proveedores |
-| **Casi nunca, pero tiene que estar** | Usuarios y roles · Trazabilidad |
+| Se toca                              | Módulos                                                              |
+| ------------------------------------ | -------------------------------------------------------------------- |
+| **Todos los días**                   | Calendario · Clientas · Caja · Productos                             |
+| **Cada tanto**                       | El salón (servicios, estaciones, horarios) · Empleados · Proveedores |
+| **Casi nunca, pero tiene que estar** | Usuarios y roles · Trazabilidad                                      |
 
 Dos consecuencias de esta agrupación:
 
@@ -280,10 +285,10 @@ abandona en un negocio chico.
 Nadie escribe «quedan 4». El número sale de los movimientos, y los tres
 movimientos ya ocurren por otro motivo:
 
-| Movimiento | De dónde sale |
-|---|---|
-| Entra | Una compra a un proveedor |
-| Sale por venta | El cobro que ya se registra en Caja |
+| Movimiento       | De dónde sale                                   |
+| ---------------- | ----------------------------------------------- |
+| Entra            | Una compra a un proveedor                       |
+| Sale por venta   | El cobro que ya se registra en Caja             |
 | Sale por consumo | El cierre del turno, donde Sol ya elige qué usó |
 
 **Ninguno agrega una carga nueva.** Ése es el criterio de §4 regla 6
@@ -350,6 +355,50 @@ estructura de preguntas de un servicio es otro problema y va después.
 **Regla que se mantiene:** un precio que cambia no reescribe el pasado. Lo
 que se cobró en un turno cerrado ya está guardado en el cierre y no se
 toca.
+
+**Estado (2026-09-09):** resuelto. `set_service_price`, `upsert_station`,
+`set_station_active`, `upsert_product` y `set_product_active` existen en la
+base, la pantalla «El salón» las usa, y cada cambio queda auditado con
+actor, valor anterior y valor nuevo. Sol cambia un precio sin que nadie
+despliegue nada.
+
+---
+
+### 5.5.1. El asistente: por qué el modelo no calcula precios
+
+Cambiar un precio es fácil —es un campo, está ahí—. Cambiar treinta es una
+tarde, y por eso no se hace: cuando sube un producto o el alquiler, la
+lista queda vieja. Ese es el problema que resuelve el asistente, no
+«ponerle IA».
+
+La decisión que ordena la implementación: **el modelo entiende la frase, el
+servidor hace las cuentas.** Sol escribe «subí un 15% todo peluquería» y el
+modelo devuelve sólo una intención —qué alcance, qué operación, qué
+redondeo—. Ningún precio sale del modelo.
+
+No es prolijidad. Un modelo que multiplica precios se equivoca en silencio
+y el error llega a la clienta. Uno que sólo interpreta se equivoca de forma
+visible: la propuesta se muestra entera —cada servicio, antes y ahora—
+antes de escribir nada, y la aritmética está en una función pura con tests.
+
+Tres consecuencias:
+
+- **Es la única pantalla del panel con confirmación.** Se la gana: en un
+  cambio de a uno el error se ve solo; en uno de treinta, no.
+- **Se verifica el «antes» al escribir.** Si alguien tocó ese precio a mano
+  entre la propuesta y el botón, ese renglón no se aplica y se informa.
+- **Sin clave configurada el campo no aparece.** No hay un botón que falle:
+  el panel entero sigue funcionando y Sol edita como siempre.
+
+Modelo por defecto: `claude-haiku-4-5`. La tarea es entender una frase
+corta, no razonar, y dirección pidió explícitamente un modelo básico.
+
+**Nota de plataforma:** el SDK oficial no se puede usar en este Worker.
+Arrastra `internal/node.mjs` —que importa `node:child_process`— y workerd
+se cae al arrancar (`ReferenceError: cp is not defined`) antes de atender
+un pedido. La API de mensajes se llama con `fetch`, que en un Worker es
+nativo. Está anotado en `price-assist.ts` para que nadie lo «arregle» de
+vuelta.
 
 ---
 
@@ -483,14 +532,14 @@ que significa en la práctica.
 
 Sol cierra un turno. Es **una** acción, la que ya hace hoy:
 
-| Módulo | Qué se actualiza solo |
-|---|---|
-| Calendario | El turno queda cerrado y libera la estación |
-| Clientas | La ficha suma el servicio, la fórmula y el precio real |
-| Productos y stock | Sale lo que se usó |
-| Caja | Entra lo cobrado, con su medio de pago |
-| Empleados | Suma a la producción de quien atendió |
-| Trazabilidad | Queda quién cerró, cuándo, a qué precio y por qué subió |
+| Módulo            | Qué se actualiza solo                                   |
+| ----------------- | ------------------------------------------------------- |
+| Calendario        | El turno queda cerrado y libera la estación             |
+| Clientas          | La ficha suma el servicio, la fórmula y el precio real  |
+| Productos y stock | Sale lo que se usó                                      |
+| Caja              | Entra lo cobrado, con su medio de pago                  |
+| Empleados         | Suma a la producción de quien atendió                   |
+| Trazabilidad      | Queda quién cerró, cuándo, a qué precio y por qué subió |
 
 **Seis módulos actualizados, cero cargas.** Si algún módulo necesitara que
 alguien vuelva a escribir un dato que ya se escribió, ese módulo está mal
@@ -498,11 +547,11 @@ diseñado. Es el mismo criterio de §4, mirado desde la integración.
 
 Lo mismo con los otros tres hechos que mueven todo:
 
-| Hecho | Qué se actualiza |
-|---|---|
-| Entra una compra | Stock sube · Caja registra la salida de plata · Proveedores suma el movimiento |
-| Se vende un producto | Stock baja · Caja registra el cobro · la ficha de la clienta lo guarda |
-| Se paga una seña | El turno queda confirmado · Caja la registra · queda a cuenta del precio final |
+| Hecho                | Qué se actualiza                                                               |
+| -------------------- | ------------------------------------------------------------------------------ |
+| Entra una compra     | Stock sube · Caja registra la salida de plata · Proveedores suma el movimiento |
+| Se vende un producto | Stock baja · Caja registra el cobro · la ficha de la clienta lo guarda         |
+| Se paga una seña     | El turno queda confirmado · Caja la registra · queda a cuenta del precio final |
 
 ### 6.2. Vertical: todo número se abre hasta el hecho
 
@@ -598,17 +647,17 @@ prensa y de los blogs de los proveedores, no citas de producto.
 
 ### 8.1. Lo que aparece en el rubro y no teníamos
 
-| Módulo | Qué es | Veredicto |
-|---|---|---|
-| **Bonos, paquetes y gift cards** | Sesiones pagadas por adelantado; tarjeta de regalo | **Va.** Es plata que entra antes del servicio y genera saldo a favor. Muy usado en Argentina |
-| **Facturación electrónica ARCA (ex AFIP)** | Emitir comprobantes | **Sol factura, y NO integramos.** Ver §8.3 |
-| **Propinas** | Quién se la lleva, en efectivo o por Mercado Pago | **Va.** No lo habíamos considerado y toca Caja y Empleados |
-| **Lista de espera** | Llenar los huecos que dejan las cancelaciones | **Va.** Barato y encaja con lo automático |
-| **Cuenta corriente de la clienta** | Saldo a favor por seña no usada o bono pendiente | **Va**, y sale casi solo de bonos y señas |
-| Marketing masivo y campañas | Envíos a toda la base | **No.** Ya vetado: es la forma más rápida de que bloqueen el WhatsApp del salón |
-| Fidelidad con puntos | Puntos canjeables | **No.** Con 150 clientas que Sol conoce por nombre, es burocracia. La fidelidad acá es que se acuerde de su fórmula |
-| Reseñas y reputación | Reseñas dentro del sistema | **No.** Eso vive en Google y en Instagram |
-| Multi-sucursal | Varios locales | **No** |
+| Módulo                                     | Qué es                                             | Veredicto                                                                                                           |
+| ------------------------------------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Bonos, paquetes y gift cards**           | Sesiones pagadas por adelantado; tarjeta de regalo | **Va.** Es plata que entra antes del servicio y genera saldo a favor. Muy usado en Argentina                        |
+| **Facturación electrónica ARCA (ex AFIP)** | Emitir comprobantes                                | **Sol factura, y NO integramos.** Ver §8.3                                                                          |
+| **Propinas**                               | Quién se la lleva, en efectivo o por Mercado Pago  | **Va.** No lo habíamos considerado y toca Caja y Empleados                                                          |
+| **Lista de espera**                        | Llenar los huecos que dejan las cancelaciones      | **Va.** Barato y encaja con lo automático                                                                           |
+| **Cuenta corriente de la clienta**         | Saldo a favor por seña no usada o bono pendiente   | **Va**, y sale casi solo de bonos y señas                                                                           |
+| Marketing masivo y campañas                | Envíos a toda la base                              | **No.** Ya vetado: es la forma más rápida de que bloqueen el WhatsApp del salón                                     |
+| Fidelidad con puntos                       | Puntos canjeables                                  | **No.** Con 150 clientas que Sol conoce por nombre, es burocracia. La fidelidad acá es que se acuerde de su fórmula |
+| Reseñas y reputación                       | Reseñas dentro del sistema                         | **No.** Eso vive en Google y en Instagram                                                                           |
+| Multi-sucursal                             | Varios locales                                     | **No**                                                                                                              |
 
 **Un aporte de vocabulario:** la industria llama **backbar** al consumo
 interno de producto, y las plataformas descuentan stock tanto por venta
@@ -649,6 +698,7 @@ tomar peores decisiones que no tener tablero.
    decoración. Los que la cambian acá: ocupación —¿abro más horas o
    menos?—, ausencias —¿la seña está funcionando?—, reposición —¿me quedo
    sin producto?— y quiénes no volvieron.
+
 ### 8.3. Facturación: por qué NO integramos ARCA
 
 **El dato (dirección, 2026-09-09):** la titular está inscripta en ARCA
@@ -725,7 +775,6 @@ emitió, con el importe que usó.
 
 ---
 
-
 ---
 
 ## 9. Orden de construcción
@@ -741,19 +790,19 @@ el cierre, la reprogramación cuando se construya, la excepción cuando se
 toque la agenda. Separarlo era ordenado en un documento y molesto en la
 práctica.
 
-| # | Bloque | Por qué |
-|---|---|---|
-| 1 | ~~Caja del día, visible sólo para Sol~~ · **HECHO** (2026-09-09) | Salió entera de `payments`, sin tablas nuevas ni carga manual, como estaba previsto |
-| 2 | **Marcar qué falta facturar** | Sale de la caja que ya está y cierra el hueco real de §8.3: hoy nada le dice a Sol qué atenciones no tienen comprobante |
-| 3 | **Editar precios y servicios sin un deploy** | Hoy Sol no puede subir un precio sin que yo intervenga (§5.5). Con la inflación argentina es un bloqueo operativo, no una comodidad |
-| 4 | El panel pregunta lo mismo que la web al tomar un turno | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1) |
-| 5 | La ficha de la clienta | El backend está entero; falta sólo la pantalla |
-| 6 | El aviso de cancelación con sus dos momentos (§11.4) | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo |
-| 7 | **Productos, y el precio que sale del producto usado** | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación |
-| 8 | Finanzas: gastos | Primera tabla nueva |
-| 9 | Clientas: quiénes se pasaron de su ritmo + WhatsApp redactado | Necesita historial suficiente para no equivocarse |
-| 10 | Empleados: producción y liquidación | Necesita el porcentaje, que es dato de Sol (§12) |
-| 11 | Proveedores | Ninguna urgencia hoy |
+| #   | Bloque                                                           | Por qué                                                                                                                             |
+| --- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ~~Caja del día, visible sólo para Sol~~ · **HECHO** (2026-09-09) | Salió entera de `payments`, sin tablas nuevas ni carga manual, como estaba previsto                                                 |
+| 2   | **Marcar qué falta facturar**                                    | Sale de la caja que ya está y cierra el hueco real de §8.3: hoy nada le dice a Sol qué atenciones no tienen comprobante             |
+| 3   | **Editar precios y servicios sin un deploy**                     | Hoy Sol no puede subir un precio sin que yo intervenga (§5.5). Con la inflación argentina es un bloqueo operativo, no una comodidad |
+| 4   | El panel pregunta lo mismo que la web al tomar un turno          | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1)                            |
+| 5   | La ficha de la clienta                                           | El backend está entero; falta sólo la pantalla                                                                                      |
+| 6   | El aviso de cancelación con sus dos momentos (§11.4)             | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo                                                |
+| 7   | **Productos, y el precio que sale del producto usado**           | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación                                                    |
+| 8   | Finanzas: gastos                                                 | Primera tabla nueva                                                                                                                 |
+| 9   | Clientas: quiénes se pasaron de su ritmo + WhatsApp redactado    | Necesita historial suficiente para no equivocarse                                                                                   |
+| 10  | Empleados: producción y liquidación                              | Necesita el porcentaje, que es dato de Sol (§12)                                                                                    |
+| 11  | Proveedores                                                      | Ninguna urgencia hoy                                                                                                                |
 
 Reordenar esto es una decisión de dirección, no técnica.
 
