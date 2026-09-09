@@ -180,13 +180,14 @@ export function BookingWizard({
 
           {wizard.service && (
             <div className="hidden lg:block">
-              <SummaryPanel data={wizard.data} />
+              <SummaryPanel data={wizard.data} quote={wizard.quote} />
             </div>
           )}
         </div>
       </main>
 
       <WizardNavigation
+        quote={wizard.quote}
         canNext={wizard.canNext}
         canRequestCustomerRequiredFeedback={wizard.canRequestCustomerRequiredFeedback}
         data={wizard.data}

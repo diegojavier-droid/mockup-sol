@@ -1,6 +1,6 @@
 import type { Personalization } from "@/lib/booking-data";
 import type { ApiQuote } from "@/lib/api/catalog-types";
-import { computeTotals } from "@/lib/booking-totals";
+import { priceViewFromQuote } from "@/lib/booking-price";
 import type { SummaryData } from "../SummaryPanel";
 import { StepShell } from "../wizard/StepShell";
 import type { CustomerFormState } from "./CustomerDataStep";
@@ -24,9 +24,14 @@ export function ReviewStep({
 }) {
   const { categories } = useCatalog();
   const category = categories.find((currentCategory) => currentCategory.id === data.category);
-  const { price, depositPrice, remainingPrice, depositRate } = computeTotals(data);
-  // El porcentaje lo fija Sol desde el panel: si lo cambia, cambia acá.
-  const shownRate = quote ? quote.depositRatePct : Math.round(depositRate * 100);
+  // Todo lo que es plata sale del servidor. Es el último paso antes de
+  // confirmar: si acá el número no fuera el que se va a cobrar, la página
+  // le estaría prometiendo a la clienta algo que no va a cumplir.
+  const view = priceViewFromQuote(quote);
+  const price = view?.price ?? "…";
+  const depositPrice = view?.depositPrice ?? "…";
+  const remainingPrice = view?.remainingPrice ?? "…";
+  const shownRate = view?.depositRatePct ?? null;
 
   return (
     <StepShell title="Revisá que esté todo bien">
@@ -66,7 +71,11 @@ export function ReviewStep({
           <section className="rounded-2xl border border-champagne-deep/30 bg-gradient-to-b from-champagne/45 to-cream/50 p-4">
             <ReviewAmount label="Total estimado" value={price} />
             <div className="mt-3 border-t border-champagne-deep/20 pt-3">
-              <ReviewAmount label={`Seña ${shownRate}%`} value={depositPrice} emphasize />
+              <ReviewAmount
+                label={shownRate === null ? "Seña" : `Seña ${shownRate}%`}
+                value={depositPrice}
+                emphasize
+              />
             </div>
             <div className="mt-3 border-t border-champagne-deep/20 pt-3">
               <ReviewAmount label="Saldo en salón" value={remainingPrice} />

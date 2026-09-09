@@ -1,6 +1,7 @@
 import type { CategoryId, Extra, Personalization, Service } from "@/lib/booking-data";
 
-import { computeTotals } from "@/lib/booking-totals";
+import { priceViewFromQuote } from "@/lib/booking-price";
+import type { ApiQuote } from "@/lib/api/catalog-types";
 import { useCatalog } from "@/lib/catalog-context";
 
 export interface SummaryData {
@@ -15,15 +16,26 @@ export interface SummaryData {
 
 export function SummaryPanel({
   data,
+  quote,
   variant = "side",
 }: {
   data: SummaryData;
+  /** La cotización del servidor. Sin ella no se muestra ningún precio. */
+  quote?: ApiQuote | null;
   variant?: "side" | "bottom";
 }) {
   const { categories } = useCatalog();
   const cat = categories.find((category) => category.id === data.category);
-  const { dur, price, depositPrice, remainingPrice } = computeTotals(data);
   const isEmpty = !data.category && !data.service;
+
+  // Los precios los calcula el servidor. Mientras no conteste se muestra
+  // que está calculando: un número provisorio armado acá sería el mismo
+  // problema que este cambio viene a resolver.
+  const view = priceViewFromQuote(quote);
+  const price = view?.price ?? "…";
+  const depositPrice = view?.depositPrice ?? "…";
+  const remainingPrice = view?.remainingPrice ?? "…";
+  const dur = view?.durationLabel ?? "…";
 
   if (variant === "bottom") {
     return (
@@ -90,7 +102,7 @@ export function SummaryPanel({
         <div className="space-y-1 border-t border-border/70 pt-3">
           <div className="flex items-baseline justify-between gap-3">
             <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Seña 20%
+              Seña {view ? `${view.depositRatePct}%` : ""}
             </span>
             <span className="font-serif text-base text-foreground">{depositPrice}</span>
           </div>
