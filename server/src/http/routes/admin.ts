@@ -6,12 +6,23 @@
  * además rol owner.
  */
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import type { ServerEnv } from "../../config/env";
 import { createSupabaseAdminClient } from "../../lib/supabase";
 import { requireOwner, staffAuth, type StaffVars } from "../middleware/staffAuth";
+import {
+  listProducts,
+  listServiceTiers,
+  setProductActive,
+  setServicePrice,
+  setStationActive,
+  upsertProduct,
+  upsertStation,
+  SalonEditError,
+  SALON_EDIT_MESSAGES,
+} from "../../lib/admin/salon-repository";
 import {
   addCustomerNote,
   getBookingForStaff,
@@ -781,6 +792,136 @@ export function createAdminRoute(env: ServerEnv) {
   // ------------------------------------------------- configuración (owner)
   const owner = new Hono<{ Variables: StaffVars }>();
   owner.use("*", requireOwner());
+
+  /**
+   * «El salón»: lo que Sol cambia sin depender de nadie.
+   *
+   * Precios, duraciones, estaciones y productos. Va detrás de `owner`
+   * porque cambiar un precio cambia lo que se le cobra a una clienta, y
+   * eso no es una tarea del mostrador.
+   *
+   * Cada operación devuelve el valor anterior para que la pantalla pueda
+   * mostrar «antes → ahora» y ofrecer volver atrás. Deshacer, no
+   * carteles de confirmación.
+   */
+  const salon = async <T>(c: Context<{ Variables: StaffVars }>, fn: () => Promise<T>) => {
+    try {
+      return c.json({ data: await fn() });
+    } catch (error) {
+      const code = error instanceof SalonEditError ? error.code : "";
+      const known = SALON_EDIT_MESSAGES[code];
+      if (known) throw new HTTPException(known.status, { message: known.message });
+      throw error;
+    }
+  };
+
+  owner.get("/salon/services", async (c) =>
+    salon(c, () => listServiceTiers(createSupabaseAdminClient(env))),
+  );
+
+  owner.post("/salon/services/:slug/price", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({
+        lengthTier: z.string().min(1).max(16),
+        priceMain: z.number().int().positive(),
+        durationMin: z.number().int().positive().max(600),
+      })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+      throw new HTTPException(400, { message: "Revisá el precio y la duración." });
+    }
+    return salon(c, () =>
+      setServicePrice(createSupabaseAdminClient(env), {
+        slug: c.req.param("slug"),
+        lengthTier: parsed.data.lengthTier,
+        priceMain: parsed.data.priceMain,
+        durationMin: parsed.data.durationMin,
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  owner.post("/salon/stations", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({
+        areaSlug: z.string().min(1).max(64),
+        name: z.string().min(1).max(80),
+        stationId: z.string().uuid().nullish(),
+      })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) throw new HTTPException(400, { message: "Falta el nombre o el área." });
+    return salon(c, () =>
+      upsertStation(createSupabaseAdminClient(env), {
+        areaSlug: parsed.data.areaSlug,
+        name: parsed.data.name,
+        stationId: parsed.data.stationId ?? null,
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  owner.post("/salon/stations/:id/active", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({ active: z.boolean() })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) throw new HTTPException(400, { message: "Datos inválidos." });
+    return salon(c, () =>
+      setStationActive(createSupabaseAdminClient(env), {
+        stationId: c.req.param("id"),
+        active: parsed.data.active,
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  owner.get("/salon/products", async (c) =>
+    salon(c, () => listProducts(createSupabaseAdminClient(env))),
+  );
+
+  owner.post("/salon/products", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({
+        name: z.string().min(1).max(120),
+        brand: z.string().max(80).nullish(),
+        salePrice: z.number().int().positive().nullish(),
+        productId: z.string().uuid().nullish(),
+      })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) throw new HTTPException(400, { message: "Revisá el nombre y el precio." });
+    return salon(c, () =>
+      upsertProduct(createSupabaseAdminClient(env), {
+        name: parsed.data.name,
+        brand: parsed.data.brand ?? null,
+        salePrice: parsed.data.salePrice ?? null,
+        productId: parsed.data.productId ?? null,
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  owner.post("/salon/products/:id/active", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({ active: z.boolean() })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) throw new HTTPException(400, { message: "Datos inválidos." });
+    return salon(c, () =>
+      setProductActive(createSupabaseAdminClient(env), {
+        productId: c.req.param("id"),
+        active: parsed.data.active,
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      }),
+    );
+  });
 
   /**
    * La caja del día: cuánto entró, cuánto salió y por qué medio.
