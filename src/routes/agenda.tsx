@@ -11,6 +11,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AgendaScreen } from "@/components/booking/admin/AgendaScreen";
 import { DashboardScreen } from "@/components/booking/admin/DashboardScreen";
+import { SalonScreen } from "@/components/booking/admin/SalonScreen";
+import { ModuleNav, type ModuleKey } from "@/components/booking/admin/ModuleNav";
 import { useStaffIdentity } from "@/lib/api/admin-hooks";
 import { clearStaffToken, readStaffToken, writeStaffToken } from "@/lib/staff-session";
 
@@ -21,7 +23,7 @@ export const Route = createFileRoute("/agenda")({
 
 function AgendaRoute() {
   const [hasToken, setHasToken] = useState(() => Boolean(readStaffToken()));
-  const [tab, setTab] = useState<"agenda" | "numeros">("agenda");
+  const [tab, setTab] = useState<ModuleKey>("hoy");
   const identity = useStaffIdentity();
   const qc = useQueryClient();
 
@@ -70,29 +72,17 @@ function AgendaRoute() {
             </button>
           </div>
         </div>
-        {/* Los números son de la dueña: el backend los sirve sólo a
-            owner, así que quien atiende ni ve la pestaña. */}
-        {identity.data?.role === "owner" && (
-          <div className="mb-5 flex gap-2">
-            {(["agenda", "numeros"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={`rounded-full border px-4 py-2 text-sm transition-colors ${
-                  tab === t
-                    ? "border-champagne-deep bg-champagne/40 text-foreground"
-                    : "border-border bg-card text-muted-foreground hover:border-champagne"
-                }`}
-              >
-                {t === "agenda" ? "Agenda" : "Los números"}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* El mapa del sistema. Quien atiende ve sólo lo suyo: el
+            backend niega el resto igual, pero mostrarle puertas cerradas
+            sería ensuciarle la pantalla todos los días. */}
+        <div className="mb-6">
+          <ModuleNav activo={tab} isOwner={identity.data?.role === "owner"} onElegir={setTab} />
+        </div>
 
-        {tab === "numeros" && identity.data?.role === "owner" ? (
+        {tab === "caja" && identity.data?.role === "owner" ? (
           <DashboardScreen />
+        ) : tab === "salon" && identity.data?.role === "owner" ? (
+          <SalonScreen />
         ) : (
           <AgendaScreen />
         )}

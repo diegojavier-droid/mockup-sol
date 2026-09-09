@@ -186,6 +186,111 @@ export function usePendingRefunds() {
  * la clienta vino y nadie tocó «Llegó». Sin esto, esa clienta queda
  * anotada como ausente y sin su seña, por una distracción.
  */
+export interface ServiceTierRow {
+  slug: string;
+  name: string;
+  area: string;
+  lengthTier: string;
+  priceMain: number;
+  durationMin: number;
+  isActive: boolean;
+}
+
+export interface ProductRow {
+  id: string;
+  name: string;
+  brand: string | null;
+  salePrice: number | null;
+  isActive: boolean;
+}
+
+/** El catálogo tal como Sol lo edita: un renglón por tramo de largo. */
+export function useSalonServices(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "salon", "services"],
+    queryFn: () => adminApi.get<ServiceTierRow[]>("/salon/services"),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useSetServicePrice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { slug: string; lengthTier: string; priceMain: number; durationMin: number }) =>
+      adminApi.post<Record<string, number | string>>(`/salon/services/${v.slug}/price`, {
+        lengthTier: v.lengthTier,
+        priceMain: v.priceMain,
+        durationMin: v.durationMin,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "salon", "services"] });
+      // El catálogo público también cambia: si no se refresca, Sol ve el
+      // precio nuevo en su panel y la clienta el viejo en la web.
+      qc.invalidateQueries({ queryKey: ["catalog"] });
+    },
+  });
+}
+
+export function useSalonProducts(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "salon", "products"],
+    queryFn: () => adminApi.get<ProductRow[]>("/salon/products"),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useUpsertProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: {
+      name: string;
+      brand?: string | null;
+      salePrice?: number | null;
+      productId?: string | null;
+    }) => adminApi.post<Record<string, unknown>>("/salon/products", v),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "salon", "products"] }),
+  });
+}
+
+export function useSetProductActive() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { productId: string; active: boolean }) =>
+      adminApi.post<Record<string, unknown>>(`/salon/products/${v.productId}/active`, {
+        active: v.active,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "salon", "products"] }),
+  });
+}
+
+export function useUpsertStation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { areaSlug: string; name: string; stationId?: string | null }) =>
+      adminApi.post<{ id: string; accion: string }>("/salon/stations", v),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "stations"] });
+      qc.invalidateQueries({ queryKey: ["admin", "capacity"] });
+    },
+  });
+}
+
+export function useSetStationActive() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { stationId: string; active: boolean }) =>
+      adminApi.post<{ id: string; activa: boolean }>(`/salon/stations/${v.stationId}/active`, {
+        active: v.active,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "stations"] });
+      qc.invalidateQueries({ queryKey: ["admin", "capacity"] });
+    },
+  });
+}
+
 export interface CashMovement {
   hora: string;
   clienta: string;

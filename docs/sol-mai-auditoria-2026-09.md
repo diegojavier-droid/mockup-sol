@@ -64,6 +64,18 @@ Funciona, pero **no queda nada que lo repita mañana**. Si alguien rompe
 el botón «Llegó» o la casilla de los términos, hoy no se entera nadie
 hasta que Sol lo sufre.
 
+**Primer paso dado (2026-09-09):** `scripts/panel-e2e.mjs` maneja el panel
+en un navegador real y verifica catorce cosas: que Sol vea el mapa de
+módulos, que «El salón» abra con sus tres secciones, que cambiar un precio
+muestre «antes → ahora», que deshacer funcione de verdad, y que quien
+atiende no vea ni los números ni «El salón». Ya encontró un defecto real
+—el botón de deshacer no actualizaba la pantalla— antes de que llegara a
+nadie.
+
+Queda pendiente meterlo en CI, que necesita Chromium y el Worker
+levantados en el runner. Se hace aparte y con cuidado: no vale la pena
+arreglar la red rompiendo el techo.
+
 Es el hueco más importante, y pesa el doble ahora que la prioridad
 declarada es que el sistema **se adopte sin fricción**: la fricción vive
 justamente donde no hay red.
