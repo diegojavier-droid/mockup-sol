@@ -100,19 +100,31 @@ fi
 
 echo ""
 echo "── 4. La disponibilidad pide el bloque COMPLETO"
-# El salón cierra los lunes y no ofrece sábados online, así que un offset
-# fijo caía en un día cerrado según el día de la semana en que corriera
-# CI. Se pide una ventana y se compara sobre el primer día que el sistema
-# ofrece para el servicio solo; el combo se consulta sobre ESE mismo día.
+# Lo que se mide: un bloque más largo tiene que dejar de entrar antes que
+# uno corto, así que su último horario del día tiene que ser más temprano.
+#
+# La comparación sólo vale sobre una JORNADA ENTERA, y ahí estaba el
+# error: el día de hoy ya empezó. A las 11:30 de un miércoles quedan
+# 3 horas y media de salón, el servicio solo (50 min con preparación)
+# todavía entra a las 14:00 y el combo (95 min) no entra en ninguna,
+# porque además hay dos horas de anticipación mínima. El test leía eso
+# como una falla del producto cuando el producto tenía razón.
+#
+# Se colaba porque «mañana» se pedía como ${FROM}T00:00:00Z y el salón
+# está en UTC-3: esa medianoche UTC es hoy a las 21:00 en Santa Fe, así
+# que el primer día de la respuesta era HOY. En vez de pelear con el
+# offset se descarta por fecha: el día de la comparación tiene que ser
+# posterior al de hoy en hora del salón.
+HOY_LOCAL=$(date -u -d "-3 hours" +%Y-%m-%d)
 FROM=$(date -u -d "+1 day" +%Y-%m-%d)
 AV1=$(curl -s -m 25 "$API/availability?service=$A&length=medio&from=${FROM}T00:00:00Z&days=14")
 DAY=$(echo "$AV1" | python3 -c "
 import sys,json
 for d in json.load(sys.stdin)['data']['days']:
-    if d['times']:
+    if d['times'] and d['date'] > '$HOY_LOCAL':
         print(d['date']); break" 2>/dev/null)
 if [ -z "$DAY" ]; then
-  echo "FALLA · no hay ningún día con horarios en los próximos 14 días"
+  echo "FALLA · no hay ningún día completo con horarios en los próximos 14 días"
   FAIL=$((FAIL+1))
   DAY=$FROM
 fi
@@ -121,8 +133,15 @@ import sys,json
 for d in json.load(sys.stdin)['data']['days']:
     if d['date']=='$DAY':
         print(d['times'][-1] if d['times'] else ''); break" 2>/dev/null)
-LAST2=$(curl -s -m 25 "$API/availability?service=$A,$B&length=medio&from=${DAY}T00:00:00Z&days=1" \
-  | python3 -c "import sys,json;d=json.load(sys.stdin)['data']['days'];t=d[0]['times'] if d else [];print(t[-1] if t else '')" 2>/dev/null)
+# Misma ventana y se busca ESE día por fecha. Pedir `days=1` desde el día
+# elegido volvía a caer en el problema del offset, y encima los días sin
+# horarios no vienen en la respuesta, así que `days[0]` no es el día que
+# uno pidió.
+LAST2=$(curl -s -m 25 "$API/availability?service=$A,$B&length=medio&from=${FROM}T00:00:00Z&days=14" \
+  | python3 -c "
+import sys,json
+print(next((d['times'][-1] for d in json.load(sys.stdin)['data']['days']
+            if d['date']=='$DAY' and d['times']), ''))" 2>/dev/null)
 if [ -z "$LAST2" ]; then
   echo "    (el combo no entra en ninguna jornada de $DAY: bloque de ${DC}min + preparación)"
 fi
