@@ -291,6 +291,40 @@ export async function revertAutoNoShow(
   return data as { status: string; deposit_status?: string };
 }
 
+export interface CashMovement {
+  hora: string;
+  clienta: string;
+  medio: string;
+  concepto: string;
+  monto: number;
+  salida: boolean;
+}
+
+export interface CashRegister {
+  dia: string;
+  entro: number;
+  devuelto: number;
+  queda: number;
+  por_medio: { medio: string; monto: number; cuantos: number }[];
+  movimientos: CashMovement[];
+}
+
+/**
+ * La caja de un día. Sale entera de `payments`: no hay nada que cargar.
+ *
+ * Se agrupa por cuándo entró la plata, no por el día del turno. Una seña
+ * pagada hoy por un turno de la semana que viene entró hoy, y si no
+ * apareciera, el número no coincidiría con lo que Sol tiene delante.
+ */
+export async function getCashRegister(
+  admin: SupabaseAdminClient,
+  day: string,
+): Promise<CashRegister> {
+  const { data, error } = await admin.rpc("cash_register", { p_day: day });
+  if (error) rethrow(error);
+  return data as CashRegister;
+}
+
 /** Turnos confirmados que nadie marcó y ya pasaron: se dan por ausentes. */
 export async function autoMarkNoShows(admin: SupabaseAdminClient): Promise<number> {
   const { data, error } = await admin.rpc("auto_mark_no_shows");

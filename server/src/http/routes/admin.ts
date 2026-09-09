@@ -39,6 +39,7 @@ import {
   listPendingRefunds,
   markRefundCompleted,
   revertAutoNoShow,
+  getCashRegister,
   BookingError,
   type CapacityCheck,
 } from "../../lib/booking/repository";
@@ -58,6 +59,8 @@ import { createCatalogRepository } from "../../lib/catalog/repository";
 import { createSupabaseAnonClient } from "../../lib/supabase";
 
 const SALON_TZ = "-03:00";
+/** Santa Fe está tres horas detrás de UTC y no cambia de huso. */
+const SALON_TZ_OFFSET_MS = -3 * 60 * 60 * 1000;
 
 /**
  * Qué se le dice a la persona cuando el turno no entra.
@@ -778,6 +781,34 @@ export function createAdminRoute(env: ServerEnv) {
   // ------------------------------------------------- configuración (owner)
   const owner = new Hono<{ Variables: StaffVars }>();
   owner.use("*", requireOwner());
+
+  /**
+   * La caja del día: cuánto entró, cuánto salió y por qué medio.
+   *
+   * Es la pregunta que Sol se hace todos los días al cerrar, y la única
+   * de plata que no tenía respuesta: el dashboard resume un período, no
+   * el día que se está terminando.
+   *
+   * Sale entera de cobros que ya se registran. Nadie carga nada.
+   */
+  owner.get("/cash-register", async (c) => {
+    const parsed = z
+      .object({
+        day: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+      })
+      .safeParse(c.req.query());
+    if (!parsed.success) throw new HTTPException(400, { message: "Fecha inválida." });
+
+    // Sin fecha, hoy en el salón. Usar la fecha del servidor daría el día
+    // equivocado durante las últimas horas de atención.
+    const day =
+      parsed.data.day ?? new Date(Date.now() + SALON_TZ_OFFSET_MS).toISOString().slice(0, 10);
+    const caja = await getCashRegister(createSupabaseAdminClient(env), day);
+    return c.json({ data: caja });
+  });
 
   // Plata del salón: cuánto entró, cuánto se facturó y con qué margen.
   // Va detrás de `owner` por mínimo privilegio — quien atiende no

@@ -186,6 +186,37 @@ export function usePendingRefunds() {
  * la clienta vino y nadie tocó «Llegó». Sin esto, esa clienta queda
  * anotada como ausente y sin su seña, por una distracción.
  */
+export interface CashMovement {
+  hora: string;
+  clienta: string;
+  medio: string;
+  concepto: string;
+  monto: number;
+  salida: boolean;
+}
+
+export interface CashRegister {
+  dia: string;
+  entro: number;
+  devuelto: number;
+  queda: number;
+  por_medio: { medio: string; monto: number; cuantos: number }[];
+  movimientos: CashMovement[];
+}
+
+/**
+ * La caja del día. Sólo la ve Sol: la ruta está detrás del rol `owner` y
+ * a quien atiende le responde 403, así que el panel no la pide.
+ */
+export function useCashRegister(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "cash-register"],
+    queryFn: () => adminApi.get<CashRegister>("/cash-register"),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
 export function useRevertAutoNoShow() {
   const qc = useQueryClient();
   return useMutation({
