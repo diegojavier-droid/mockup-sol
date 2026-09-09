@@ -14,6 +14,7 @@ import {
   useMarkNoShow,
   useStations,
   useUpdateBookingStatus,
+  useRevertAutoNoShow,
   type AgendaEntry,
 } from "@/lib/api/admin-hooks";
 import { NewBookingDialog } from "./NewBookingDialog";
@@ -273,6 +274,7 @@ function BookingRow({
   const [assigning, setAssigning] = useState(false);
   const noShow = useMarkNoShow();
   const updateStatus = useUpdateBookingStatus();
+  const revertNoShow = useRevertAutoNoShow();
   const open = entry.status === "confirmed" || entry.status === "pending_payment";
 
   return (
@@ -302,6 +304,26 @@ function BookingRow({
               className="rounded-full border border-current/30 bg-current/10 px-3 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
             >
               Llegó
+            </button>
+          )}
+          {/* La contracara de la marca automática: si el sistema dio por
+              ausente a alguien que sí vino, tiene que poder arreglarse en
+              un toque. Si la ausencia la marcó una persona, la base
+              rechaza el pedido y el mensaje lo explica. */}
+          {entry.status === "no_show" && (
+            <button
+              type="button"
+              disabled={revertNoShow.isPending}
+              onClick={() =>
+                revertNoShow.mutate(entry.id, {
+                  onSuccess: (r) => onFeedback(r.message ?? "Turno corregido."),
+                  onError: (e) =>
+                    onFeedback(e instanceof Error ? e.message : "No pudimos corregirlo."),
+                })
+              }
+              className="rounded-full border border-current/30 bg-current/10 px-3 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+            >
+              Vino igual
             </button>
           )}
           <span className="text-[11px] uppercase tracking-wider opacity-80">

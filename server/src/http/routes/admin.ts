@@ -38,6 +38,7 @@ import {
   markNoShow,
   listPendingRefunds,
   markRefundCompleted,
+  revertAutoNoShow,
   BookingError,
   type CapacityCheck,
 } from "../../lib/booking/repository";
@@ -217,9 +218,11 @@ export function createAdminRoute(env: ServerEnv) {
   route.post("/bookings/:id/refund-done", async (c) => {
     const staff = c.get("staff");
     const body = await c.req.json().catch(() => ({}));
+    // El monto NO se recibe: la devolución es la seña completa y el
+    // servidor la sabe. Aceptarlo dejaba que un cliente de la API
+    // registrara una devolución parcial como terminada.
     const parsed = z
       .object({
-        amount: z.number().int().min(1).nullish(),
         providerRef: z.string().max(120).nullish(),
       })
       .safeParse(body);
@@ -232,7 +235,6 @@ export function createAdminRoute(env: ServerEnv) {
         bookingId: c.req.param("id"),
         actorId: staff.staffId,
         actorLabel: staff.email,
-        amount: parsed.data.amount ?? null,
         providerRef: parsed.data.providerRef ?? null,
       });
 
@@ -250,6 +252,46 @@ export function createAdminRoute(env: ServerEnv) {
       if (code === "refund_not_due") {
         throw new HTTPException(409, {
           message: "Ese turno no tiene una devolución pendiente.",
+        });
+      }
+      throw error;
+    }
+  });
+
+  /**
+   * «La clienta vino igual»: deshace una ausencia que marcó el sistema.
+   *
+   * La marca automática es una deducción a partir de un silencio, no el
+   * registro de lo que pasó. Si Sol se olvidó de tocar «Llegó», la
+   * clienta queda anotada como ausente y con la seña retenida, y eso
+   * tiene que poder corregirse. Las ausencias que marcó una persona no
+   * se tocan: ahí alguien miró y decidió.
+   */
+  route.post("/bookings/:id/no-show/revert", async (c) => {
+    const staff = c.get("staff");
+    try {
+      const result = await revertAutoNoShow(createSupabaseAdminClient(env), {
+        bookingId: c.req.param("id"),
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      });
+      const message =
+        result.status === "already_attended"
+          ? "Ese turno ya figura como atendido."
+          : "Listo: el turno queda como atendido y la seña vuelve a contar como pagada.";
+      return c.json({ data: { ...result, message } });
+    } catch (error) {
+      const code =
+        error instanceof BookingError ? error.code : error instanceof Error ? error.message : "";
+      if (code === "booking_not_found") {
+        throw new HTTPException(404, { message: "No encontramos ese turno." });
+      }
+      if (code === "not_a_no_show") {
+        throw new HTTPException(409, { message: "Ese turno no figura como ausencia." });
+      }
+      if (code === "no_show_manual") {
+        throw new HTTPException(409, {
+          message: "Esa ausencia la marcó una persona, así que no se deshace desde acá.",
         });
       }
       throw error;

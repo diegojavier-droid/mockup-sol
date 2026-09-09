@@ -120,6 +120,18 @@ begin
     );
   end if;
 
+  -- La devolución es SIEMPRE la seña completa. `p_amount` existe para que
+  -- quien llame pueda dejar constancia de lo que devolvió, no para elegir
+  -- cuánto: si no coincide con la seña, se rechaza.
+  --
+  -- Sin esta comprobación, mandar un peso marcaba la devolución como
+  -- terminada, la sacaba de la lista de pendientes y dejaba un registro
+  -- de plata que dice algo distinto de lo que pasó. Una devolución
+  -- parcial es otro caso y necesita modelarse aparte, no colarse por acá.
+  if p_amount is not null and p_amount <> v_booking.deposit_amount then
+    raise exception 'refund_amount_mismatch';
+  end if;
+
   v_amount := coalesce(p_amount, v_booking.deposit_amount);
 
   update public.bookings

@@ -179,6 +179,26 @@ export function usePendingRefunds() {
   });
 }
 
+/**
+ * Deshace una ausencia que marcó el sistema.
+ *
+ * Existe porque la marca automática puede equivocarse de una sola manera:
+ * la clienta vino y nadie tocó «Llegó». Sin esto, esa clienta queda
+ * anotada como ausente y sin su seña, por una distracción.
+ */
+export function useRevertAutoNoShow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (bookingId: string) =>
+      adminApi.post<{ status: string; message: string }>(`/bookings/${bookingId}/no-show/revert`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "agenda"] });
+      qc.invalidateQueries({ queryKey: ["admin", "refunds-pending"] });
+      qc.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+    },
+  });
+}
+
 export function useMarkRefundDone() {
   const qc = useQueryClient();
   return useMutation({
