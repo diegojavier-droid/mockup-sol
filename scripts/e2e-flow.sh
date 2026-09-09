@@ -152,6 +152,13 @@ ok "se le asigna una estación" "$([ "$A" = "200" ] && echo 1 || echo 0)" "http 
 
 echo ""
 echo "── 9. Se cierra la atención con el precio real"
+# Foto del cobrado ANTES de cerrar. La prueba mide lo que agrega este
+# cierre, no el total del día: en el mismo día puede haber plata de otro
+# origen —en CI, las señas retenidas que crean las invariantes de la base—
+# y comparar contra un número fijo hacía que el test fallara o pasara
+# según la hora a la que corriera el workflow.
+COB_ANTES=$(curl -s -H "$H" "$API/admin/dashboard?from=$BDAY&to=$BDAY" \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['collected_amount'])" 2>/dev/null || echo 0)
 CL=$(curl -s -m 15 -X POST -H "$H" -H "content-type: application/json" \
   -d '{"finalPrice":24000,"servicesDone":"Corte y brushing","durationMin":70,"payments":[{"amount":24000,"method":"efectivo","kind":"balance"}]}' \
   "$API/admin/bookings/$WID/close")
@@ -164,7 +171,9 @@ echo "── 10. El dinero aparece en los números"
 D=$(curl -s -H "$H" "$API/admin/dashboard?from=$BDAY&to=$BDAY")
 COB=$(echo "$D" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['collected_amount'])")
 MAR=$(echo "$D" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['margin']['available'])")
-ok "lo cobrado en efectivo llega al dashboard ($COB)" "$([ "$COB" = "24000" ] && echo 1 || echo 0)" "$COB"
+SUMADO=$((COB - COB_ANTES))
+ok "lo cobrado en efectivo llega al dashboard (+$SUMADO)" \
+   "$([ "$SUMADO" = "24000" ] && echo 1 || echo 0)" "antes=$COB_ANTES después=$COB"
 ok "el margen sigue NO DISPONIBLE (no se cargó costo)" "$([ "$MAR" = "False" ] && echo 1 || echo 0)" "$MAR"
 
 echo ""
