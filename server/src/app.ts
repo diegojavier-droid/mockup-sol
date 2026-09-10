@@ -9,6 +9,7 @@ import { createBookingsRoute } from "./http/routes/bookings";
 import { createIdentityRoute } from "./http/routes/identity";
 import { createPaymentsRoute } from "./http/routes/payments";
 import { createAdminRoute } from "./http/routes/admin";
+import { createAuthRoute } from "./http/routes/auth";
 
 export function createApp(env: ServerEnv) {
   const app = new Hono();
@@ -21,6 +22,7 @@ export function createApp(env: ServerEnv) {
   v1.route("/bookings", createBookingsRoute(env));
   v1.route("/identity", createIdentityRoute(env));
   v1.route("/payments", createPaymentsRoute(env));
+  v1.route("/auth", createAuthRoute(env));
   v1.route("/admin", createAdminRoute(env));
 
   app.route("/api/v1", v1);
