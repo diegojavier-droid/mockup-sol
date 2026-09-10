@@ -239,6 +239,69 @@ export function useSetStaffRole() {
   );
 }
 
+// ------------------------------------------------------------ facturación
+
+export interface PendingInvoice {
+  bookingId: string;
+  cuando: string;
+  clienta: string;
+  servicios: string;
+  cobrado: number;
+  medio: string | null;
+}
+
+export interface InvoicingSummary {
+  anio: number;
+  facturado: number;
+  pendiente: number;
+  cuantosPendientes: number;
+  /** `null` cuando el contador de Sol todavía no cargó el tope. */
+  tope: number | null;
+  topeCargado: boolean;
+}
+
+export function usePendingInvoices(enabled = true) {
+  return useQuery({
+    queryKey: ["admin", "invoicing", "pending"],
+    queryFn: () => adminApi.get<PendingInvoice[]>("/invoicing/pending"),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useInvoicingSummary(enabled = true) {
+  return useQuery({
+    queryKey: ["admin", "invoicing", "summary"],
+    queryFn: () => adminApi.get<InvoicingSummary>("/invoicing/summary"),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+function useInvoicingMutation<V, R>(fn: (v: V) => Promise<R>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "invoicing"] }),
+  });
+}
+
+export function useMarkInvoiced() {
+  return useInvoicingMutation(
+    (v: { bookingId: string; amount: number; on: string; number?: string | null }) =>
+      adminApi.post<{ bookingId: string; facturado: boolean }>(
+        `/bookings/${v.bookingId}/invoiced`,
+        { amount: v.amount, on: v.on, number: v.number ?? null },
+      ),
+  );
+}
+
+export function useUnmarkInvoiced() {
+  return useInvoicingMutation((v: { bookingId: string }) =>
+    adminApi.del<{ bookingId: string; facturado: boolean }>(`/bookings/${v.bookingId}/invoiced`),
+  );
+}
+
 // ------------------------------------------------------- roles y permisos
 
 export interface RoleRow {

@@ -239,6 +239,58 @@ console.log("\n── Usuarios y roles · Registro de cambios");
   }
 }
 
+console.log("\n── Finanzas · Facturación");
+{
+  await sol.locator('button:has-text("Finanzas")').first().click();
+  await sol.waitForTimeout(2500);
+  const t = await sol.locator("body").innerText();
+
+  ok("la facturación está en Finanzas", /facturación/i.test(t));
+  // Lo primero que tiene que quedar claro es que el sistema no factura:
+  // si Sol creyera que sí, dejaría de emitir y eso es un problema fiscal.
+  ok("dice que las facturas las emite ella", /las emitís vos desde arca/i.test(t));
+  ok("muestra lo que falta facturar", /falta facturar/i.test(t));
+
+  // LA REGLA DEL BLOQUE: el tope lo carga el contador. Sin cargar, la
+  // pantalla tiene que decir que no lo sabe en vez de mostrar un número.
+  ok("sin tope cargado dice que no está", /no disponible/i.test(t));
+  ok("y dice quién lo carga", /lo carga tu contador/i.test(t));
+  ok("no inventa ningún porcentaje del tope", !/llevás el \d+%/i.test(t));
+
+  const marcar = sol.locator('button[aria-label^="Marcar como facturada"]').first();
+  if ((await marcar.count()) > 0) {
+    await marcar.click();
+    await sol.waitForTimeout(500);
+    const importe = sol.locator('input[aria-label^="Importe facturado"]').first();
+    ok("el importe viene cargado con lo cobrado", (await importe.inputValue()) !== "");
+
+    const fecha = sol.locator('input[aria-label^="Fecha del comprobante"]').first();
+    ok("la fecha no deja elegir un día futuro", (await fecha.getAttribute("max")) !== null);
+
+    await sol.locator('button:has-text("Anotar")').first().click();
+    await sol.waitForTimeout(2500);
+    const t2 = await sol.locator("body").innerText();
+    ok("anotar la factura lo confirma", /anotamos la factura/i.test(t2), t2.slice(0, 160));
+    ok("y deja de figurar como pendiente", /no queda nada por facturar/i.test(t2));
+
+    // Tipear mal un importe es lo más fácil que hay. Sin esta salida, la
+    // única sería que alguien toque la base a mano —sobre datos fiscales—.
+    // Además deja la prueba como la encontró, así la corrida siguiente
+    // arranca igual que ésta.
+    const undo = sol.locator('button[aria-label^="Deshacer la factura"]').first();
+    ok("se puede deshacer lo que se acaba de anotar", (await undo.count()) > 0);
+    if (await undo.count()) {
+      await undo.click();
+      await sol.waitForTimeout(2500);
+      const t3 = await sol.locator("body").innerText();
+      ok("deshacer lo dice", /volvimos atrás/i.test(t3));
+      ok("y la atención vuelve a lo que falta facturar", !/no queda nada por facturar/i.test(t3));
+    }
+  } else {
+    ok("hay algo para facturar en la prueba", false, "no apareció ninguna atención pendiente");
+  }
+}
+
 console.log("\n── Roles y permisos");
 {
   await sol.locator('button:has-text("Usuarios y roles")').first().click();

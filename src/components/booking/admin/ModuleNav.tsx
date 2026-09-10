@@ -51,7 +51,7 @@ export const MODULOS: { grupo: string; items: ModuleDef[] }[] = [
       {
         key: "finanzas",
         label: "Finanzas",
-        secciones: "Caja del día · Devoluciones",
+        secciones: "Caja del día · Facturación · Devoluciones",
         modulo: "finanzas",
         listo: true,
       },
