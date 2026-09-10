@@ -911,16 +911,17 @@ práctica.
 | 2   | ~~Servicios › Precios y tiempos~~ · **HECHO** (2026-09-09)          | Sol ya cambia precios, tiempos, puestos y productos sin que nadie despliegue                                       |
 | 3   | ~~Usuarios y roles › Personas~~ · **HECHO** (2026-09-10)            | Era el agujero operativo real; y era condición para Finanzas y Personal                                            |
 | 4   | ~~Usuarios y roles › Registro de cambios~~ · **HECHO** (2026-09-10) | El dato ya se escribía; faltaba la puerta                                                                          |
-| 5   | **Finanzas › Facturación**                                          | Sale de la caja que ya está y cierra el hueco de §8.3: hoy nada le dice a Sol qué atenciones no tienen comprobante |
-| 6   | El panel pregunta lo mismo que la web al tomar un turno             | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1)           |
-| 7   | Clientas › Fichas                                                   | El backend está entero; falta sólo la pantalla                                                                     |
-| 8   | El aviso de cancelación con sus dos momentos (§11.4)                | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo                               |
-| 9   | Inventario, y el precio que sale del producto usado                 | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación                                   |
-| 10  | Calendario › Mes y Año                                              | Existen los datos; falta la vista. Barata comparada con las de arriba                                              |
-| 11  | Finanzas › Gastos                                                   | Primera tabla nueva                                                                                                |
-| 12  | Clientas › Sin venir hace tiempo                                    | Necesita historial suficiente para no equivocarse                                                                  |
-| 13  | Personal › Producción                                               | Necesita el porcentaje, que es dato de Sol (§12)                                                                   |
-| 14  | Compras                                                             | Ninguna urgencia hoy                                                                                               |
+| 5   | ~~Usuarios y roles › Roles por módulo~~ · **HECHO** (2026-09-10)    | Con nueve módulos, «quien atiende» pasó a significar demasiadas cosas; era condición para abrir Finanzas a alguien más |
+| 6   | **Finanzas › Facturación**                                          | Sale de la caja que ya está y cierra el hueco de §8.3: hoy nada le dice a Sol qué atenciones no tienen comprobante |
+| 7   | El panel pregunta lo mismo que la web al tomar un turno             | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1)           |
+| 8   | Clientas › Fichas                                                   | El backend está entero; falta sólo la pantalla                                                                     |
+| 9   | El aviso de cancelación con sus dos momentos (§11.4)                | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo                               |
+| 10  | Inventario, y el precio que sale del producto usado                 | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación                                   |
+| 11  | Calendario › Mes y Año                                              | Existen los datos; falta la vista. Barata comparada con las de arriba                                              |
+| 12  | Finanzas › Gastos                                                   | Primera tabla nueva                                                                                                |
+| 13  | Clientas › Sin venir hace tiempo                                    | Necesita historial suficiente para no equivocarse                                                                  |
+| 14  | Personal › Producción                                               | Necesita el porcentaje, que es dato de Sol (§12)                                                                   |
+| 15  | Compras                                                             | Ninguna urgencia hoy                                                                                               |
 
 Reordenar esto es una decisión de dirección, no técnica.
 
