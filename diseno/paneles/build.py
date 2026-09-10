@@ -98,9 +98,10 @@ ARBOL = [
         ("Compras", [("Proveedores", 0), ("Pedidos", 0)]),
     ]),
     ("Casi nunca, pero tiene que estar", [
-        ("Configuración", [("Usuarios y permisos", 0), ("Datos del negocio", 1),
-                           ("Términos y privacidad", 1)]),
-        ("Auditoría", [("Registro de cambios", 0)]),
+        ("Usuarios y roles", [("Personas", 0), ("Roles", 0), ("Accesos", 0),
+                              ("Registro de cambios", 0)]),
+        ("Configuración", [("Datos del negocio", 1), ("Términos y privacidad", 1),
+                           ("Integraciones", 1)]),
     ]),
 ]
 
@@ -657,3 +658,262 @@ escribir("Telefono.dc.html", """
 </div>
 """ % (svg(IC["grilla"], 19), svg(IC["lupa"], 17), "\n".join(pestanas),
        "\n".join(filas_dia), svg(IC["mas"], 16)))
+
+
+# ======================================================================
+# 8 · Usuarios y roles › Personas — quién puede entrar
+# ======================================================================
+PERSONAS = [
+    ("Sol Aguirre", "sol@solmai.com.ar", "Dueña", "hace 4 minutos", "activa", "google"),
+    ("Miriam Cáceres", "miriam@solmai.com.ar", "Mostrador", "hoy, 8:52", "activa", "google"),
+    ("Belén Ortiz", "belen@solmai.com.ar", "Mostrador", "hace 3 meses", "sin acceso", "google"),
+]
+personas = []
+for nombre, email, rol, ultimo, estado, _prov in PERSONAS:
+    activa = estado == "activa"
+    personas.append(
+        '            <tr>\n'
+        '              <td style="font-weight: 500; color: %s;">%s</td>\n'
+        '              <td style="color: var(--texto-2);">%s</td>\n'
+        '              <td><span style="border: 1px solid var(--borde); border-radius: 3px; padding: 3px 8px; font-size: 12px; color: var(--texto-2);">%s</span></td>\n'
+        '              <td style="color: var(--texto-2);">%s</td>\n'
+        '              <td><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: %s;">'
+        '<span style="width: 6px; height: 6px; border-radius: 50%%; background: %s;"></span>%s</span></td>\n'
+        '            </tr>' % (
+            "var(--texto)" if activa else "var(--texto-3)", nombre, email, rol, ultimo,
+            "var(--ok)" if activa else "var(--texto-3)",
+            "var(--ok)" if activa else "var(--texto-3)",
+            "Puede entrar" if activa else "No puede entrar"))
+
+escribir("Usuarios.dc.html", "", """
+<div class="app">
+%s
+
+  <div class="barra-acc">
+    <button class="btn btn-p" type="button">%s Sumar a alguien</button>
+    <span class="miga">Usuarios y roles <span style="opacity: 0.5;">/</span> <strong>Personas</strong></span>
+    <span class="buscador" style="min-width: 240px;">%s<span>Buscar…</span></span>
+  </div>
+
+  <div class="lienzo" style="display: flex; flex-direction: column; gap: 12px;">
+    <div class="hoja" style="flex-grow: 0;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 24%%;">Persona</th>
+            <th style="width: 26%%;">Entra con</th>
+            <th style="width: 16%%;">Rol</th>
+            <th style="width: 18%%;">Última vez que entró</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+%s
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+      <div class="hoja" style="padding: 14px 16px; gap: 7px;">
+        <span class="rotulo">Cómo se entra</span>
+        <span style="font-size: 12.5px; color: var(--texto-2); line-height: 1.55;">
+          Con la cuenta de Google del trabajo, no con una contraseña de este sistema.
+          No guardamos contraseñas de nadie: si alguien deja el salón, se le saca el
+          acceso acá y deja de entrar en el momento.
+        </span>
+      </div>
+      <div class="hoja" style="padding: 14px 16px; gap: 7px;">
+        <span class="rotulo">Sacar el acceso no borra el trabajo</span>
+        <span style="font-size: 12.5px; color: var(--texto-2); line-height: 1.55;">
+          Los turnos que cargó, los cierres que hizo y las notas que escribió quedan,
+          con su nombre. Se saca la llave, no la historia.
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+""" % (barra_sup("Usuarios y roles", SEC["Usuarios y roles"], "Personas"),
+       svg(IC["mas"], 14), svg(IC["lupa"], 15), "\n".join(personas)))
+
+
+# ======================================================================
+# 9 · Usuarios y roles › Roles — qué abre cada rol
+# ======================================================================
+MODULOS_PLANOS = [m[0] for g in ARBOL for m in g[1]]
+PERMISOS = {
+    "Calendario":      ("Todo", "Todo"),
+    "Clientas":        ("Todo", "Todo"),
+    "Finanzas":        ("Todo", "Nada"),
+    "Inventario":      ("Todo", "Sólo ver"),
+    "Servicios":       ("Todo", "Sólo ver"),
+    "Personal":        ("Todo", "Nada"),
+    "Compras":         ("Todo", "Nada"),
+    "Usuarios y roles":("Todo", "Nada"),
+    "Configuración":   ("Todo", "Nada"),
+}
+
+def celda(valor, fijo=False):
+    if valor == "Todo":
+        c, b, f = "var(--acento)", "var(--acento)", "var(--acento-2)"
+    elif valor == "Sólo ver":
+        c, b, f = "var(--texto-2)", "var(--borde)", "var(--panel)"
+    else:
+        c, b, f = "var(--texto-3)", "var(--borde-suave)", "var(--fondo)"
+    return ('              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; '
+            'justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid %s; background: %s; '
+            'color: %s; border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">%s%s</span></td>'
+            % (b, f, c, valor,
+               '' if fijo else '<span style="opacity: 0.5; font-size: 10px;">▾</span>'))
+
+filas_rol = []
+for modulo in MODULOS_PLANOS:
+    duena, mostrador = PERMISOS[modulo]
+    filas_rol.append(
+        '            <tr>\n'
+        '              <td style="font-weight: 500;">%s</td>\n'
+        '%s\n%s\n'
+        '            </tr>' % (modulo, celda(duena, fijo=True), celda(mostrador)))
+
+escribir("Roles.dc.html", "", """
+<div class="app">
+%s
+
+  <div class="barra-acc">
+    <button class="btn btn-p" type="button">%s Nuevo rol</button>
+    <span class="miga">Usuarios y roles <span style="opacity: 0.5;">/</span> <strong>Roles</strong></span>
+    <span style="margin-left: auto; font-size: 12px; color: var(--texto-2);">Los cambios se aplican la próxima vez que la persona abre el panel.</span>
+  </div>
+
+  <div class="lienzo" style="display: flex; flex-direction: column; gap: 12px;">
+    <div class="hoja" style="flex-grow: 0;">
+      <table>
+        <thead>
+          <tr>
+            <th>Módulo</th>
+            <th style="width: 148px;">Dueña <span style="font-weight: 400; text-transform: none; letter-spacing: 0;">· 1 persona</span></th>
+            <th style="width: 148px;">Mostrador <span style="font-weight: 400; text-transform: none; letter-spacing: 0;">· 2 personas</span></th>
+          </tr>
+        </thead>
+        <tbody>
+%s
+        </tbody>
+      </table>
+    </div>
+
+    <div class="hoja" style="padding: 15px 17px; gap: 9px; flex-grow: 0;">
+      <span class="rotulo">Dos cosas que este cuadro NO hace</span>
+      <span style="font-size: 12.5px; color: var(--texto-2); line-height: 1.6;">
+        <strong style="color: var(--texto);">No es lo único que protege el sistema.</strong>
+        Esconder un botón no protege nada: quien sabe lo que hace puede pedirle el dato al
+        servidor igual. El permiso lo revisa el servidor en cada pedido, y este cuadro es
+        lo que además le evita a la persona ver puertas cerradas todo el día.
+      </span>
+      <span style="font-size: 12.5px; color: var(--texto-2); line-height: 1.6;">
+        <strong style="color: var(--texto);">No se puede dejar el sistema sin dueña.</strong>
+        Si sacar un permiso deja al salón sin nadie que pueda administrarlo, no se guarda
+        y se avisa por qué.
+      </span>
+    </div>
+
+    <div class="hoja" style="padding: 15px 17px; gap: 7px; flex-grow: 0;">
+      <span class="rotulo">Falta que Sol decida</span>
+      <span style="font-size: 12.5px; color: var(--texto-2); line-height: 1.6;">
+        Los dos roles de arriba son los que el sistema ya distingue. Si el salón necesita
+        otros —alguien que sólo cargue turnos, una contadora que sólo mire Finanzas— los
+        define ella: acá no inventamos su organigrama.
+      </span>
+    </div>
+  </div>
+</div>
+""" % (barra_sup("Usuarios y roles", SEC["Usuarios y roles"], "Roles"),
+       svg(IC["mas"], 14), "\n".join(filas_rol)))
+
+
+# ======================================================================
+# 10 · Usuarios y roles › Registro de cambios — lo que hoy se escribe y
+#      no lee nadie
+# ======================================================================
+CAMBIOS = [
+    ("hoy 11:42", "Sol", "Servicios",
+     "Cambió el precio de <b>Color · Media melena</b>", "$35.000 → $38.500", 0),
+    ("hoy 11:42", "Sol", "Servicios",
+     "Cambió el precio de <b>Color · Largo</b>", "$41.000 → $47.200", 0),
+    ("hoy 10:15", "Miriam", "Calendario",
+     "Marcó que llegó <b>Marcela Ferreyra</b>", "9:00 · Color y corte", 0),
+    ("hoy 9:58", "Sistema", "Finanzas",
+     "Marcó ausente a <b>Carla Maidana</b>", "3 h después del turno", 1),
+    ("hoy 9:20", "Sol", "Finanzas",
+     "Dio por devuelta la seña de <b>Carla Maidana</b>", "$6.000 · transferencia", 0),
+    ("ayer 19:40", "Sol", "Usuarios y roles",
+     "Le sacó el acceso a <b>Belén Ortiz</b>", "Mostrador", 0),
+    ("ayer 14:03", "Miriam", "Clientas",
+     "Cargó una nota en <b>Vanina Quiroga</b>", "«prefiere el secador tibio»", 0),
+]
+cambios = []
+for cuando, quien, modulo, que, detalle, sistema in CAMBIOS:
+    color_quien = "var(--texto-3)" if sistema else "var(--texto)"
+    cambios.append(
+        '            <tr>\n'
+        '              <td class="num" style="width: 108px; color: var(--texto-2);">%s</td>\n'
+        '              <td style="width: 96px; font-weight: 500; color: %s;">%s</td>\n'
+        '              <td style="width: 130px;"><span style="border: 1px solid var(--borde); border-radius: 3px; padding: 2px 7px; font-size: 11.5px; color: var(--texto-2);">%s</span></td>\n'
+        '              <td>%s</td>\n'
+        '              <td style="width: 230px; color: var(--texto-2);" class="num">%s</td>\n'
+        '              <td style="width: 54px;" class="der"><a href="#" style="font-size: 12.5px;">Ver</a></td>\n'
+        '            </tr>' % (cuando, color_quien, quien, modulo, que, detalle))
+
+escribir("Auditoria.dc.html", "", """
+<div class="app">
+%s
+
+  <div class="barra-acc">
+    <span class="miga">Usuarios y roles <span style="opacity: 0.5;">/</span> <strong>Registro de cambios</strong></span>
+    <span class="buscador" style="min-width: 260px;">%s<span>Buscar en el registro…</span></span>
+    <span style="display: flex; align-items: center; gap: 7px; color: var(--texto-2);">%s</span>
+  </div>
+
+  <div style="background: var(--panel); border-bottom: 1px solid var(--borde); padding: 9px 14px; display: flex; align-items: center; gap: 8px;">
+    <span class="pildora">Últimos 7 días <span style="opacity: 0.6;">×</span></span>
+    <span style="height: 24px; padding: 0 9px; border: 1px solid var(--borde); border-radius: 3px; font-size: 11.5px; color: var(--texto-2); display: inline-flex; align-items: center;">Cualquier persona</span>
+    <span style="height: 24px; padding: 0 9px; border: 1px solid var(--borde); border-radius: 3px; font-size: 11.5px; color: var(--texto-2); display: inline-flex; align-items: center;">Cualquier módulo</span>
+    <span class="paginador"><span class="num">1-7 / 1.284</span>%s%s</span>
+  </div>
+
+  <div class="lienzo" style="display: flex; flex-direction: column; gap: 12px;">
+    <div class="hoja" style="flex-grow: 0;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 108px;">Cuándo</th>
+            <th style="width: 96px;">Quién</th>
+            <th style="width: 130px;">Módulo</th>
+            <th>Qué hizo</th>
+            <th style="width: 230px;">Antes y ahora</th>
+            <th style="width: 54px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+%s
+        </tbody>
+      </table>
+    </div>
+
+    <div class="hoja" style="padding: 15px 17px; gap: 9px; flex-grow: 0;">
+      <span class="rotulo">Por qué esto existe</span>
+      <span style="font-size: 12.5px; color: var(--texto-2); line-height: 1.6;">
+        Cada cambio de plata, de precio o de turno ya se viene guardando con quién lo hizo
+        y qué valor había antes. Lo que faltaba era la puerta para leerlo. Sirve para dos
+        cosas concretas: entender por qué un número no cierra, y poder deshacer sabiendo a
+        qué se vuelve.
+      </span>
+      <span style="font-size: 12.5px; color: var(--texto-2); line-height: 1.6;">
+        <strong style="color: var(--texto);">No se edita ni se borra, ni siquiera desde acá.</strong>
+        Un registro que se puede retocar no sirve para lo único que sirve un registro.
+        Las filas que dicen «Sistema» son las que decidió el propio sistema, no una persona.
+      </span>
+    </div>
+  </div>
+</div>
+""" % (barra_sup("Usuarios y roles", SEC["Usuarios y roles"], "Registro de cambios"),
+       svg(IC["lupa"], 15), svg(IC["filtro"], 15), svg(IC["izq"], 15), svg(IC["der"], 15),
+       "\n".join(cambios)))
