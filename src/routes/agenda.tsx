@@ -14,9 +14,10 @@ import { DashboardScreen } from "@/components/booking/admin/DashboardScreen";
 import { SalonScreen } from "@/components/booking/admin/SalonScreen";
 import { PeopleScreen } from "@/components/booking/admin/PeopleScreen";
 import { AuditScreen } from "@/components/booking/admin/AuditScreen";
+import { RolesScreen } from "@/components/booking/admin/RolesScreen";
 import { ModuleNav, type ModuleKey } from "@/components/booking/admin/ModuleNav";
 import { useStaffIdentity } from "@/lib/api/admin-hooks";
-import { clearStaffToken, readStaffToken, writeStaffToken } from "@/lib/staff-session";
+import { clearStaffToken, puede, readStaffToken, writeStaffToken } from "@/lib/staff-session";
 
 export const Route = createFileRoute("/agenda")({
   head: () => ({ meta: [{ title: "Sol Mai · Agenda" }] }),
@@ -59,7 +60,7 @@ function AgendaRoute() {
             {identity.data && (
               <span>
                 {identity.data.displayName}
-                {identity.data.role === "owner" ? " · dueña" : ""}
+                {identity.data.roleName ? ` · ${identity.data.roleName.toLowerCase()}` : ""}
               </span>
             )}
             <button
@@ -78,19 +79,23 @@ function AgendaRoute() {
             backend niega el resto igual, pero mostrarle puertas cerradas
             sería ensuciarle la pantalla todos los días. */}
         <div className="mb-6">
-          <ModuleNav activo={tab} isOwner={identity.data?.role === "owner"} onElegir={setTab} />
+          <ModuleNav activo={tab} identidad={identity.data} onElegir={setTab} />
         </div>
 
-        {/* El rol se vuelve a mirar acá aunque `ModuleNav` ya esconda lo
-            que no corresponde: esconder no es una frontera, y el estado
-            del módulo activo sobrevive a un cambio de rol. */}
-        {tab === "finanzas" && identity.data?.role === "owner" ? (
+        {/* El permiso se vuelve a mirar acá aunque `ModuleNav` ya esconda
+            lo que no corresponde: esconder no es una frontera, y el
+            módulo activo sobrevive a que Sol le cambie los permisos a
+            alguien mientras tiene la pantalla abierta. */}
+        {tab === "finanzas" && puede(identity.data, "finanzas") ? (
           <DashboardScreen />
-        ) : tab === "servicios" && identity.data?.role === "owner" ? (
+        ) : tab === "servicios" && puede(identity.data, "servicios") ? (
           <SalonScreen />
-        ) : tab === "personas" && identity.data?.role === "owner" ? (
+        ) : tab === "personas" && puede(identity.data, "usuarios") ? (
           <>
             <PeopleScreen />
+            <div className="mt-8 border-t border-border pt-8">
+              <RolesScreen />
+            </div>
             <div className="mt-8 border-t border-border pt-8">
               <AuditScreen />
             </div>

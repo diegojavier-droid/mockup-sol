@@ -11,6 +11,8 @@
  * Así se puede ver la forma completa del sistema y juzgar si va a ser
  * usable antes de terminar de construirlo.
  */
+import { puede, type Modulo, type StaffIdentity } from "@/lib/staff-session";
+
 export type ModuleKey = "calendario" | "finanzas" | "servicios" | "personas";
 
 export interface ModuleDef {
@@ -18,7 +20,13 @@ export interface ModuleDef {
   label: string;
   /** Las secciones del módulo, tal como las fija §5.0 de la arquitectura. */
   secciones: string;
-  soloSol?: boolean;
+  /**
+   * Qué módulo de la matriz de permisos gobierna esta entrada. Es el
+   * mismo nombre que usa el servidor, así que la pantalla no puede
+   * discrepar con la puerta: antes acá había un `soloSol` escrito a mano
+   * que había que acordarse de actualizar dos veces.
+   */
+  modulo: Modulo;
   listo: boolean;
 }
 
@@ -38,16 +46,16 @@ export const MODULOS: { grupo: string; items: ModuleDef[] }[] = [
   {
     grupo: "Todos los días",
     items: [
-      { key: "calendario", label: "Calendario", secciones: "Hoy · Semana", listo: true },
-      { key: null, label: "Clientas", secciones: "Fichas · Consentimientos", listo: false },
+      { key: "calendario", label: "Calendario", secciones: "Hoy · Semana", modulo: "calendario", listo: true },
+      { key: null, label: "Clientas", secciones: "Fichas · Consentimientos", modulo: "clientas", listo: false },
       {
         key: "finanzas",
         label: "Finanzas",
         secciones: "Caja del día · Devoluciones",
-        soloSol: true,
+        modulo: "finanzas",
         listo: true,
       },
-      { key: null, label: "Inventario", secciones: "Productos · Stock", listo: false },
+      { key: null, label: "Inventario", secciones: "Productos · Stock", modulo: "inventario", listo: false },
     ],
   },
   {
@@ -57,21 +65,21 @@ export const MODULOS: { grupo: string; items: ModuleDef[] }[] = [
         key: "servicios",
         label: "Servicios",
         secciones: "Precios y tiempos · Puestos",
-        soloSol: true,
+        modulo: "servicios",
         listo: true,
       },
       {
         key: null,
         label: "Personal",
         secciones: "Empleados · Producción",
-        soloSol: true,
+        modulo: "personal",
         listo: false,
       },
       {
         key: null,
         label: "Compras",
         secciones: "Proveedores · Pedidos",
-        soloSol: true,
+        modulo: "compras",
         listo: false,
       },
     ],
@@ -82,15 +90,15 @@ export const MODULOS: { grupo: string; items: ModuleDef[] }[] = [
       {
         key: "personas",
         label: "Usuarios y roles",
-        secciones: "Personas · Registro de cambios",
-        soloSol: true,
+        secciones: "Personas · Roles · Registro de cambios",
+        modulo: "usuarios",
         listo: true,
       },
       {
         key: null,
         label: "Configuración",
         secciones: "Datos del negocio · Términos",
-        soloSol: true,
+        modulo: "configuracion",
         listo: false,
       },
     ],
@@ -99,17 +107,17 @@ export const MODULOS: { grupo: string; items: ModuleDef[] }[] = [
 
 export function ModuleNav({
   activo,
-  isOwner,
+  identidad,
   onElegir,
 }: {
   activo: ModuleKey;
-  isOwner: boolean;
+  identidad: StaffIdentity | undefined;
   onElegir: (k: ModuleKey) => void;
 }) {
   return (
     <nav aria-label="Módulos del panel" className="space-y-4">
       {MODULOS.map((grupo) => {
-        const visibles = grupo.items.filter((m) => !m.soloSol || isOwner);
+        const visibles = grupo.items.filter((m) => puede(identidad, m.modulo));
         if (visibles.length === 0) return null;
 
         return (
