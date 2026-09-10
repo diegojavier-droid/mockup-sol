@@ -2302,14 +2302,28 @@ jobs:
               raise exception 'no resolvió el nombre de la cosa cambiada: %', v_fila.sobre;
             end if;
 
-            -- 3. Los filtros filtran
+            -- 3. Los filtros filtran.
+            --
+            --    Se comprueba que lo devuelto sea TODO del tipo pedido, no
+            --    que el otro tipo dé cero. La primera versión afirmaba que
+            --    filtrar por 'booking' devolvía cero filas, y era falso: los
+            --    pasos de más arriba crean turnos y los auditan como
+            --    corresponde. La aserción pasaba sólo en una base donde
+            --    nadie había reservado nunca.
             select count(*) into v_n
               from public.read_audit_log(null,null,null,'staff_member');
             if v_n < 1 then raise exception 'el filtro por tipo no devuelve nada'; end if;
             select count(*) into v_n
-              from public.read_audit_log(null,null,null,'booking');
+              from public.read_audit_log(null,null,null,'staff_member')
+             where entity_type is distinct from 'staff_member';
             if v_n <> 0 then
-              raise exception 'el filtro por tipo devolvió filas de otro tipo';
+              raise exception 'el filtro por staff_member devolvió % filas de otro tipo', v_n;
+            end if;
+            select count(*) into v_n
+              from public.read_audit_log(null,null,null,'booking')
+             where entity_type is distinct from 'booking';
+            if v_n <> 0 then
+              raise exception 'el filtro por booking devolvió % filas de otro tipo', v_n;
             end if;
 
             -- 4. El tope de filas se respeta aunque pidan más
