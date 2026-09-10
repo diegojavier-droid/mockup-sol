@@ -198,12 +198,18 @@ jobs:
           rollback;
           SQL
 
-          STAFF_SELECT=$(psql "$SUPABASE_LOCAL_DB_URL" -Atc \
-            "select has_table_privilege('anon','public.staff_members','SELECT')")
-          if [ "$STAFF_SELECT" != "f" ]; then
-            echo "::error::anon unexpectedly has SELECT on staff_members"
-            exit 1
-          fi
+          # Quién trabaja acá y qué puede tocar cada rol no lo lee nadie sin
+          # sesión. `roles` y `role_permissions` se suman desde que los
+          # permisos por módulo viven en la base: son el mapa de quién llega
+          # a la plata, y ahora la clave publicable llega al navegador.
+          for TABLA in staff_members roles role_permissions; do
+            PRIV=$(psql "$SUPABASE_LOCAL_DB_URL" -Atc \
+              "select has_table_privilege('anon','public.$TABLA','SELECT')")
+            if [ "$PRIV" != "f" ]; then
+              echo "::error::anon unexpectedly has SELECT on $TABLA"
+              exit 1
+            fi
+          done
 
           if psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 >/tmp/anon-write.log 2>&1 <<'SQL'
           set role anon;
@@ -251,9 +257,12 @@ jobs:
             -- Baseline operativo sembrado
             select count(*) into n from public.areas;
             if n <> 4 then raise exception 'areas expected 4, got %', n; end if;
-            -- 9 desde que se agregó no_show_grace_hours (ausencia automática).
+            -- 10 desde que se agregó monotributo_annual_cap (facturación).
+            -- La fila nace SIN valor a propósito: el tope lo carga el
+            -- contador de Sol, y hay una invariante aparte que falla si
+            -- alguien le pone un número desde el repositorio.
             select count(*) into n from public.business_settings;
-            if n <> 9 then raise exception 'business_settings expected 9, got %', n; end if;
+            if n <> 10 then raise exception 'business_settings expected 10, got %', n; end if;
             select count(*) into n from public.service_parameters;
             if n <> 43 then raise exception 'service_parameters expected 43, got %', n; end if;
             select count(*) into n from public.service_price_tiers;
