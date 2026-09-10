@@ -39,11 +39,36 @@ configuración nuestro.
    `INTERNAL_AUTH_ALLOWED_PROVIDERS` lo controla y el arranque **falla**
    si alguien pone ahí un proveedor que no verifica el email. Sin esto,
    cualquiera se registra con el correo de Sol y entra.
-3. Que el email esté en `INTERNAL_AUTH_ALLOWED_EMAILS` **y** tenga una
-   fila activa en `staff_members`.
+3. Que tenga una **fila activa en `staff_members`**.
+   `INTERNAL_AUTH_ALLOWED_EMAILS` ya sólo gobierna el arranque en frío
+   (§3.1): con el sistema andando manda `staff_members`, que administra
+   Sol.
 
 Estar autenticado no alcanza: cualquiera puede crearse una cuenta en el
 proyecto de Supabase. La autorización es explícita y separada.
+
+**Cómo entra Sol (desde 2026-09-10).** Con el botón «Entrar con Google».
+Antes la pantalla pedía pegar a mano un token de sesión de Supabase, lo
+que significaba que no podía entrar sola a su propio sistema.
+
+La sesión la maneja Supabase —flujo PKCE, no implícito, así que los
+tokens no quedan en el historial del navegador— y el panel sólo espeja el
+`access_token` vigente. Renovar antes de que venza también lo hace
+Supabase: escribir eso a mano es el tipo de código cuyos errores no se
+ven hasta que alguien queda afuera.
+
+**Qué se expone al navegador, y por qué es seguro.** La URL del proyecto
+y la clave **publicable**, servidas por el Worker en
+`GET /api/v1/auth/panel-config` —no horneadas en el build, para que el
+sitio publicado no pueda apuntar a un proyecto distinto del que lo
+atiende—. Medido contra la base el 2026-09-10, el rol `anon` que habilita
+esa clave **no tiene ni el GRANT** sobre `customers`, `bookings`,
+`payments`, `staff_members`, `audit_log`, `customer_consents`,
+`customer_notes`, `service_execution_records`, `roles` ni
+`role_permissions`: rebota con «permission denied» antes de que RLS entre
+en juego. Lo único que alcanza es el catálogo que la web pública ya
+muestra. La clave secreta no sale de ese endpoint, y hay una prueba que
+lo verifica campo por campo.
 
 ### 2.2. Cada ruta declara qué módulo la gobierna
 
@@ -152,18 +177,30 @@ ser un registro.
 **No existe la contracara y no la va a haber.** No hay función para
 editar ni para borrar, y el clean-room falla si alguna aparece.
 
-### 3.4. Cambiar quién entra exige un despliegue
+### 3.4. ~~Cambiar quién entra exige un despliegue~~ · ACOTADO (2026-09-10)
 
-`INTERNAL_AUTH_ALLOWED_EMAILS` es una variable de entorno. Es una
-barrera fuerte —resiste incluso a que alguien escriba en la base— pero
-rígida: nadie del salón puede operarla.
+`INTERNAL_AUTH_ALLOWED_EMAILS` sigue siendo una variable de entorno, pero
+ya sólo gobierna el **arranque en frío**: qué cuenta puede provisionarse
+como dueña en una instalación nueva. Sumar y sacar gente con el sistema
+andando se hace desde el panel y no exige desplegar nada.
+
+Lo que queda: si algún día no hubiera ninguna dueña activa —cosa que el
+trigger de «siempre una dueña» impide—, recuperar el acceso pasaría por
+esa variable, y eso sí necesita un despliegue.
 
 ### 3.5. No hay cierre de sesión remoto
 
-Si un teléfono se pierde con la sesión abierta, no hay un botón que
-corte esa sesión. Desactivar a la persona en `staff_members` corta el
-acceso en el siguiente pedido, que es la mitigación real hoy, pero
-depende de 3.1 para poder hacerse.
+Si un teléfono se pierde con la sesión abierta, no hay un botón que corte
+**esa** sesión. «Salir» cierra la de la pestaña, no la de todos los
+dispositivos.
+
+La mitigación real es desactivar a la persona en `staff_members`: corta
+el acceso en el pedido siguiente, ya se puede hacer desde el panel (§3.1)
+y está probado contra el Worker. Alcanza para el caso que importa —un
+teléfono perdido—, porque el token deja de servir aunque siga guardado.
+
+Lo que falta es la pantalla de «dónde está abierta mi sesión» y el corte
+selectivo, que es el bloque de **Accesos**.
 
 ---
 
@@ -247,3 +284,29 @@ puede recortar un módulo**.
 - **Quién ve la plata.** Hoy la caja y los números son sólo de ella.
 - **Cuánto tiempo se conserva la ficha de una clienta que no vuelve.**
   Guardar para siempre es una decisión, no un default.
+
+---
+
+## 7. Lo que hay que cargar para que el ingreso con Google funcione
+
+Nada de esto lo puede hacer el código: son credenciales y configuración de
+consola. Van cargadas por quien administra las cuentas, **nunca pasan por
+un chat ni por el repositorio**.
+
+| Dónde                                         | Qué                                             | Detalle                                           |
+| --------------------------------------------- | ----------------------------------------------- | ------------------------------------------------- |
+| Google Cloud                                  | Un cliente OAuth 2.0 de tipo «Aplicación web»   | Da un Client ID y un Client Secret                |
+| Google Cloud                                  | URI de redirección autorizado                   | `https://<proyecto>.supabase.co/auth/v1/callback` |
+| Supabase → Authentication → Providers         | Habilitar Google y pegar ese Client ID y Secret |                                                   |
+| Supabase → Authentication → URL Configuration | Site URL y Redirect URLs                        | La dirección del panel: `<sitio>/agenda`          |
+| Cloudflare (variables del Worker)             | `INTERNAL_AUTH_ALLOWED_EMAILS`                  | El mail de Sol, para el arranque en frío          |
+
+`INTERNAL_AUTH_ALLOWED_PROVIDERS` no hace falta tocarlo: por defecto es
+`google`, y el arranque **falla** si alguien pone ahí un proveedor que no
+verifica el email.
+
+**Cómo se comprueba que quedó bien**, sin necesidad de mirar logs: abrir
+el panel. Si el botón dice «Entrar con Google», el Worker está sirviendo
+la configuración. Si en cambio aparece el aviso de que Google todavía no
+está configurado y el campo de token, es que falta algo de la tabla de
+arriba —la pantalla lo dice en vez de mostrar un botón que no anda—.

@@ -239,6 +239,51 @@ console.log("\n── Usuarios y roles · Registro de cambios");
   }
 }
 
+console.log("\n── La puerta del panel");
+{
+  // Sin token: la pantalla de ingreso. Es lo primero que ve Sol, y hasta
+  // este bloque le pedía pegar a mano un token de sesión de Supabase.
+  const puerta = await browser.newPage({ viewport: { width: 420, height: 950 } });
+  await puerta.route("**/*", (r) => {
+    const u = r.request().url();
+    return u.includes("127.0.0.1") || u.includes("localhost") ? r.continue() : r.abort();
+  });
+  await puerta.goto(`${BASE}/agenda`, { waitUntil: "domcontentloaded" });
+  await puerta.waitForTimeout(2500);
+  const t = await puerta.locator("body").innerText();
+
+  ok("con Google configurado ofrece entrar con Google", /entrar con google/i.test(t));
+  ok("y NO pide pegar un token a mano", !/token de acceso/i.test(t));
+  ok("dice que no guardamos la contraseña", /no guardamos tu contraseña/i.test(t));
+  await puerta.close();
+
+  // Y si el servidor NO ofrece Google, la pantalla lo dice y deja entrar
+  // igual. Es un guard que falla del lado seguro: un despliegue sin las
+  // credenciales cargadas no puede dejar a Sol afuera sin explicación.
+  const sinGoogle = await browser.newPage({ viewport: { width: 420, height: 950 } });
+  await sinGoogle.route("**/*", (r) => {
+    const u = r.request().url();
+    return u.includes("127.0.0.1") || u.includes("localhost") ? r.continue() : r.abort();
+  });
+  await sinGoogle.route("**/api/v1/auth/panel-config", (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: { supabaseUrl: "http://x", publishableKey: "x", proveedores: [] },
+      }),
+    }),
+  );
+  await sinGoogle.goto(`${BASE}/agenda`, { waitUntil: "domcontentloaded" });
+  await sinGoogle.waitForTimeout(2500);
+  const t2 = await sinGoogle.locator("body").innerText();
+
+  ok("sin Google configurado lo dice con todas las letras", /todavía no está configurado/i.test(t2));
+  ok("y deja la forma vieja de entrar", /token de acceso/i.test(t2));
+  ok("sin ofrecer un botón que no hace nada", !/entrar con google/i.test(t2));
+  await sinGoogle.close();
+}
+
 console.log("\n── Finanzas · Facturación");
 {
   await sol.locator('button:has-text("Finanzas")').first().click();
