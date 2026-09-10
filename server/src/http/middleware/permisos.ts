@@ -77,10 +77,10 @@ export const SIN_MODULO = new Set<string>(["GET /me"]);
  * que les corresponden, y como el rol `owner` los tiene todos, la dueña
  * sigue llegando exactamente a lo mismo.
  *
- * DOS DECISIONES QUE CONVIENE QUE SOL REVISE
+ * DOS DECISIONES, YA CONFIRMADAS POR DIRECCIÓN (2026-09-10)
  *
- * · Cerrar un turno y devolver una seña quedaron en `calendario`, no en
- *   `finanzas`. Son operaciones de un turno que hoy hace quien está en el
+ * · Cerrar un turno y devolver una seña quedan en `calendario`, no en
+ *   `finanzas`. Son operaciones de un turno que hace quien está en el
  *   mostrador con la clienta enfrente; moverlas a Finanzas se la sacaría.
  *   La caja se mira en Finanzas; el turno se cierra en Calendario.
  * · Las estaciones se listan desde `calendario` (para sentar a alguien) y
