@@ -11,7 +11,16 @@ import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import type { ServerEnv } from "../../config/env";
 import { createSupabaseAdminClient } from "../../lib/supabase";
-import { requireOwner, staffAuth, type StaffVars } from "../middleware/staffAuth";
+import { staffAuth, type StaffVars } from "../middleware/staffAuth";
+import { MODULOS, requirePermission } from "../middleware/permisos";
+import {
+  createRole,
+  deleteRole,
+  listRoles,
+  RoleAdminError,
+  ROLE_ADMIN_MESSAGES,
+  setRolePermission,
+} from "../../lib/admin/roles-repository";
 import {
   listProducts,
   listServiceTiers,
@@ -123,7 +132,11 @@ function quoteErrorMessage(code: string): string {
 
 export function createAdminRoute(env: ServerEnv) {
   const route = new Hono<{ Variables: StaffVars }>();
+  // Primero quién es y qué puede; después, si eso le alcanza para la
+  // ruta que pidió. El orden importa: `requirePermission` lee lo que
+  // `staffAuth` dejó en `staff`.
   route.use("*", staffAuth(env));
+  route.use("*", requirePermission());
 
   route.get("/me", (c) => c.json({ data: c.get("staff") }));
 
@@ -805,9 +818,13 @@ export function createAdminRoute(env: ServerEnv) {
     return c.json({ data: { ok: true } });
   });
 
-  // ------------------------------------------------- configuración (owner)
+  // --------------------------------------------------------- el salón
+  //
+  // Este router existía para colgarle `requireOwner()`. Ese middleware ya
+  // no está: ahora cada ruta declara su módulo en `permisos.ts` y el
+  // control es el mismo para todas. Se conserva agrupado sólo porque
+  // ordena la lectura de mil cuatrocientas líneas.
   const owner = new Hono<{ Variables: StaffVars }>();
-  owner.use("*", requireOwner());
 
   /**
    * «El salón»: lo que Sol cambia sin depender de nadie.
@@ -857,6 +874,20 @@ export function createAdminRoute(env: ServerEnv) {
     }
   };
 
+  const rolesAdmin = async <T>(c: Context<{ Variables: StaffVars }>, fn: () => Promise<T>) => {
+    try {
+      return c.json({ data: await fn() });
+    } catch (error) {
+      const code = error instanceof RoleAdminError ? error.code : "";
+      const conocido = Object.keys(ROLE_ADMIN_MESSAGES).find((k) => code.includes(k));
+      if (conocido) {
+        const { status, message } = ROLE_ADMIN_MESSAGES[conocido]!;
+        throw new HTTPException(status, { message });
+      }
+      throw error;
+    }
+  };
+
   owner.get("/staff", async (c) => staffAdmin(c, () => listStaff(createSupabaseAdminClient(env))));
 
   owner.post("/staff", async (c) => {
@@ -865,7 +896,10 @@ export function createAdminRoute(env: ServerEnv) {
       .object({
         email: z.string().email().max(160),
         displayName: z.string().max(120).nullish(),
-        role: z.enum(["owner", "staff"]),
+        // Ya no son dos: Sol arma los roles que quiera. Que el slug
+        // exista lo verifica la base (`rol_invalido`), que es donde
+        // está la lista de verdad.
+        role: z.string().min(1).max(32),
       })
       .safeParse(await c.req.json().catch(() => ({})));
     if (!parsed.success) {
@@ -901,7 +935,7 @@ export function createAdminRoute(env: ServerEnv) {
   owner.post("/staff/:id/role", async (c) => {
     const staff = c.get("staff");
     const parsed = z
-      .object({ role: z.enum(["owner", "staff"]) })
+      .object({ role: z.string().min(1).max(32) })
       .safeParse(await c.req.json().catch(() => ({})));
     if (!parsed.success) throw new HTTPException(400, { message: "Ese rol no existe." });
     return staffAdmin(c, () =>
@@ -1445,6 +1479,46 @@ export function createAdminRoute(env: ServerEnv) {
       .eq("slug", c.req.param("slug"));
     if (error) throw error;
     return c.json({ data: { ok: true } });
+  });
+
+  // ------------------------------------------------------ roles (usuarios)
+  owner.get("/roles", async (c) => rolesAdmin(c, () => listRoles(createSupabaseAdminClient(env))));
+
+  owner.post("/roles", async (c) => {
+    const schema = z.object({ name: z.string().min(1) });
+    const parsed = schema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) throw new HTTPException(400, { message: "Poné un nombre para el rol." });
+    const staff = c.get("staff");
+    return rolesAdmin(c, () =>
+      createRole(createSupabaseAdminClient(env), parsed.data.name, staff.staffId, staff.email),
+    );
+  });
+
+  owner.post("/roles/:slug/permission", async (c) => {
+    const schema = z.object({
+      module: z.enum(MODULOS),
+      level: z.enum(["none", "view", "full"]),
+    });
+    const parsed = schema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) throw new HTTPException(400, { message: "Elegí un módulo y un nivel." });
+    const staff = c.get("staff");
+    return rolesAdmin(c, () =>
+      setRolePermission(
+        createSupabaseAdminClient(env),
+        c.req.param("slug"),
+        parsed.data.module,
+        parsed.data.level,
+        staff.staffId,
+        staff.email,
+      ),
+    );
+  });
+
+  owner.delete("/roles/:slug", async (c) => {
+    const staff = c.get("staff");
+    return rolesAdmin(c, () =>
+      deleteRole(createSupabaseAdminClient(env), c.req.param("slug"), staff.staffId, staff.email),
+    );
   });
 
   route.route("/", owner);
