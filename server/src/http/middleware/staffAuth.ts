@@ -2,12 +2,16 @@
  * Autorización del panel interno.
  *
  * Dos condiciones, ambas obligatorias (§28):
- *   1. Un access token válido de Supabase Auth (identidad probada).
- *   2. Ese email en INTERNAL_AUTH_ALLOWED_EMAILS *y* en staff_members
- *      con rol activo (autorización explícita).
+ *   1. Un access token válido de Supabase Auth, emitido por un proveedor
+ *      que verifica el email (identidad probada).
+ *   2. Una fila activa en `staff_members` (autorización explícita), que
+ *      administra la dueña desde el panel.
  *
  * Estar autenticado no alcanza: cualquiera puede crearse una cuenta en
- * el proyecto Supabase, así que la lista de acceso es la que manda.
+ * el proyecto Supabase, así que la autorización es una decisión aparte.
+ *
+ * `INTERNAL_AUTH_ALLOWED_EMAILS` ya NO se revisa en cada pedido: gobierna
+ * sólo el arranque en frío. El porqué está explicado donde se usa.
  */
 
 import { createMiddleware } from "hono/factory";
@@ -54,11 +58,6 @@ async function resolveIdentity(env: ServerEnv, token: string): Promise<StaffIden
   }
   const email = check.identity.email;
 
-  const allowed = env.INTERNAL_AUTH_ALLOWED_EMAILS.some(
-    (e) => e.toLowerCase() === email.toLowerCase(),
-  );
-  if (!allowed) return null;
-
   const admin = createSupabaseAdminClient(env);
   const { data: rows, error: rpcError } = await admin.rpc("resolve_staff_access", {
     p_email: email,
@@ -68,12 +67,37 @@ async function resolveIdentity(env: ServerEnv, token: string): Promise<StaffIden
   type StaffRow = { staff_id: string; display_name: string; role: string };
   let row = (rows as StaffRow[] | null)?.[0];
 
-  // Arranque en frío: una instalación limpia no tiene ninguna fila de
-  // staff, así que nadie podría entrar nunca a configurar el sistema. La
-  // primera persona de la lista de acceso que inicie sesión queda como
-  // dueña; la función se cierra sola apenas existe alguien, de modo que
-  // esto no es un alta de usuarios sino un único arranque.
+  // ---------------------------------------------------------------
+  // QUÉ CAMBIÓ ACÁ, Y POR QUÉ
+  //
+  // Antes `INTERNAL_AUTH_ALLOWED_EMAILS` se revisaba SIEMPRE, y era la
+  // primera condición. Eso volvía imposible dar de alta a alguien sin
+  // desplegar, que es el agujero que este bloque cierra: el día que una
+  // persona deja el salón, sacarle el acceso no puede depender de que
+  // nosotros estemos disponibles.
+  //
+  // Ahora la lista gobierna SÓLO el arranque en frío. Con el sistema ya
+  // andando, quien manda es `staff_members`, que administra la dueña.
+  //
+  // Qué se pierde: si alguien pudiera escribir en `staff_members` sin
+  // pasar por nuestras funciones, antes la lista lo frenaba igual. Pero
+  // escribir esa tabla exige la clave de servicio —está revocada para
+  // `anon` y `authenticated`— y quien tenga esa clave ya puede leer
+  // todo directamente. La lista no era una defensa real contra eso.
+  //
+  // Qué se gana: Sol le saca el acceso a alguien y deja de entrar en el
+  // pedido siguiente, sin que intervenga nadie.
+  //
+  // La lista sigue siendo obligatoria y sigue protegiendo lo que de
+  // verdad protegía: que en una instalación nueva no sea dueña la
+  // primera cuenta de Google que pase por la puerta.
+  // ---------------------------------------------------------------
   if (!row) {
+    const habilitadaParaArrancar = env.INTERNAL_AUTH_ALLOWED_EMAILS.some(
+      (e) => e.toLowerCase() === email.toLowerCase(),
+    );
+    if (!habilitadaParaArrancar) return null;
+
     const { data: provisioned, error: provisionError } = await admin.rpc(
       "provision_initial_owner",
       {

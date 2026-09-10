@@ -11,53 +11,85 @@
  * Así se puede ver la forma completa del sistema y juzgar si va a ser
  * usable antes de terminar de construirlo.
  */
-export type ModuleKey = "hoy" | "caja" | "salon";
+export type ModuleKey = "calendario" | "finanzas" | "servicios" | "personas";
 
 export interface ModuleDef {
   key: ModuleKey | null;
   label: string;
-  /** La pregunta que contesta, dicha como la diría una persona. */
-  pregunta: string;
+  /** Las secciones del módulo, tal como las fija §5.0 de la arquitectura. */
+  secciones: string;
   soloSol?: boolean;
   listo: boolean;
 }
 
+/**
+ * El árbol de §5.0, confirmado por dirección el 2026-09-10.
+ *
+ * Los módulos se llaman por lo que son —Calendario, Finanzas— y no por
+ * lo que preguntan: esa voz es la de la web de las clientas. Quien abre
+ * el panel viene a encontrar algo, veinte veces por día.
+ *
+ * Debajo del nombre van las secciones, que es el nivel que evita que
+ * nueve módulos se conviertan en nueve pestañas planas. Todavía se
+ * navega por módulo; abrir cada sección por separado es el paso
+ * siguiente.
+ */
 export const MODULOS: { grupo: string; items: ModuleDef[] }[] = [
   {
     grupo: "Todos los días",
     items: [
-      { key: "hoy", label: "Hoy", pregunta: "¿Quién viene y a qué hora?", listo: true },
+      { key: "calendario", label: "Calendario", secciones: "Hoy · Semana", listo: true },
+      { key: null, label: "Clientas", secciones: "Fichas · Consentimientos", listo: false },
       {
-        key: "caja",
-        label: "Los números",
-        pregunta: "¿Cuánto entró y por dónde?",
+        key: "finanzas",
+        label: "Finanzas",
+        secciones: "Caja del día · Devoluciones",
         soloSol: true,
         listo: true,
       },
-      { key: null, label: "Clientas", pregunta: "¿Qué le hice la última vez?", listo: false },
+      { key: null, label: "Inventario", secciones: "Productos · Stock", listo: false },
     ],
   },
   {
     grupo: "Cada tanto",
     items: [
       {
-        key: "salon",
-        label: "El salón",
-        pregunta: "¿Cuánto sale y cuánto lleva cada cosa?",
+        key: "servicios",
+        label: "Servicios",
+        secciones: "Precios y tiempos · Puestos",
         soloSol: true,
         listo: true,
       },
       {
         key: null,
-        label: "Quién atiende",
-        pregunta: "¿Cuánto produjo cada una?",
+        label: "Personal",
+        secciones: "Empleados · Producción",
         soloSol: true,
         listo: false,
       },
       {
         key: null,
-        label: "Proveedores",
-        pregunta: "¿A quién le compro?",
+        label: "Compras",
+        secciones: "Proveedores · Pedidos",
+        soloSol: true,
+        listo: false,
+      },
+    ],
+  },
+  {
+    grupo: "Casi nunca, pero tiene que estar",
+    items: [
+      {
+        key: "personas",
+        label: "Usuarios y roles",
+        secciones: "Personas",
+        soloSol: true,
+        listo: true,
+      },
+      {
+        key: null,
+        label: "Configuración",
+        secciones: "Datos del negocio · Términos",
         soloSol: true,
         listo: false,
       },
@@ -94,7 +126,7 @@ export function ModuleNav({
                     type="button"
                     disabled={!m.listo}
                     onClick={() => m.key && onElegir(m.key)}
-                    title={m.pregunta}
+                    title={m.secciones}
                     className={
                       !m.listo
                         ? "cursor-default rounded-2xl border border-dashed border-border px-3 py-2 text-left opacity-55"
@@ -105,7 +137,7 @@ export function ModuleNav({
                   >
                     <span className="block text-sm text-foreground">{m.label}</span>
                     <span className="block text-[11px] leading-tight text-muted-foreground">
-                      {m.listo ? m.pregunta : "Todavía no"}
+                      {m.listo ? m.secciones : "Todavía no"}
                     </span>
                   </button>
                 );

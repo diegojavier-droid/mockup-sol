@@ -62,13 +62,17 @@ ok(
   "ve el mapa de módulos agrupado por frecuencia",
   /todos los d[íi]as/i.test(t) && /cada tanto/i.test(t),
 );
-ok("ve «El salón»", t.includes("El salón"));
+ok(
+  "ve los módulos con sus nombres nuevos",
+  t.includes("Calendario") && t.includes("Finanzas") && t.includes("Servicios"),
+);
+ok("ve «Usuarios y roles»", t.includes("Usuarios y roles"));
 ok("ve lo que todavía no está, apagado", t.includes("Todavía no"));
 
-await sol.locator("button").filter({ hasText: "El salón" }).first().click();
+await sol.locator("button").filter({ hasText: "Servicios" }).first().click();
 await sol.waitForTimeout(2500);
 t = await sol.locator("body").innerText();
-ok("El salón abre con precios y tiempos", t.includes("Precios y tiempos"));
+ok("Servicios abre con precios y tiempos", t.includes("Precios y tiempos"));
 ok("y con puestos de trabajo", t.includes("Puestos de trabajo"));
 ok("y con productos", t.includes("Productos que vendés"));
 ok(
@@ -133,7 +137,7 @@ console.log("\n── El asistente de precios");
 // Sin clave, el campo no existe.
 {
   const sinIA = await abrirPanel(TOKEN_SOL, { sinAsistente: true });
-  await sinIA.locator("button").filter({ hasText: "El salón" }).first().click();
+  await sinIA.locator("button").filter({ hasText: "Servicios" }).first().click();
   await sinIA.waitForTimeout(2500);
   const t5 = await sinIA.locator("body").innerText();
   ok("sin asistente configurado, el campo no aparece", !t5.includes("Cambiar varios"));
@@ -141,12 +145,70 @@ console.log("\n── El asistente de precios");
   await sinIA.close();
 }
 
+// Usuarios y roles · Personas. Lo que se prueba acá es el circuito
+// entero: sumar a alguien que NO está en la lista de emails del entorno,
+// verlo aparecer, y sacarle el acceso. Es el agujero que cerraba el
+// bloque.
+console.log("\n── Usuarios y roles · Personas");
+{
+  await sol.locator("button").filter({ hasText: "Usuarios y roles" }).first().click();
+  await sol.waitForTimeout(2500);
+  let tp = await sol.locator("body").innerText();
+  ok("abre con quién puede entrar", tp.includes("Quién puede entrar"));
+  ok(
+    "dice que se entra con Google y que no se guardan contraseñas",
+    /cuenta de Google/.test(tp) && /no guardamos contraseñas/i.test(tp),
+  );
+  ok("avisa que no se manda ningún mail", /no le llega ningún mail/i.test(tp));
+
+  const correo = sol.locator('input[aria-label="Correo de Google"]');
+  ok("hay dónde sumar a alguien", (await correo.count()) > 0);
+  if (await correo.count()) {
+    const nuevo = `panel-e2e-${Date.now()}@sol-mai.test`;
+    await correo.fill(nuevo);
+    await sol.locator('input[aria-label="Nombre"]').fill("Prueba E2E");
+    await sol
+      .locator("button", { hasText: /^Sumar$/ })
+      .first()
+      .click();
+    await sol.waitForTimeout(2500);
+    tp = await sol.locator("body").innerText();
+    ok("al sumarla dice que ya puede entrar", /ya puede entrar/i.test(tp), tp.slice(0, 200));
+    ok("y aparece en la lista", tp.includes("Prueba E2E"));
+
+    // La fila de ESA persona, no cualquiera: la de la propia dueña tiene
+    // el botón deshabilitado a propósito, y `.last()` caía justo ahí.
+    const fila = sol.locator("div.flex.flex-wrap.items-center").filter({ hasText: "Prueba E2E" });
+    const sacar = fila.locator("button", { hasText: /Sacarle el acceso/ }).first();
+    if (await sacar.count()) {
+      await sacar.click();
+      await sol.waitForTimeout(2500);
+      tp = await sol.locator("body").innerText();
+      ok("sacarle el acceso lo dice", /ya no puede entrar/i.test(tp), tp.slice(0, 200));
+      // El encabezado se muestra en mayúsculas por CSS, y `innerText` devuelve
+      // el texto ya transformado: comparar con la forma escrita falla siempre.
+      ok("y la mueve a «Ya no entran»", /ya no entran/i.test(tp));
+    } else {
+      ok("hay botón para sacar el acceso", false);
+    }
+  }
+
+  // La dueña no puede sacarse a sí misma: el botón de su propia fila
+  // está deshabilitado, no es que falle al tocarlo.
+  const filaPropia = sol.locator("div.flex.flex-wrap.items-center").filter({ hasText: "(vos)" });
+  const suBoton = filaPropia.locator("button", { hasText: /Sacarle el acceso/ }).first();
+  if (await suBoton.count()) {
+    ok("no puede sacarse el acceso a sí misma", await suBoton.isDisabled());
+  }
+}
+
 console.log("\n── Quien atiende");
 const staff = await abrirPanel(TOKEN_STAFF);
 const ts = await staff.locator("body").innerText();
-ok("puede trabajar el día", ts.includes("Hoy"));
-ok("NO ve «El salón»", !ts.includes("El salón"));
-ok("NO ve los números", !ts.includes("Los números"));
+ok("puede trabajar el día", ts.includes("Agenda"));
+ok("NO ve Servicios", !ts.includes("Servicios"));
+ok("NO ve Finanzas", !ts.includes("Finanzas"));
+ok("NO ve Usuarios y roles", !ts.includes("Usuarios y roles"));
 
 await browser.close();
 console.log(fallos.length ? `\n=== PANEL CON ${fallos.length} FALLA(S) ===` : "\n=== PANEL OK ===");

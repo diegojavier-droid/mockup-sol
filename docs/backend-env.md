@@ -16,16 +16,16 @@ here — the frontend under `src/` must never read them.
 
 ## Required to boot the current backend
 
-| Variable                       | Purpose                                                      |
-| ------------------------------ | ------------------------------------------------------------ |
-| `NODE_ENV`                     | `development` \| `test` \| `production`                      |
-| `APP_ENV`                      | `local` \| `staging` \| `production`                         |
-| `API_BASE_URL`                 | Public URL of this API                                       |
-| `PUBLIC_WEB_BASE_URL`          | Public URL of the web frontend                               |
-| `SUPABASE_URL`                 | Supabase project API URL                                     |
-| `SUPABASE_PUBLISHABLE_KEY`     | Supabase publishable key (`sb_publishable_*`). Respects RLS. |
-| `INTERNAL_AUTH_JWT_AUDIENCE`   | Expected `aud` claim for future internal JWTs                |
-| `INTERNAL_AUTH_ALLOWED_EMAILS` | CSV allow-list reserved for future staff/owner auth          |
+| Variable                       | Purpose                                                                                                                                                                                                                 |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                     | `development` \| `test` \| `production`                                                                                                                                                                                 |
+| `APP_ENV`                      | `local` \| `staging` \| `production`                                                                                                                                                                                    |
+| `API_BASE_URL`                 | Public URL of this API                                                                                                                                                                                                  |
+| `PUBLIC_WEB_BASE_URL`          | Public URL of the web frontend                                                                                                                                                                                          |
+| `SUPABASE_URL`                 | Supabase project API URL                                                                                                                                                                                                |
+| `SUPABASE_PUBLISHABLE_KEY`     | Supabase publishable key (`sb_publishable_*`). Respects RLS.                                                                                                                                                            |
+| `INTERNAL_AUTH_JWT_AUDIENCE`   | Expected `aud` claim for future internal JWTs                                                                                                                                                                           |
+| `INTERNAL_AUTH_ALLOWED_EMAILS` | Quién puede volverse la PRIMERA dueña en una instalación nueva. Ya no se revisa en cada pedido: con el sistema andando manda `staff_members`, que administra la dueña desde el panel (`docs/sol-mai-seguridad.md` §2.1) |
 
 The current Hono application exposes only health and read-only public catalog
 routes. Those catalog reads use the publishable/RLS path, so an administrative

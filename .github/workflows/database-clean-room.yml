@@ -1807,6 +1807,121 @@ jobs:
 
           echo "refund_due coherence OK"
 
+      - name: Verify staff administration and the never-without-an-owner rule
+        run: |
+          set -euo pipefail
+
+          # Este bloque NO borra sus actores al final, a diferencia del resto
+          # del archivo, y el motivo es la propia regla que se está probando:
+          # borrar a la última dueña está prohibido, así que el bloque no
+          # puede limpiarse a sí mismo. Corre dentro de una transacción que
+          # se descarta entera, que además garantiza que no deja nada atrás
+          # ni siquiera si falla a la mitad.
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+
+          do $$
+          declare
+            v_duena uuid;
+            v_otra  uuid;
+            v_r     jsonb;
+          begin
+            -- Quien administra tiene que ser dueña, así que la de prueba se
+            -- crea con ese rol.
+            insert into public.staff_members (slug, display_name, email, role, is_active)
+            values ('ci-duena','CI','ci-duena@solmai.test','owner',true)
+            returning id into v_duena;
+
+            -- 1. Sumar a alguien
+            v_r := public.invite_staff_member('ci-nueva@solmai.test','CI Nueva','staff',
+                                              v_duena,'ci-duena@solmai.test');
+            v_otra := (v_r->>'id')::uuid;
+            if v_otra is null then
+              raise exception 'invite_staff_member no creó a nadie';
+            end if;
+            if (v_r->>'reingreso')::boolean then
+              raise exception 'una persona nueva no puede figurar como reingreso';
+            end if;
+
+            -- 2. No se duplica
+            begin
+              perform public.invite_staff_member('ci-nueva@solmai.test',null,'staff',v_duena,null);
+              raise exception 'dejó sumar dos veces a la misma persona';
+            exception when others then
+              if sqlerrm not like '%ya_esta%' then raise; end if;
+            end;
+
+            -- 3. Quien NO es dueña no administra a nadie. Es el guard de la
+            --    base, independiente del middleware de la ruta.
+            begin
+              perform public.invite_staff_member('ci-tercera@solmai.test',null,'staff',v_otra,null);
+              raise exception 'quien atiende pudo sumar a alguien';
+            exception when others then
+              if sqlerrm not like '%solo_la_duena%' then raise; end if;
+            end;
+            begin
+              perform public.set_staff_role(v_duena,'staff',v_otra,null);
+              raise exception 'quien atiende pudo cambiar un rol';
+            exception when others then
+              if sqlerrm not like '%solo_la_duena%' then raise; end if;
+            end;
+
+            -- 4. Sacar y devolver el acceso, sobre la MISMA fila
+            perform public.set_staff_active(v_otra,false,v_duena,null);
+            if exists (select 1 from public.list_staff_members()
+                        where id = v_otra and is_active) then
+              raise exception 'sigue activa después de sacarle el acceso';
+            end if;
+            perform public.set_staff_active(v_otra,true,v_duena,null);
+            if (select count(*) from public.staff_members
+                 where lower(email)='ci-nueva@solmai.test') <> 1 then
+              raise exception 'se duplicó al devolverle el acceso';
+            end if;
+
+            -- 5. Nadie se saca a sí misma: pierde la pantalla donde
+            --    arreglarlo y el error queda sin salida.
+            begin
+              perform public.set_staff_active(v_duena,false,v_duena,null);
+              raise exception 'una dueña se sacó el acceso a sí misma';
+            exception when others then
+              if sqlerrm not like '%no_a_vos_misma%' then raise; end if;
+            end;
+
+            -- 6. LA INVARIANTE. Un UPDATE escrito a mano —sin pasar por
+            --    ninguna función— no puede dejar el salón sin dueña. Es la
+            --    forma en que alguien se dejaría afuera de su propio
+            --    sistema, y por eso el guard es un trigger sobre la tabla.
+            begin
+              update public.staff_members
+                 set is_active = false
+               where role = 'owner' and is_active and deleted_at is null;
+              raise exception 'un UPDATE a mano dejó el salón sin ninguna dueña';
+            exception when others then
+              if sqlerrm not like '%sin_duena%' then raise; end if;
+            end;
+            begin
+              update public.staff_members
+                 set role = 'staff'
+               where role = 'owner' and is_active and deleted_at is null;
+              raise exception 'degradar a mano dejó el salón sin ninguna dueña';
+            exception when others then
+              if sqlerrm not like '%sin_duena%' then raise; end if;
+            end;
+
+            -- 7. Queda auditado, con actor
+            if not exists (select 1 from public.audit_log
+                            where action = 'staff_invited' and actor_id = v_duena
+                              and entity_id = v_otra) then
+              raise exception 'sumar a alguien no quedó auditado';
+            end if;
+
+          end $$;
+
+          rollback;
+          SQL
+
+          echo "staff administration OK"
+
       - name: Verify field-option composite FK
         run: |
           set -euo pipefail
