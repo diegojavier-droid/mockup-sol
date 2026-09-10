@@ -1,17 +1,15 @@
 import { useState } from "react";
 import {
   useInviteStaff,
+  useRoles,
   useSetStaffActive,
   useSetStaffRole,
   useStaffIdentity,
   useStaffList,
+  type RoleRow,
   type StaffRow,
 } from "@/lib/api/admin-hooks";
-
-const ROL_LABEL: Record<string, string> = {
-  owner: "Administradora",
-  staff: "Mostrador",
-};
+import { puede } from "@/lib/staff-session";
 
 /**
  * «Usuarios y roles · Personas»: quién puede entrar al panel.
@@ -31,11 +29,13 @@ const ROL_LABEL: Record<string, string> = {
  */
 export function PeopleScreen() {
   const identity = useStaffIdentity();
-  const soyDuena = identity.data?.role === "owner";
-  const gente = useStaffList(soyDuena);
+  const puedeAdministrar = puede(identity.data, "usuarios", "full");
+  const gente = useStaffList(puedeAdministrar);
+  // Los roles ya no son dos escritos en el código: son los que Sol armó.
+  const roles = useRoles(puedeAdministrar);
   const [aviso, setAviso] = useState<string | null>(null);
 
-  if (!soyDuena) return null;
+  if (!puedeAdministrar) return null;
 
   const activas = (gente.data ?? []).filter((p) => p.isActive);
   const sinAcceso = (gente.data ?? []).filter((p) => !p.isActive);
@@ -61,6 +61,7 @@ export function PeopleScreen() {
             <Persona
               key={p.id}
               persona={p}
+              roles={roles.data ?? []}
               esVos={p.id === identity.data?.staffId}
               onAviso={setAviso}
             />
@@ -74,7 +75,13 @@ export function PeopleScreen() {
             </h3>
             <div className="mt-2 divide-y divide-border rounded-2xl border border-border bg-card">
               {sinAcceso.map((p) => (
-                <Persona key={p.id} persona={p} esVos={false} onAviso={setAviso} />
+                <Persona
+                  key={p.id}
+                  persona={p}
+                  roles={roles.data ?? []}
+                  esVos={false}
+                  onAviso={setAviso}
+                />
               ))}
             </div>
           </>
@@ -86,17 +93,19 @@ export function PeopleScreen() {
         </p>
       </section>
 
-      <Sumar onAviso={setAviso} />
+      <Sumar roles={roles.data ?? []} onAviso={setAviso} />
     </div>
   );
 }
 
 function Persona({
   persona,
+  roles,
   esVos,
   onAviso,
 }: {
   persona: StaffRow;
+  roles: RoleRow[];
   esVos: boolean;
   onAviso: (s: string | null) => void;
 }) {
@@ -122,19 +131,27 @@ function Persona({
           disabled={esVos || !persona.isActive || cambiarRol.isPending}
           onChange={(e) => {
             onAviso(null);
+            const elegido = e.target.value;
             cambiarRol.mutate(
-              { staffId: persona.id, role: e.target.value as "owner" | "staff" },
+              { staffId: persona.id, role: elegido },
               {
                 onSuccess: () =>
-                  onAviso(`${persona.displayName} ahora es ${ROL_LABEL[e.target.value]}.`),
+                  onAviso(
+                    `${persona.displayName} ahora es ${
+                      roles.find((r) => r.slug === elegido)?.name ?? elegido
+                    }.`,
+                  ),
                 onError: error,
               },
             );
           }}
           value={persona.role}
         >
-          <option value="owner">Administradora</option>
-          <option value="staff">Mostrador</option>
+          {roles.map((r) => (
+            <option key={r.slug} value={r.slug}>
+              {r.name}
+            </option>
+          ))}
         </select>
       </label>
 
@@ -164,15 +181,23 @@ function Persona({
   );
 }
 
-function Sumar({ onAviso }: { onAviso: (s: string | null) => void }) {
+function Sumar({
+  roles,
+  onAviso,
+}: {
+  roles: RoleRow[];
+  onAviso: (s: string | null) => void;
+}) {
   const sumar = useInviteStaff();
   const [email, setEmail] = useState("");
   const [nombre, setNombre] = useState("");
-  const [rol, setRol] = useState<"owner" | "staff">("staff");
+  // Vacío hasta que carguen los roles: preseleccionar uno fijo haría que,
+  // si Sol lo borró, el alta fallara con un rol que la pantalla eligió sola.
+  const [rol, setRol] = useState("");
 
   const enviar = () => {
     const e = email.trim();
-    if (!e) return;
+    if (!e || !rol) return;
     onAviso(null);
     sumar.mutate(
       { email: e, displayName: nombre.trim() || null, role: rol },
@@ -219,15 +244,19 @@ function Sumar({ onAviso }: { onAviso: (s: string | null) => void }) {
         <select
           aria-label="Rol de la persona nueva"
           className="rounded-xl border border-border bg-background px-2 py-2 text-sm"
-          onChange={(e) => setRol(e.target.value as "owner" | "staff")}
+          onChange={(e) => setRol(e.target.value)}
           value={rol}
         >
-          <option value="staff">Mostrador</option>
-          <option value="owner">Administradora</option>
+          <option value="">Elegí un rol</option>
+          {roles.map((r) => (
+            <option key={r.slug} value={r.slug}>
+              {r.name}
+            </option>
+          ))}
         </select>
         <button
           className="shrink-0 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
-          disabled={sumar.isPending || email.trim().length === 0}
+          disabled={sumar.isPending || email.trim().length === 0 || rol === ""}
           onClick={enviar}
           type="button"
         >
@@ -235,10 +264,15 @@ function Sumar({ onAviso }: { onAviso: (s: string | null) => void }) {
         </button>
       </div>
 
+      {/* Dar acceso es una decisión, no un trámite: el rol no viene
+          elegido de fábrica. Pero un botón apagado sin explicación es
+          igual de malo, así que la pantalla dice qué falta. */}
+      {email.trim() !== "" && rol === "" && (
+        <p className="mt-3 text-xs text-foreground/80">Elegí con qué rol entra.</p>
+      )}
+
       <p className="mt-3 text-xs text-muted-foreground">
-        <strong className="font-medium text-foreground/80">Mostrador</strong> ve la agenda y las
-        clientas. <strong className="font-medium text-foreground/80">Administradora</strong> ve
-        además la plata, los precios y esta pantalla.
+        A qué llega cada rol lo decidís vos más abajo, en «Qué ve cada rol».
       </p>
     </section>
   );

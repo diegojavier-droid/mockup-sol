@@ -57,4 +57,6 @@ export const adminApi = {
       method: "PATCH",
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
+  // `del` y no `delete`: es palabra reservada como nombre de método suelto.
+  del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };

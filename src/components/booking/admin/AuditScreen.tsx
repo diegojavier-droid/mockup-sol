@@ -6,6 +6,7 @@ import {
   type AuditApiRow,
 } from "@/lib/api/admin-hooks";
 import { describirCambio, SOBRE_QUE } from "@/lib/audit-copy";
+import { puede } from "@/lib/staff-session";
 
 const VENTANAS = [
   { label: "Hoy", dias: 1 },
@@ -56,7 +57,8 @@ function cuando(iso: string): string {
  */
 export function AuditScreen() {
   const identity = useStaffIdentity();
-  const soyDuena = identity.data?.role === "owner";
+  // El registro de cambios vive en «Usuarios y roles».
+  const soyDuena = puede(identity.data, "usuarios");
   const [dias, setDias] = useState(7);
   const [quien, setQuien] = useState<string>("");
   const [sobreQue, setSobreQue] = useState<string>("");

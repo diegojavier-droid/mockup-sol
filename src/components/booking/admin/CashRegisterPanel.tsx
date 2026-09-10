@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCashRegister, useStaffIdentity, type CashMovement } from "@/lib/api/admin-hooks";
+import { puede } from "@/lib/staff-session";
 
 const MEDIO_LABEL: Record<string, string> = {
   efectivo: "Efectivo",
@@ -34,10 +35,11 @@ const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
 export function CashRegisterPanel() {
   const [abierto, setAbierto] = useState(false);
   const identity = useStaffIdentity();
-  const isOwner = identity.data?.role === "owner";
-  const caja = useCashRegister(isOwner);
+  // La caja del día es Finanzas, no «ser la dueña».
+  const veFinanzas = puede(identity.data, "finanzas");
+  const caja = useCashRegister(veFinanzas);
 
-  if (!isOwner || caja.isLoading || !caja.data) return null;
+  if (!veFinanzas || caja.isLoading || !caja.data) return null;
 
   const { entro, devuelto, queda, por_medio: porMedio, movimientos } = caja.data;
 

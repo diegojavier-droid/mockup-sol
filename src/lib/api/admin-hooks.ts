@@ -8,7 +8,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "./admin-client";
-import { readStaffToken, type StaffIdentity } from "../staff-session";
+import { readStaffToken, type Modulo, type Nivel, type StaffIdentity } from "../staff-session";
 
 export type BookingSource = "online" | "manual" | "phone" | "whatsapp" | "walk_in";
 
@@ -190,7 +190,8 @@ export interface StaffRow {
   id: string;
   displayName: string;
   email: string;
-  role: "owner" | "staff";
+  /** El slug del rol. Ya no es una lista fija. */
+  role: string;
   isActive: boolean;
   createdAt: string;
 }
@@ -219,9 +220,8 @@ function useStaffMutation<V, R>(fn: (v: V) => Promise<R>) {
 }
 
 export function useInviteStaff() {
-  return useStaffMutation(
-    (v: { email: string; displayName?: string | null; role: "owner" | "staff" }) =>
-      adminApi.post<{ id: string; reingreso: boolean }>("/staff", v),
+  return useStaffMutation((v: { email: string; displayName?: string | null; role: string }) =>
+    adminApi.post<{ id: string; reingreso: boolean }>("/staff", v),
   );
 }
 
@@ -234,8 +234,65 @@ export function useSetStaffActive() {
 }
 
 export function useSetStaffRole() {
-  return useStaffMutation((v: { staffId: string; role: "owner" | "staff" }) =>
+  return useStaffMutation((v: { staffId: string; role: string }) =>
     adminApi.post<{ id: string; rol: string }>(`/staff/${v.staffId}/role`, { role: v.role }),
+  );
+}
+
+// ------------------------------------------------------- roles y permisos
+
+export interface RoleRow {
+  slug: string;
+  name: string;
+  /** Los roles del sistema no se editan ni se borran. */
+  isSystem: boolean;
+  /** Cuánta gente activa lo tiene hoy. */
+  personas: number;
+  permisos: Partial<Record<Modulo, Nivel>>;
+}
+
+export function useRoles(enabled = true) {
+  return useQuery({
+    queryKey: ["admin", "roles"],
+    queryFn: () => adminApi.get<RoleRow[]>("/roles"),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+function useRolesMutation<V, R>(fn: (v: V) => Promise<R>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "roles"] });
+      // La lista de gente muestra el rol de cada una, y `me` decide qué
+      // módulos se dibujan: si Sol se cambia los permisos a sí misma, el
+      // panel tiene que reacomodarse sin recargar.
+      qc.invalidateQueries({ queryKey: ["admin", "staff"] });
+      qc.invalidateQueries({ queryKey: ["admin", "me"] });
+    },
+  });
+}
+
+export function useCreateRole() {
+  return useRolesMutation((v: { name: string }) =>
+    adminApi.post<{ slug: string; name: string }>("/roles", v),
+  );
+}
+
+export function useSetRolePermission() {
+  return useRolesMutation((v: { slug: string; module: Modulo; level: Nivel }) =>
+    adminApi.post<{ rol: string; modulo: string; nivel: string; sin_cambios: boolean }>(
+      `/roles/${v.slug}/permission`,
+      { module: v.module, level: v.level },
+    ),
+  );
+}
+
+export function useDeleteRole() {
+  return useRolesMutation((v: { slug: string }) =>
+    adminApi.del<{ slug: string; borrado: boolean }>(`/roles/${v.slug}`),
   );
 }
 

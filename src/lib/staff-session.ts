@@ -11,11 +11,48 @@
 
 const TOKEN_KEY = "sol-mai-staff-token";
 
+/** Los nueve módulos, tal como los nombra §5.0 de la arquitectura. */
+export type Modulo =
+  | "calendario"
+  | "clientas"
+  | "finanzas"
+  | "inventario"
+  | "servicios"
+  | "personal"
+  | "compras"
+  | "usuarios"
+  | "configuracion";
+
+export type Nivel = "none" | "view" | "full";
+
 export interface StaffIdentity {
   email: string;
   staffId: string;
   displayName: string;
-  role: "owner" | "staff";
+  /** El slug del rol. Dejó de ser una lista fija: Sol arma los roles. */
+  role: string;
+  /** Cómo se llama el rol en la pantalla. */
+  roleName: string;
+  /**
+   * Qué puede tocar. Lo manda el servidor en `/me`, resuelto contra la
+   * matriz de permisos, y es lo mismo que el servidor va a exigir en cada
+   * pedido: la pantalla y la puerta usan la misma fuente.
+   */
+  permisos: Partial<Record<Modulo, Nivel>>;
+}
+
+/**
+ * Esconder no es una frontera —el servidor niega igual—, pero mostrarle a
+ * alguien puertas que no abren es ensuciarle la pantalla todos los días.
+ */
+export function puede(
+  identidad: StaffIdentity | undefined,
+  modulo: Modulo,
+  nivel: "view" | "full" = "view",
+): boolean {
+  const tiene = identidad?.permisos?.[modulo];
+  if (tiene === "full") return true;
+  return nivel === "view" && tiene === "view";
 }
 
 export function readStaffToken(): string | null {

@@ -167,6 +167,17 @@ console.log("\n── Usuarios y roles · Personas");
     const nuevo = `panel-e2e-${Date.now()}@sol-mai.test`;
     await correo.fill(nuevo);
     await sol.locator('input[aria-label="Nombre"]').fill("Prueba E2E");
+
+    // El rol ya no viene elegido: dar acceso es una decisión, y un
+    // valor por defecto es cómo alguien termina con más permisos de los
+    // que nadie le quiso dar.
+    ok(
+      "no deja sumar a nadie sin elegir el rol",
+      await sol.locator("button", { hasText: /^Sumar$/ }).first().isDisabled(),
+    );
+    ok("y dice qué falta", /elegí con qué rol entra/i.test(await sol.locator("body").innerText()));
+
+    await sol.locator('select[aria-label="Rol de la persona nueva"]').selectOption("mostrador");
     await sol
       .locator("button", { hasText: /^Sumar$/ })
       .first()
@@ -228,6 +239,60 @@ console.log("\n── Usuarios y roles · Registro de cambios");
   }
 }
 
+console.log("\n── Roles y permisos");
+{
+  await sol.locator('button:has-text("Usuarios y roles")').first().click();
+  await sol.waitForTimeout(2500);
+  const t = await sol.locator("body").innerText();
+
+  ok("Sol ve la matriz de permisos", /qué ve cada rol/i.test(t));
+  ok("están los nueve módulos", /Inventario/i.test(t) && /Compras/i.test(t) && /Configuración/i.test(t));
+  ok("dice qué es cada módulo, no sólo su nombre", /la caja, lo que entró/i.test(t));
+
+  // A la administradora no se le puede recortar nada: si esto se
+  // pudiera, el salón se queda sin nadie que lo arregle.
+  const selDuena = sol.locator('select[aria-label="Finanzas para Administradora"]');
+  ok("el rol de la administradora no se edita", (await selDuena.count()) > 0
+    ? await selDuena.first().isDisabled()
+    : false);
+  ok("y la pantalla explica por qué", /entra a todo, siempre/i.test(t));
+
+  // Un rol nuevo nace sin ver nada. Se crea, se comprueba, y se borra
+  // para que la corrida siguiente arranque igual que ésta.
+  const nombreRol = "Prueba " + Date.now().toString().slice(-5);
+  await sol.locator('input[aria-label="Nombre del rol"]').fill(nombreRol);
+  await sol.locator('button:has-text("Crear rol")').click();
+  await sol.waitForTimeout(2500);
+  const t2 = await sol.locator("body").innerText();
+  ok("se puede armar un rol nuevo", t2.includes(nombreRol));
+  ok("y nace sin ver nada", /todavía no ve nada/i.test(t2));
+
+  // Por `aria-label` exacto y no por «el div que contiene el nombre»: en
+  // esta pantalla conviven Personas, Roles y el Registro de cambios, y un
+  // selector por texto agarra el contenedor de otra sección.
+  const selFin = sol.locator(`select[aria-label="Finanzas para ${nombreRol}"]`);
+  await selFin.waitFor({ timeout: 10000 }).catch(() => {});
+  ok(
+    "el rol nuevo arranca en «No lo ve»",
+    (await selFin.count()) > 0 ? (await selFin.inputValue()) === "none" : false,
+  );
+
+  if (await selFin.count()) {
+    await selFin.selectOption("view");
+    await sol.waitForTimeout(2000);
+    ok("darle un permiso queda guardado", (await selFin.inputValue()) === "view");
+  }
+
+  await sol.locator(`button[aria-label="Borrar el rol ${nombreRol}"]`).click();
+  await sol.waitForTimeout(2500);
+  const t4 = await sol.locator("body").innerText();
+  ok("se puede borrar un rol que no usa nadie", /borramos el rol/i.test(t4));
+  ok(
+    "y desaparece de la lista",
+    (await sol.locator(`select[aria-label="Finanzas para ${nombreRol}"]`).count()) === 0,
+  );
+}
+
 console.log("\n── Quien atiende");
 const staff = await abrirPanel(TOKEN_STAFF);
 const ts = await staff.locator("body").innerText();
@@ -235,6 +300,10 @@ ok("puede trabajar el día", ts.includes("Agenda"));
 ok("NO ve Servicios", !ts.includes("Servicios"));
 ok("NO ve Finanzas", !ts.includes("Finanzas"));
 ok("NO ve Usuarios y roles", !ts.includes("Usuarios y roles"));
+ok("NO ve Inventario ni Compras", !ts.includes("Inventario") && !ts.includes("Compras"));
+// Los módulos que sí le tocan aparecen aunque todavía no estén hechos:
+// esconderlos haría que el panel parezca más chico de lo que va a ser.
+ok("sí ve Clientas, que es suyo aunque no esté hecho", ts.includes("Clientas"));
 
 await browser.close();
 console.log(fallos.length ? `\n=== PANEL CON ${fallos.length} FALLA(S) ===` : "\n=== PANEL OK ===");
