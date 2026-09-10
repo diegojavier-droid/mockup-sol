@@ -1,0 +1,199 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+  @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+  :root {
+    --fondo:      oklch(0.965 0.003 250);
+    --panel:      #ffffff;
+    --borde:      oklch(0.905 0.004 250);
+    --borde-suave:oklch(0.945 0.003 250);
+    --texto:      oklch(0.29 0.012 250);
+    --texto-2:    oklch(0.52 0.012 250);
+    --texto-3:    oklch(0.64 0.010 250);
+    --acento:     oklch(0.52 0.085 200);
+    --acento-2:   oklch(0.955 0.022 200);
+    --barra:      oklch(0.26 0.018 250);
+    --barra-txt:  oklch(0.93 0.005 250);
+    --ok:         oklch(0.52 0.10 152);
+    --alerta:     oklch(0.56 0.14 55);
+    --fila-hover: oklch(0.975 0.004 250);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--acento); text-decoration: none; }
+  a:hover { color: var(--texto); text-decoration: underline; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* --- armazón ------------------------------------------------------ */
+  .app { width: 1440px; height: 900px; display: flex; flex-direction: column; background: var(--fondo); overflow: hidden; }
+  .barra-sup {
+    height: 44px; flex-shrink: 0; background: var(--barra); color: var(--barra-txt);
+    display: flex; align-items: center; gap: 18px; padding: 0 14px;
+  }
+  .barra-marca { font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
+  .barra-modulo { font-size: 13px; opacity: 0.92; }
+  .barra-der { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 12px; opacity: 0.85; }
+
+  .barra-acc {
+    height: 46px; flex-shrink: 0; background: var(--panel); border-bottom: 1px solid var(--borde);
+    display: flex; align-items: center; gap: 12px; padding: 0 14px;
+  }
+  .miga { font-size: 13px; color: var(--texto-2); display: flex; align-items: center; gap: 7px; }
+  .miga strong { font-weight: 600; color: var(--texto); }
+
+  .btn {
+    height: 30px; padding: 0 13px; border-radius: 4px; border: 1px solid var(--borde);
+    background: var(--panel); color: var(--texto); font: inherit; font-size: 12.5px;
+    display: inline-flex; align-items: center; gap: 6px; cursor: default;
+  }
+  .btn-p { background: var(--acento); border-color: var(--acento); color: #fff; font-weight: 500; }
+
+  .buscador {
+    margin-left: auto; height: 30px; min-width: 300px; border: 1px solid var(--borde);
+    border-radius: 4px; background: var(--panel); display: flex; align-items: center;
+    gap: 8px; padding: 0 10px; color: var(--texto-3); font-size: 12.5px;
+  }
+  .pildora {
+    height: 22px; padding: 0 9px; border-radius: 3px; background: var(--acento-2);
+    color: var(--acento); font-size: 11.5px; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .lienzo { flex-grow: 1; padding: 14px; overflow: hidden; }
+  .hoja { background: var(--panel); border: 1px solid var(--borde); border-radius: 5px; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* --- tablas ------------------------------------------------------- */
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--texto-3); padding: 9px 12px;
+    border-bottom: 1px solid var(--borde); background: var(--panel);
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--borde-suave); font-size: 13px; }
+  .der { text-align: right; }
+  .paginador { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--texto-2); }
+  .rotulo { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-3); }
+
+  </style>
+</helmet>
+
+<div class="app">
+  <div class="barra-sup">
+    <span style="display: flex; align-items: center; gap: 9px;"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg></span>
+    <span class="barra-marca">Sol Mai</span>
+    <span style="opacity: 0.35;">/</span>
+    <span class="barra-modulo" style="font-weight: 500;">Usuarios y roles</span>
+    <span style="display: flex; align-items: center; gap: 17px; margin-left: 6px;"><span style="font-size: 12.5px; opacity: 0.62; padding: 0 2px 2px;">Personas</span><span style="font-size: 12.5px; color: #fff; font-weight: 500; padding: 0 2px 2px; border-bottom: 2px solid var(--acento);">Roles</span><span style="font-size: 12.5px; opacity: 0.62; padding: 0 2px 2px;">Accesos</span><span style="font-size: 12.5px; opacity: 0.62; padding: 0 2px 2px;">Registro de cambios</span></span>
+    <span class="barra-der">
+      <span>Sol · dueña</span>
+    </span>
+  </div>
+
+  <div class="barra-acc">
+    <button class="btn btn-p" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg> Nuevo rol</button>
+    <span class="miga">Usuarios y roles <span style="opacity: 0.5;">/</span> <strong>Roles</strong></span>
+    <span style="margin-left: auto; font-size: 12px; color: var(--texto-2);">Los cambios se aplican la próxima vez que la persona abre el panel.</span>
+  </div>
+
+  <div class="lienzo" style="display: flex; flex-direction: column; gap: 12px;">
+    <div class="hoja" style="flex-grow: 0;">
+      <table>
+        <thead>
+          <tr>
+            <th>Módulo</th>
+            <th style="width: 148px;">Dueña <span style="font-weight: 400; text-transform: none; letter-spacing: 0;">· 1 persona</span></th>
+            <th style="width: 148px;">Mostrador <span style="font-weight: 400; text-transform: none; letter-spacing: 0;">· 2 personas</span></th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td style="font-weight: 500;">Calendario</td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--acento); background: var(--acento-2); color: var(--acento); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Todo</span></td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--acento); background: var(--acento-2); color: var(--acento); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Todo<span style="opacity: 0.5; font-size: 10px;">▾</span></span></td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500;">Clientas</td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--acento); background: var(--acento-2); color: var(--acento); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Todo</span></td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--acento); background: var(--acento-2); color: var(--acento); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Todo<span style="opacity: 0.5; font-size: 10px;">▾</span></span></td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500;">Finanzas</td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--acento); background: var(--acento-2); color: var(--acento); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Todo</span></td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--borde-suave); background: var(--fondo); color: var(--texto-3); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Nada<span style="opacity: 0.5; font-size: 10px;">▾</span></span></td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500;">Inventario</td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--acento); background: var(--acento-2); color: var(--acento); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Todo</span></td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--borde); background: var(--panel); color: var(--texto-2); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Sólo ver<span style="opacity: 0.5; font-size: 10px;">▾</span></span></td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500;">Servicios</td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--acento); background: var(--acento-2); color: var(--acento); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Todo</span></td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--borde); background: var(--panel); color: var(--texto-2); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Sólo ver<span style="opacity: 0.5; font-size: 10px;">▾</span></span></td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500;">Personal</td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--acento); background: var(--acento-2); color: var(--acento); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Todo</span></td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--borde-suave); background: var(--fondo); color: var(--texto-3); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Nada<span style="opacity: 0.5; font-size: 10px;">▾</span></span></td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500;">Compras</td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--acento); background: var(--acento-2); color: var(--acento); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Todo</span></td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--borde-suave); background: var(--fondo); color: var(--texto-3); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Nada<span style="opacity: 0.5; font-size: 10px;">▾</span></span></td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500;">Usuarios y roles</td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--acento); background: var(--acento-2); color: var(--acento); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Todo</span></td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--borde-suave); background: var(--fondo); color: var(--texto-3); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Nada<span style="opacity: 0.5; font-size: 10px;">▾</span></span></td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500;">Configuración</td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--acento); background: var(--acento-2); color: var(--acento); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Todo</span></td>
+              <td style="width: 148px;"><span style="display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 108px; border: 1px solid var(--borde-suave); background: var(--fondo); color: var(--texto-3); border-radius: 4px; padding: 4px 9px; font-size: 12.5px;">Nada<span style="opacity: 0.5; font-size: 10px;">▾</span></span></td>
+            </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="hoja" style="padding: 15px 17px; gap: 9px; flex-grow: 0;">
+      <span class="rotulo">Dos cosas que este cuadro NO hace</span>
+      <span style="font-size: 12.5px; color: var(--texto-2); line-height: 1.6;">
+        <strong style="color: var(--texto);">No es lo único que protege el sistema.</strong>
+        Esconder un botón no protege nada: quien sabe lo que hace puede pedirle el dato al
+        servidor igual. El permiso lo revisa el servidor en cada pedido, y este cuadro es
+        lo que además le evita a la persona ver puertas cerradas todo el día.
+      </span>
+      <span style="font-size: 12.5px; color: var(--texto-2); line-height: 1.6;">
+        <strong style="color: var(--texto);">No se puede dejar el sistema sin dueña.</strong>
+        Si sacar un permiso deja al salón sin nadie que pueda administrarlo, no se guarda
+        y se avisa por qué.
+      </span>
+    </div>
+
+    <div class="hoja" style="padding: 15px 17px; gap: 7px; flex-grow: 0;">
+      <span class="rotulo">Falta que Sol decida</span>
+      <span style="font-size: 12.5px; color: var(--texto-2); line-height: 1.6;">
+        Los dos roles de arriba son los que el sistema ya distingue. Si el salón necesita
+        otros —alguien que sólo cargue turnos, una contadora que sólo mire Finanzas— los
+        define ella: acá no inventamos su organigrama.
+      </span>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+</body>
+</html>

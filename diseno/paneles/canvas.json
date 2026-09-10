@@ -1,12 +1,85 @@
 {
   "artboards": [
-    { "file": "Main.dc.html",       "x": 0,    "y": 0,    "w": 1440, "h": 900, "title": "Escritorio · el árbol completo" },
-    { "file": "Calendario.dc.html", "x": 1560, "y": 0,    "w": 1440, "h": 900, "title": "Calendario › Mes" },
-    { "file": "Finanzas.dc.html",   "x": 0,    "y": 1060, "w": 1440, "h": 900, "title": "Finanzas › Caja del día" },
-    { "file": "Lista.dc.html",      "x": 1560, "y": 1060, "w": 1440, "h": 900, "title": "Clientas › Fichas" },
-    { "file": "Ficha.dc.html",      "x": 0,    "y": 2120, "w": 1440, "h": 900, "title": "Clientas › Fichas › una clienta" },
-    { "file": "Precios.dc.html",    "x": 1560, "y": 2120, "w": 1440, "h": 900, "title": "Servicios › Precios y tiempos" },
-    { "file": "Telefono.dc.html",   "x": 0,    "y": 3180, "w": 390,  "h": 844, "title": "El mostrador · Calendario › Hoy" }
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Escritorio · el árbol completo"
+    },
+    {
+      "file": "Calendario.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Calendario › Mes"
+    },
+    {
+      "file": "Finanzas.dc.html",
+      "x": 0,
+      "y": 1060,
+      "w": 1440,
+      "h": 900,
+      "title": "Finanzas › Caja del día"
+    },
+    {
+      "file": "Lista.dc.html",
+      "x": 1560,
+      "y": 1060,
+      "w": 1440,
+      "h": 900,
+      "title": "Clientas › Fichas"
+    },
+    {
+      "file": "Ficha.dc.html",
+      "x": 0,
+      "y": 2120,
+      "w": 1440,
+      "h": 900,
+      "title": "Clientas › Fichas › una clienta"
+    },
+    {
+      "file": "Precios.dc.html",
+      "x": 1560,
+      "y": 2120,
+      "w": 1440,
+      "h": 900,
+      "title": "Servicios › Precios y tiempos"
+    },
+    {
+      "file": "Telefono.dc.html",
+      "x": 0,
+      "y": 3180,
+      "w": 390,
+      "h": 844,
+      "title": "El mostrador · Calendario › Hoy"
+    },
+    {
+      "file": "Usuarios.dc.html",
+      "x": 1560,
+      "y": 3180,
+      "w": 1440,
+      "h": 900,
+      "title": "Usuarios y roles › Personas"
+    },
+    {
+      "file": "Roles.dc.html",
+      "x": 0,
+      "y": 4240,
+      "w": 1440,
+      "h": 900,
+      "title": "Usuarios y roles › Roles"
+    },
+    {
+      "file": "Auditoria.dc.html",
+      "x": 1560,
+      "y": 4240,
+      "w": 1440,
+      "h": 900,
+      "title": "Usuarios y roles › Registro de cambios"
+    }
   ],
   "annotations": [
     {
@@ -64,7 +137,30 @@
       "y": 3180,
       "w": 420,
       "text": "En el teléfono las secciones bajan a pestañas, porque no entran en la barra. Es el mismo árbol, no otro sistema.\n\nFilas de 62 px y botón de 46: acá se toca con el pulgar, no se apunta con el mouse."
+    },
+    {
+      "id": "nota-usuarios",
+      "x": 1560,
+      "y": 3005,
+      "w": 700,
+      "text": "Quién puede entrar. Hoy esto NO existe: no hay una sola escritura a `staff_members` en todo el backend. Sumar a alguien es editar un secreto de GitHub, desplegar, y meter una fila a mano en SQL.\n\nLa migración que creó los roles ya prometía «al equipo lo da de alta la dueña desde el panel». Nunca se construyó."
+    },
+    {
+      "id": "nota-roles",
+      "x": 0,
+      "y": 4065,
+      "w": 700,
+      "text": "Qué abre cada rol. Hoy hay dos y son fijos en el código: dueña y quien atiende.\n\nCon nueve módulos, «quien atiende» pasó a significar demasiadas cosas. El cuadro no inventa el organigrama de Sol: muestra el mecanismo, y los roles que hagan falta los define ella."
+    },
+    {
+      "id": "nota-auditoria",
+      "x": 1560,
+      "y": 4065,
+      "w": 700,
+      "text": "El registro de cambios. Esto es lo más barato de todo el módulo: `audit_log` ya se escribe en cada cambio de plata, precio o turno, con actor y valor anterior.\n\nFalta sólo la puerta para leerlo. Hoy se escribe para nadie."
     }
   ],
-  "launch": { "view": "canvas" }
+  "launch": {
+    "view": "canvas"
+  }
 }
