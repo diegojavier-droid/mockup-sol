@@ -35,20 +35,21 @@ criterio con el que está armado todo lo que sigue.
 28 tablas, 9 módulos de rutas HTTP, 10 de librería, 4 rutas de frontend
 (`/`, `/agenda`, `/operaciones`, `/reserva/$token`).
 
-| Módulo                                         | Datos         | API                 | Pantalla                 |
-| ---------------------------------------------- | ------------- | ------------------- | ------------------------ |
-| **Calendario**                                 | Completo      | Completa            | **Sí** (`/agenda`)       |
-| **Clientas**                                   | Completo      | Completa            | **No**                   |
-| **Finanzas**                                   | Parcial       | Parcial             | Parcial (`/operaciones`) |
-| **Productos y stock**                          | Parcial       | Parcial             | Parcial (`/agenda`)      |
-| **El salón** (servicios, estaciones, horarios) | Completo      | Lectura y escritura | **Sí** (`/agenda`)       |
-| **Empleados**                                  | Parcial       | No                  | No                       |
-| **Proveedores**                                | **No existe** | No                  | No                       |
-| **Usuarios y roles**                           | Parcial       | Parcial             | No                       |
-| **Trazabilidad**                               | Parcial       | **No existe**       | No                       |
+| Módulo               | Datos         | API                 | Pantalla                 |
+| -------------------- | ------------- | ------------------- | ------------------------ |
+| **Calendario**       | Completo      | Completa            | **Sí** (`/agenda`)       |
+| **Clientas**         | Completo      | Completa            | **No**                   |
+| **Finanzas**         | Parcial       | Parcial             | Parcial (`/operaciones`) |
+| **Inventario**       | Parcial       | Parcial             | Parcial (`/agenda`)      |
+| **Servicios**        | Completo      | Lectura y escritura | **Sí** (`/agenda`)       |
+| **Personal**         | Parcial       | No                  | No                       |
+| **Compras**          | **No existe** | No                  | No                       |
+| **Usuarios y roles** | Parcial       | Sólo el guard       | No                       |
+| **Configuración**    | Parcial       | Parcial             | Parcial (`/operaciones`) |
 
 La tabla se actualizó el 2026-09-09, cuando el bloque 2 abrió la escritura
-del catálogo: «El salón» ya no es de sólo lectura y tiene pantalla, y
+del catálogo: Servicios —que entonces se llamaba «El salón»— ya no es de
+sólo lectura y tiene pantalla, y
 Productos existe con alta, precio y archivado —falta el stock, que es la
 otra mitad del módulo—.
 
@@ -173,6 +174,27 @@ descargando trabajo o sólo moviéndolo de lugar.
 
 ---
 
+### 4.3. El panel y la web no hablan igual
+
+Es la misma consecuencia de §4.1 aplicada a las palabras, y conviene
+dejarla escrita porque se viola sola.
+
+A la clienta se le habla **como le hablaría Sol**: «reservá tu turno»,
+«tu pelo hoy», «te esperamos». Eso lo gobierna la skill de copy, que
+existe justamente para eso.
+
+El panel **nombra las cosas por su nombre**: Calendario, Finanzas,
+Inventario. Quien lo abre no viene a que le hablen lindo: viene a
+encontrar algo, veinte veces por día, y necesita que esté donde espera.
+Un módulo que se llama «Los números» obliga a recordar qué quiso decir
+el que lo escribió.
+
+**La skill de copy gobierna la web, no el panel.** Lo mismo vale para el
+diseño: el panel tiene su propio lenguaje visual, en `diseno/paneles/`,
+y no hereda el del salón.
+
+---
+
 ## 5. Los módulos, agrupados por con qué frecuencia se tocan
 
 Dirección sumó tres módulos que faltaban: **servicios**, **estaciones** y
@@ -185,24 +207,73 @@ exactamente el retroceso que §1 quiere evitar. La salida no es recortar
 módulos: es **ordenarlos por cada cuánto se tocan**, que es como los
 ordena en la cabeza quien los usa.
 
-| Se toca                              | Módulos                                                              |
-| ------------------------------------ | -------------------------------------------------------------------- |
-| **Todos los días**                   | Calendario · Clientas · Caja · Productos                             |
-| **Cada tanto**                       | El salón (servicios, estaciones, horarios) · Empleados · Proveedores |
-| **Casi nunca, pero tiene que estar** | Usuarios y roles · Trazabilidad                                      |
+### 5.0. El árbol: nueve módulos, veintinueve secciones
 
-Dos consecuencias de esta agrupación:
+**Confirmado por dirección el 2026-09-10.** Esta tabla es la estructura
+del sistema: lo que no está acá, no existe como pantalla.
 
-- **Servicios y estaciones son un mismo módulo, «El salón».** Los dos son
-  «cómo está armado esto», los dos se tocan cada varios meses, y separarlos
-  produce dos pantallas casi vacías. Los horarios, que ya se editan por
-  migración, se suman ahí.
-- **Productos es módulo propio y de uso diario**, porque entra mercadería,
-  se vende y se usa en cada turno. No es configuración: es operación.
+Un módulo **no es una pantalla**: es una categoría con secciones adentro.
+Ese segundo nivel es lo que evita que nueve módulos se conviertan en
+nueve pestañas planas —el retroceso que §1 quiere evitar— sin esconder
+nada. Las secciones viven al lado del nombre del módulo, en la barra
+superior; en el teléfono bajan a pestañas.
+
+| Se toca                              | Módulo               | Secciones                                                             |
+| ------------------------------------ | -------------------- | --------------------------------------------------------------------- |
+| **Todos los días**                   | **Calendario**       | Hoy · Semana · Mes · Año                                              |
+|                                      | **Clientas**         | Fichas · Sin venir hace tiempo · Consentimientos                      |
+|                                      | **Finanzas**         | Caja del día · Cobros · Devoluciones · Facturación · Gastos · Resumen |
+|                                      | **Inventario**       | Productos · Stock · Movimientos                                       |
+| **Cada tanto**                       | **Servicios**        | Precios y tiempos · Áreas · Puestos de trabajo · Horarios             |
+|                                      | **Personal**         | Empleados · Horarios · Producción                                     |
+|                                      | **Compras**          | Proveedores · Pedidos                                                 |
+| **Casi nunca, pero tiene que estar** | **Usuarios y roles** | Personas · Roles · Accesos · Registro de cambios                      |
+|                                      | **Configuración**    | Datos del negocio · Términos y privacidad · Integraciones             |
+
+#### Los cinco cambios respecto de la versión anterior
+
+1. **Los módulos se llaman por lo que son, no por lo que preguntan.**
+   Antes eran «Hoy», «Los números», «El salón». Los nombres coloquiales
+   son la voz de la web; el panel nombra las cosas (§4.3).
+2. **«El salón» pasó a ser «Servicios».** Mismo alcance —precios, áreas,
+   puestos y horarios—, nombre de categoría.
+3. **Productos entró en «Inventario»**, con Stock y Movimientos. Los
+   tres son el mismo tema, y separarlos producía un módulo de una sola
+   pantalla.
+4. **«Trazabilidad» dejó de ser módulo** y se volvió la sección
+   _Registro de cambios_ de Usuarios y roles. Quién puede hacer qué y
+   qué hizo cada uno son la misma pregunta vista de los dos lados.
+5. **Usuarios y roles subió de sección a módulo.** Estaba escondido
+   adentro de Configuración, y §5.8 explica por qué eso ya no alcanza.
+
+#### Lo que la agrupación por frecuencia sigue decidiendo
+
+- **Servicios, áreas, puestos y horarios son un mismo módulo.** Los
+  cuatro son «cómo está armado esto», los cuatro se tocan cada varios
+  meses, y separarlos produce cuatro pantallas casi vacías.
+- **Inventario es de uso diario, no configuración.** Entra mercadería,
+  se vende y se consume en cada turno.
+- **El orden de arriba es el orden del escritorio.** Lo que se toca
+  todos los días va primero, y no en orden alfabético ni por tamaño.
+
+#### Una sección no es una pantalla nueva
+
+Las veintinueve secciones se arman con **tres formatos y nada más**,
+definidos en `diseno/paneles/`:
+
+| Formato            | Qué es                                              | Dónde se repite                                                  |
+| ------------------ | --------------------------------------------------- | ---------------------------------------------------------------- |
+| **Lista**          | Una lista de cosas, con buscador y filtros          | Fichas · Productos · Proveedores · Empleados · Cobros · Personas |
+| **Ficha**          | Una cosa abierta, con su historial en pestañas      | Una clienta · Un producto · Un proveedor · Una persona           |
+| **Lista editable** | El valor es el campo; no hay formulario que se abra | Precios y tiempos · Stock · Roles                                |
+
+Aprender tres formatos y no veintinueve pantallas es el argumento de
+adopción entero. Una sección que no entra en ninguno de los tres es una
+señal de que hay que discutirla, no de que haga falta un cuarto formato.
 
 ---
 
-### 5.0. Módulo por módulo
+### 5.0.1. Módulo por módulo
 
 ### 5.1. Calendario
 
@@ -265,7 +336,7 @@ estén cargados.** Si no hay dato, dice «no disponible», no lo estima.
 
 ---
 
-### 5.4. Productos y stock
+### 5.4. Inventario (productos, stock y movimientos)
 
 **No existe nada.** Tablas nuevas: productos y movimientos de stock.
 
@@ -325,7 +396,7 @@ la misma pantalla; separarlos son dos listas iguales en dos lugares.
 
 ---
 
-### 5.5. El salón (servicios, estaciones y horarios)
+### 5.5. Servicios (precios, áreas, puestos y horarios)
 
 **Es dueño de:** `services`, `categories`, `service_price_tiers`, `extras`,
 `service_parameters`, las tablas de personalización, `resources` y
@@ -402,7 +473,7 @@ vuelta.
 
 ---
 
-### 5.6. Empleados
+### 5.6. Personal
 
 **Es dueño de:** `staff_members`, `staff_schedules`, `staff_specialties`.
 
@@ -419,7 +490,7 @@ persona en un período, porque `service_execution_records` ya guarda
 
 ---
 
-### 5.7. Proveedores
+### 5.7. Compras (proveedores y pedidos)
 
 **No existe nada.** Tabla nueva: proveedores, y compras asociadas a
 proveedor y a producto.
@@ -434,37 +505,80 @@ que haya suficientes proveedores como para necesitar su propia pantalla.
 
 ### 5.8. Usuarios y roles
 
-**Es dueño de:** `staff_members.role` (`owner` | `staff`) y la lista de
-emails habilitados.
+**Es dueño de:** `staff_members` (quién entra y con qué rol), la lista de
+emails habilitados y `audit_log`.
 
-**Estado:** hay dos roles y una puerta. Para entrar al panel el email
-tiene que estar **a la vez** en `INTERNAL_AUTH_ALLOWED_EMAILS` y en
-`staff_members`. Los dos roles hoy ven exactamente lo mismo.
+El modelo completo —qué protege el sistema, qué barreras existen y cuáles
+faltan— está en **`docs/sol-mai-seguridad.md`**, medido sobre el repo.
+Acá va sólo lo que decide la arquitectura.
 
-**Por qué esto deja de ser un detalle apenas haya módulos:** hoy el panel
-muestra agenda y operaciones, y no es grave que la secretaria vea lo
-mismo que Sol. Con Finanzas, Empleados y Proveedores adentro, sí lo es.
-**La secretaria tiene que poder trabajar el día sin ver la facturación ni
-los sueldos.**
+**Estado medido el 2026-09-10.** Corrige lo que este documento decía
+antes, que ya era falso:
 
-Por eso este módulo no es el noveno de la lista: **es condición para
-construir Finanzas y Empleados.** Va antes que ellos, no después.
+- Para entrar hacen falta **tres** cosas: un token válido, un proveedor
+  que verifique el email —en producción sólo Google, con un guard que
+  tumba el arranque si se afloja— y estar a la vez en
+  `INTERNAL_AUTH_ALLOWED_EMAILS` y en `staff_members`.
+- **Los dos roles NO ven lo mismo.** `requireOwner()` protege 22 rutas.
+  Quien atiende recibe 403 en la caja y 200 en la agenda, aunque escriba
+  la URL a mano. (La versión anterior de este párrafo decía lo
+  contrario; se escribió antes de que existiera el guard.)
+- RLS activa en las 30 tablas de 30. Las 11 políticas que hay son todas
+  de lectura pública del catálogo: clientas, turnos, cobros y auditoría
+  quedan **sin política**, que en PostgreSQL significa que nadie lee una
+  fila.
 
-Regla que se mantiene: **el teléfono no es autenticación.**
+**Los tres agujeros, y por qué este módulo sube de prioridad:**
+
+1. **No se puede dar de alta ni de baja a nadie.** No hay una sola
+   escritura a `staff_members` en todo el backend. Sumar a alguien es
+   editar un secreto, desplegar e insertar SQL a mano. La migración que
+   creó los roles ya prometía «al equipo lo da de alta la dueña desde el
+   panel», y esa pantalla nunca existió. **El día que alguien deja el
+   salón, sacarle el acceso depende de que nosotros estemos
+   disponibles.** Ese es el agujero real, y no es criptográfico: es
+   operativo.
+2. **Dos roles fijos en código.** Alcanzaban con una pantalla. Con nueve
+   módulos, «quien atiende» pasó a significar demasiadas cosas.
+3. **`audit_log` no tiene lector.** Se escribe en cada cambio de plata,
+   precio y turno, con actor y valor anterior, y no hay un solo endpoint
+   que lo consulte. Es lo más barato de construir de todo el módulo: el
+   dato ya está.
+
+**Regla que se mantiene:** el teléfono no es autenticación. Y la que se
+suma: **esconder un botón no es una frontera de seguridad.** El panel
+oculta lo que no corresponde para no ensuciar la pantalla; quien decide
+es el servidor, en cada pedido.
+
+#### Personal y Usuarios y roles no son lo mismo
+
+Se confunden solos y conviene dejarlo escrito. **Personal** son las
+personas que trabajan en el salón: sus horarios, su producción, lo que
+se les liquida. **Usuarios y roles** son las que pueden abrir el
+sistema. Se cruzan pero no coinciden: una peluquera puede no tocar nunca
+el panel, y una contadora entrar sin cortar pelo.
 
 ---
 
-### 5.9. Trazabilidad
+### 5.9. El registro de cambios (sección de Usuarios y roles)
 
-**Es dueño de:** `audit_log`.
+**Es dueño de:** `audit_log`. Dejó de ser módulo propio —se llamaba
+«Trazabilidad»— porque quién puede hacer qué y qué hizo cada uno son la
+misma pregunta vista de los dos lados.
 
-No es un módulo que Sol abra todos los días. Es la respuesta a «¿quién
-cambió esto?» cuando algo no cuadra, y es lo que pediste explícitamente.
+No es una pantalla que Sol abra todos los días: es la respuesta a
+«¿quién cambió esto?» cuando algo no cuadra.
 
-**Qué falta:** las tres acciones sin auditar de §3, un endpoint que lea el
-historial de una entidad, y mostrarlo dentro de cada módulo —la historia
-del turno en el turno, la de la clienta en su ficha— en vez de una
-pantalla de log que nadie mira.
+**Qué falta:** un endpoint que lo lea, la traducción de los códigos de
+acción a castellano —«Sol cambió el precio de Color · Media melena,
+$35.000 → $38.500», no `service_price_changed`— y mostrar el historial
+**dentro de cada módulo**: la historia del turno en el turno, la de la
+clienta en su ficha. La pantalla de registro completo es para auditar,
+no para el uso diario.
+
+**Regla:** no se edita ni se borra, ni siquiera desde el panel. Un
+registro que se puede retocar no sirve para lo único que sirve un
+registro.
 
 ---
 
@@ -532,14 +646,14 @@ que significa en la práctica.
 
 Sol cierra un turno. Es **una** acción, la que ya hace hoy:
 
-| Módulo            | Qué se actualiza solo                                   |
-| ----------------- | ------------------------------------------------------- |
-| Calendario        | El turno queda cerrado y libera la estación             |
-| Clientas          | La ficha suma el servicio, la fórmula y el precio real  |
-| Productos y stock | Sale lo que se usó                                      |
-| Caja              | Entra lo cobrado, con su medio de pago                  |
-| Empleados         | Suma a la producción de quien atendió                   |
-| Trazabilidad      | Queda quién cerró, cuándo, a qué precio y por qué subió |
+| Módulo › sección                       | Qué se actualiza solo                                   |
+| -------------------------------------- | ------------------------------------------------------- |
+| Calendario › Hoy                       | El turno queda cerrado y libera el puesto               |
+| Clientas › Fichas                      | La ficha suma el servicio, la fórmula y el precio real  |
+| Inventario › Movimientos               | Sale lo que se usó                                      |
+| Finanzas › Caja del día                | Entra lo cobrado, con su medio de pago                  |
+| Personal › Producción                  | Suma a la producción de quien atendió                   |
+| Usuarios y roles › Registro de cambios | Queda quién cerró, cuándo, a qué precio y por qué subió |
 
 **Seis módulos actualizados, cero cargas.** Si algún módulo necesitara que
 alguien vuelva a escribir un dato que ya se escribió, ese módulo está mal
@@ -631,9 +745,9 @@ producto. Las dos cosas se cumplen. En Argentina esto lo regula la Ley
 25.326 de Protección de Datos Personales; **el alcance exacto hay que
 confirmarlo con el contador o un abogado, no conmigo.**
 
-**2. Trazabilidad no tiene CRUD, y no es negociable.** Un registro de
-auditoría que se puede editar o borrar no es auditoría: es un cuaderno.
-Ese módulo es de sólo agregar. Si alguien pudiera borrar de ahí, todo el
+**2. El registro de cambios no tiene CRUD, y no es negociable.** Un
+registro de auditoría que se puede editar o borrar no es auditoría: es un
+cuaderno. Esa sección es de sólo agregar. Si alguien pudiera borrar de ahí, todo el
 resto del control deja de valer, empezando por el control sobre quien
 tenga la contraseña.
 
@@ -790,37 +904,46 @@ el cierre, la reprogramación cuando se construya, la excepción cuando se
 toque la agenda. Separarlo era ordenado en un documento y molesto en la
 práctica.
 
-| #   | Bloque                                                           | Por qué                                                                                                                             |
-| --- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | ~~Caja del día, visible sólo para Sol~~ · **HECHO** (2026-09-09) | Salió entera de `payments`, sin tablas nuevas ni carga manual, como estaba previsto                                                 |
-| 2   | **Marcar qué falta facturar**                                    | Sale de la caja que ya está y cierra el hueco real de §8.3: hoy nada le dice a Sol qué atenciones no tienen comprobante             |
-| 3   | **Editar precios y servicios sin un deploy**                     | Hoy Sol no puede subir un precio sin que yo intervenga (§5.5). Con la inflación argentina es un bloqueo operativo, no una comodidad |
-| 4   | El panel pregunta lo mismo que la web al tomar un turno          | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1)                            |
-| 5   | La ficha de la clienta                                           | El backend está entero; falta sólo la pantalla                                                                                      |
-| 6   | El aviso de cancelación con sus dos momentos (§11.4)             | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo                                                |
-| 7   | **Productos, y el precio que sale del producto usado**           | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación                                                    |
-| 8   | Finanzas: gastos                                                 | Primera tabla nueva                                                                                                                 |
-| 9   | Clientas: quiénes se pasaron de su ritmo + WhatsApp redactado    | Necesita historial suficiente para no equivocarse                                                                                   |
-| 10  | Empleados: producción y liquidación                              | Necesita el porcentaje, que es dato de Sol (§12)                                                                                    |
-| 11  | Proveedores                                                      | Ninguna urgencia hoy                                                                                                                |
+| #   | Bloque                                                     | Por qué                                                                                                                        |
+| --- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | ~~Finanzas › Caja del día~~ · **HECHO** (2026-09-09)       | Salió entera de `payments`, sin tablas nuevas ni carga manual                                                                  |
+| 2   | ~~Servicios › Precios y tiempos~~ · **HECHO** (2026-09-09) | Sol ya cambia precios, tiempos, puestos y productos sin que nadie despliegue                                                   |
+| 3   | **Usuarios y roles › Personas**                            | El agujero operativo real: hoy sacarle el acceso a alguien depende de nosotros (§5.8). Y es condición para Finanzas y Personal |
+| 4   | **Usuarios y roles › Registro de cambios**                 | Lo más barato del plan: `audit_log` ya se escribe en cada cambio, falta la puerta para leerlo                                  |
+| 5   | **Finanzas › Facturación**                                 | Sale de la caja que ya está y cierra el hueco de §8.3: hoy nada le dice a Sol qué atenciones no tienen comprobante             |
+| 6   | El panel pregunta lo mismo que la web al tomar un turno    | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1)                       |
+| 7   | Clientas › Fichas                                          | El backend está entero; falta sólo la pantalla                                                                                 |
+| 8   | El aviso de cancelación con sus dos momentos (§11.4)       | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo                                           |
+| 9   | Inventario, y el precio que sale del producto usado        | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación                                               |
+| 10  | Calendario › Mes y Año                                     | Existen los datos; falta la vista. Barata comparada con las de arriba                                                          |
+| 11  | Finanzas › Gastos                                          | Primera tabla nueva                                                                                                            |
+| 12  | Clientas › Sin venir hace tiempo                           | Necesita historial suficiente para no equivocarse                                                                              |
+| 13  | Personal › Producción                                      | Necesita el porcentaje, que es dato de Sol (§12)                                                                               |
+| 14  | Compras                                                    | Ninguna urgencia hoy                                                                                                           |
 
 Reordenar esto es una decisión de dirección, no técnica.
 
-### 9.1. Por qué la caja va primera sin construir un módulo de roles
+### 9.1. La condición que puse para los roles ya se cumplió
 
-La objeción evidente es que mostrar facturación exige roles, y roles es un
-módulo entero. No lo exige, y **menos de lo que yo mismo escribí acá el
-2026-09-08**: dije que faltaba «un guard de una línea» y ni eso faltaba.
-`staff_members.role` ya existe con `owner` y `staff`, el middleware
-`requireOwner()` ya está escrito y el dashboard ya está detrás de él. La
-caja del día se colgó de ese mismo router y quedó protegida sin agregar
-nada.
+El 2026-09-09 escribí acá que el módulo de usuarios y roles «se gana
+cuando haya varias pantallas que proteger y alguien que necesite
+administrarlas», y que ese día no había llegado: «hoy hay dos personas y
+una pantalla».
 
-Construir el ABM de usuarios para proteger una pantalla sería hacer el
-trabajo al revés. El módulo de Usuarios y roles —altas, bajas, cambiar
-permisos desde la interfaz— se gana cuando haya varias pantallas que
-proteger y alguien que necesite administrarlas. Hoy hay dos personas y una
-pantalla.
+**Llegó.** Con el árbol de §5.0 hay nueve módulos y veintinueve
+secciones, y el argumento se dio vuelta solo. Por eso Personas sube al
+puesto 3.
+
+Lo que sigue siendo cierto de aquel párrafo: **construir el ABM de
+usuarios para proteger una pantalla habría sido hacer el trabajo al
+revés.** `staff_members.role` y `requireOwner()` ya existían y
+alcanzaron para proteger la caja sin agregar nada. La caja pudo ir
+primera y estuvo bien que fuera así.
+
+Lo que cambió no es la regla, es el mundo: hoy el problema ya no es
+proteger pantallas —eso lo hace el guard— sino que **nadie del salón
+puede dar de alta ni de baja a una persona.** Eso no se arregla con un
+guard.
 
 ## 10. Riesgos abiertos
 
