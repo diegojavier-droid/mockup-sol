@@ -49,7 +49,7 @@ describe("describirCambio", () => {
   });
 
   it("distingue dar acceso de devolverlo", () => {
-    expect(describirCambio(fila("staff_invited", { rol: "staff", reingreso: false })).frase).toBe(
+    expect(describirCambio(fila("staff_invited", { rol: "mostrador", reingreso: false })).frase).toBe(
       "Le dio acceso al panel, como mostrador",
     );
     expect(describirCambio(fila("staff_invited", { rol: "owner", reingreso: true })).frase).toBe(
@@ -59,7 +59,7 @@ describe("describirCambio", () => {
 
   it("traduce los roles y los estados, no los muestra en inglés", () => {
     const rol = describirCambio(
-      fila("staff_role_changed", { rol_anterior: "staff", rol_nuevo: "owner" }),
+      fila("staff_role_changed", { rol_anterior: "mostrador", rol_nuevo: "owner" }),
     );
     expect(rol.antes).toBe("mostrador");
     expect(rol.ahora).toBe("administradora");
@@ -112,5 +112,84 @@ describe("describirCambio", () => {
   it("un valor desconocido se muestra tal cual en vez de desaparecer", () => {
     const r = describirCambio(fila("booking_status_changed", { new_status: "un_estado_nuevo" }));
     expect(r.ahora).toBe("un_estado_nuevo");
+  });
+});
+
+describe("las acciones que sumó «roles por módulo» y «facturación»", () => {
+  // El registro es una de las funciones de este mismo bloque, y hasta acá
+  // no sabía decir la mitad de lo que el bloque escribe: mostraba
+  // `role_permission_changed{"rol":...}` con el JSON crudo al lado.
+
+  it("repartir un permiso se lee de un vistazo: rol, módulo, de qué a qué", () => {
+    expect(
+      describirCambio(
+        fila("role_permission_changed", {
+          rol: "mostrador",
+          modulo: "finanzas",
+          nivel_anterior: "none",
+          nivel_nuevo: "full",
+        }),
+      ).frase,
+    ).toBe("mostrador: Finanzas — no lo ve → lo maneja");
+  });
+
+  it("un rol que armó Sol se muestra con el nombre que le puso ella", () => {
+    // Inventarle una traducción sería adivinar cómo lo llamó.
+    expect(
+      describirCambio(
+        fila("role_permission_changed", {
+          rol: "recepcion",
+          modulo: "clientas",
+          nivel_anterior: "none",
+          nivel_nuevo: "view",
+        }),
+      ).frase,
+    ).toBe("recepcion: Clientas — no lo ve → lo mira");
+  });
+
+  it("crear y borrar un rol", () => {
+    expect(describirCambio(fila("role_created", { rol: "recepcion", nombre: "Recepción" })).frase).toBe(
+      "Creó el rol Recepción",
+    );
+    expect(describirCambio(fila("role_deleted", { rol: "recepcion" })).frase).toBe(
+      "Borró el rol recepcion",
+    );
+  });
+
+  it("anotar una factura dice el importe y el número", () => {
+    expect(
+      describirCambio(
+        fila("booking_invoiced", { importe: 25000, numero: "00001-00000123", precio_cerrado: 25000 }),
+      ).frase,
+    ).toBe("Anotó la factura por $25.000, 00001-00000123");
+  });
+
+  it("y avisa cuando se facturó por un importe distinto al que se cerró", () => {
+    // Es la diferencia que a Sol le va a preguntar el contador.
+    expect(
+      describirCambio(
+        fila("booking_invoiced", { importe: 20000, numero: null, precio_cerrado: 25000 }),
+      ).frase,
+    ).toBe("Anotó la factura por $20.000 (la atención se cerró en $25.000)");
+  });
+
+  it("deshacer una factura dice cuánto decía antes", () => {
+    expect(
+      describirCambio(fila("booking_invoice_undone", { importe_anterior: 25000 })).frase,
+    ).toBe("Deshizo la factura de $25.000");
+  });
+
+  it("ninguna de las nuevas cae en el crudo", () => {
+    for (const accion of [
+      "role_created",
+      "role_deleted",
+      "role_permission_changed",
+      "booking_invoiced",
+      "booking_invoice_undone",
+    ]) {
+      expect(describirCambio(fila(accion, { importe: 1, importe_anterior: 1 })).frase).not.toBe(
+        accion,
+      );
+    }
   });
 });

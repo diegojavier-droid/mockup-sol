@@ -27,6 +27,13 @@ export interface PendingInvoice {
   cuando: string;
   clienta: string;
   servicios: string;
+  /** Lo que se acordó al cerrar la atención. */
+  precio: number;
+  /**
+   * Lo que de verdad entró, sumado de los pagos aprobados. No es el mismo
+   * número que `precio`: se puede cerrar una atención con saldo impago.
+   * Cuál corresponde facturar lo dice el contador de Sol.
+   */
   cobrado: number;
   medio: string | null;
 }
@@ -46,6 +53,7 @@ export async function listPendingInvoices(
       cuando: string;
       clienta: string;
       servicios: string;
+      precio: number;
       cobrado: number;
       medio: string | null;
     }[]
@@ -54,6 +62,7 @@ export async function listPendingInvoices(
     cuando: r.cuando,
     clienta: r.clienta,
     servicios: r.servicios,
+    precio: r.precio,
     cobrado: r.cobrado,
     medio: r.medio,
   }));
@@ -62,7 +71,10 @@ export async function listPendingInvoices(
 export interface InvoicingSummary {
   anio: number;
   facturado: number;
+  /** A precio de la atención. */
   pendiente: number;
+  /** Cuánto de eso ya entró. Si difiere, hay atenciones con saldo impago. */
+  pendienteCobrado: number;
   cuantosPendientes: number;
   /** El tope de la categoría. `null` cuando el contador todavía no lo cargó. */
   tope: number | null;
@@ -79,6 +91,7 @@ export async function readInvoicingSummary(
     anio: number;
     facturado: number;
     pendiente: number;
+    pendiente_cobrado: number;
     cuantos_pendientes: number;
     tope: number | null;
     tope_cargado: boolean;
@@ -87,6 +100,7 @@ export async function readInvoicingSummary(
     anio: r.anio,
     facturado: r.facturado,
     pendiente: r.pendiente,
+    pendienteCobrado: r.pendiente_cobrado,
     cuantosPendientes: r.cuantos_pendientes,
     tope: r.tope,
     topeCargado: r.tope_cargado,
