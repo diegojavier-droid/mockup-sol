@@ -136,3 +136,75 @@ export const STAFF_ADMIN_MESSAGES: Record<
       "El salón no puede quedar sin ninguna administradora. Nombrá a otra antes de hacer este cambio.",
   },
 };
+
+/* ------------------------------------------------------------------ */
+/*  El registro de cambios                                            */
+/* ------------------------------------------------------------------ */
+
+export interface AuditRow {
+  id: number;
+  cuando: string;
+  actorId: string | null;
+  quien: string;
+  esSistema: boolean;
+  accion: string;
+  entityType: string | null;
+  entityId: string | null;
+  sobre: string | null;
+  detalle: Record<string, unknown> | null;
+}
+
+export async function readAuditLog(
+  admin: SupabaseAdminClient,
+  p: {
+    desde?: string | null;
+    hasta?: string | null;
+    actorId?: string | null;
+    entityType?: string | null;
+    cursor?: number | null;
+    limit?: number;
+  },
+): Promise<AuditRow[]> {
+  const { data, error } = await admin.rpc("read_audit_log", {
+    p_desde: p.desde ?? null,
+    p_hasta: p.hasta ?? null,
+    p_actor_id: p.actorId ?? null,
+    p_entity_type: p.entityType ?? null,
+    p_cursor: p.cursor ?? null,
+    p_limit: p.limit ?? 50,
+  });
+  if (error) rethrow(error);
+  return (
+    (data ?? []) as {
+      id: number;
+      cuando: string;
+      actor_id: string | null;
+      quien: string;
+      es_sistema: boolean;
+      accion: string;
+      entity_type: string | null;
+      entity_id: string | null;
+      sobre: string | null;
+      detalle: Record<string, unknown> | null;
+    }[]
+  ).map((r) => ({
+    id: r.id,
+    cuando: r.cuando,
+    actorId: r.actor_id,
+    quien: r.quien,
+    esSistema: r.es_sistema,
+    accion: r.accion,
+    entityType: r.entity_type,
+    entityId: r.entity_id,
+    sobre: r.sobre,
+    detalle: r.detalle,
+  }));
+}
+
+export async function auditActors(admin: SupabaseAdminClient) {
+  const { data, error } = await admin.rpc("audit_actors");
+  if (error) rethrow(error);
+  return ((data ?? []) as { actor_id: string | null; quien: string; cuantos: number }[]).map(
+    (r) => ({ actorId: r.actor_id, quien: r.quien, cuantos: Number(r.cuantos) }),
+  );
+}

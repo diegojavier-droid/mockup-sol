@@ -13,6 +13,7 @@ import { AgendaScreen } from "@/components/booking/admin/AgendaScreen";
 import { DashboardScreen } from "@/components/booking/admin/DashboardScreen";
 import { SalonScreen } from "@/components/booking/admin/SalonScreen";
 import { PeopleScreen } from "@/components/booking/admin/PeopleScreen";
+import { AuditScreen } from "@/components/booking/admin/AuditScreen";
 import { ModuleNav, type ModuleKey } from "@/components/booking/admin/ModuleNav";
 import { useStaffIdentity } from "@/lib/api/admin-hooks";
 import { clearStaffToken, readStaffToken, writeStaffToken } from "@/lib/staff-session";
@@ -88,7 +89,12 @@ function AgendaRoute() {
         ) : tab === "servicios" && identity.data?.role === "owner" ? (
           <SalonScreen />
         ) : tab === "personas" && identity.data?.role === "owner" ? (
-          <PeopleScreen />
+          <>
+            <PeopleScreen />
+            <div className="mt-8 border-t border-border pt-8">
+              <AuditScreen />
+            </div>
+          </>
         ) : (
           <AgendaScreen />
         )}

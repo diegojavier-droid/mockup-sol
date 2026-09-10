@@ -202,6 +202,32 @@ console.log("\n── Usuarios y roles · Personas");
   }
 }
 
+// El registro de cambios vive debajo de Personas, en el mismo módulo.
+// Lo que se prueba: que traduzca los códigos a castellano —nadie tiene
+// por qué saber qué es `staff_invited`— y que no ofrezca borrar nada.
+console.log("\n── Usuarios y roles · Registro de cambios");
+{
+  const t = await sol.locator("body").innerText();
+  ok("el registro está en la misma pantalla", t.includes("Registro de cambios"));
+  ok(
+    "traduce las acciones a castellano en vez de mostrar el código",
+    /le dio acceso al panel/i.test(t) && !t.includes("staff_invited"),
+    t.slice(t.indexOf("Registro de cambios"), t.indexOf("Registro de cambios") + 300),
+  );
+  ok("dice quién lo hizo", /dev/i.test(t));
+  ok("no ofrece borrar ni editar el registro", !/borrar el registro|editar el registro/i.test(t));
+  ok("avisa que no se puede editar ni borrar", /no se puede editar ni borrar/i.test(t));
+
+  const filtro = sol.locator('select[aria-label="Filtrar por persona"]');
+  ok("se puede filtrar por persona", (await filtro.count()) > 0);
+  if (await filtro.count()) {
+    await sol.locator('select[aria-label="Filtrar por tipo de cosa"]').selectOption("service");
+    await sol.waitForTimeout(2000);
+    const t2 = await sol.locator("body").innerText();
+    ok("filtrar por tipo cambia la lista", /cambió el precio/i.test(t2));
+  }
+}
+
 console.log("\n── Quien atiende");
 const staff = await abrirPanel(TOKEN_STAFF);
 const ts = await staff.locator("body").innerText();

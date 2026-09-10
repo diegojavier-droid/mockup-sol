@@ -1922,6 +1922,89 @@ jobs:
 
           echo "staff administration OK"
 
+      - name: Verify the audit log can be read, and only read
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+
+          do $$
+          declare
+            v_duena uuid;
+            v_otra  uuid;
+            v_n     integer;
+            v_fila  record;
+          begin
+            insert into public.staff_members (slug, display_name, email, role, is_active)
+            values ('ci-audit','CI Auditoría','ci-audit@solmai.test','owner',true)
+            returning id into v_duena;
+
+            v_otra := (public.invite_staff_member('ci-leida@solmai.test','CI Leída','staff',
+                                                  v_duena,'ci-audit@solmai.test')->>'id')::uuid;
+
+            -- 1. Lo que se escribió, se lee
+            select count(*) into v_n from public.read_audit_log(null,null,v_duena);
+            if v_n < 1 then
+              raise exception 'read_audit_log no devuelve lo que se acaba de escribir';
+            end if;
+
+            -- 2. Resuelve nombres, no devuelve UUIDs pelados. Sin esto la
+            --    pantalla mostraría identificadores y no serviría para nada.
+            select * into v_fila from public.read_audit_log(null,null,v_duena) limit 1;
+            if v_fila.quien is distinct from 'CI Auditoría' then
+              raise exception 'no resolvió el nombre de quien hizo el cambio: %', v_fila.quien;
+            end if;
+            if v_fila.sobre is distinct from 'CI Leída' then
+              raise exception 'no resolvió el nombre de la cosa cambiada: %', v_fila.sobre;
+            end if;
+
+            -- 3. Los filtros filtran
+            select count(*) into v_n
+              from public.read_audit_log(null,null,null,'staff_member');
+            if v_n < 1 then raise exception 'el filtro por tipo no devuelve nada'; end if;
+            select count(*) into v_n
+              from public.read_audit_log(null,null,null,'booking');
+            if v_n <> 0 then
+              raise exception 'el filtro por tipo devolvió filas de otro tipo';
+            end if;
+
+            -- 4. El tope de filas se respeta aunque pidan más
+            select count(*) into v_n from public.read_audit_log(null,null,null,null,null,1);
+            if v_n <> 1 then raise exception 'el limite no se respeta: %', v_n; end if;
+
+            -- 5. NO EXISTE la contracara. Un registro que se puede retocar
+            --    no sirve para lo único que sirve un registro, así que la
+            --    ausencia de esas funciones es parte del contrato.
+            if exists (
+              select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+               where n.nspname = 'public'
+                 and (p.proname like '%audit%delete%' or p.proname like '%delete%audit%'
+                   or p.proname like '%audit%update%' or p.proname like '%update%audit%')
+            ) then
+              raise exception 'apareció una función para editar o borrar el registro';
+            end if;
+          end $$;
+
+          rollback;
+          SQL
+
+          # Y que nadie sin privilegios pueda leerlo por la puerta de atrás.
+          for rol in anon authenticated; do
+            OK=$(psql "$SUPABASE_LOCAL_DB_URL" -At -c \
+              "select has_function_privilege('$rol','public.read_audit_log(timestamptz,timestamptz,uuid,text,bigint,integer)','EXECUTE')")
+            if [ "$OK" != "f" ]; then
+              echo "::error::$rol puede ejecutar read_audit_log"; exit 1
+            fi
+            OK=$(psql "$SUPABASE_LOCAL_DB_URL" -At -c \
+              "select has_table_privilege('$rol','public.audit_log','SELECT')")
+            if [ "$OK" != "f" ]; then
+              echo "::error::$rol puede leer audit_log directamente"; exit 1
+            fi
+          done
+
+          echo "audit log read-only OK"
+
       - name: Verify field-option composite FK
         run: |
           set -euo pipefail

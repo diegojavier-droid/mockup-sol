@@ -239,6 +239,58 @@ export function useSetStaffRole() {
   );
 }
 
+export interface AuditApiRow {
+  id: number;
+  cuando: string;
+  actorId: string | null;
+  quien: string;
+  esSistema: boolean;
+  accion: string;
+  entityType: string | null;
+  entityId: string | null;
+  sobre: string | null;
+  detalle: Record<string, unknown> | null;
+}
+
+export interface AuditFiltros {
+  desde?: string;
+  actorId?: string;
+  entityType?: string;
+  cursor?: number;
+}
+
+/**
+ * El registro de cambios.
+ *
+ * `staleTime: 0` a propósito: se abre justo cuando algo no cuadra y hay
+ * que ver qué pasó recién. Una lista cacheada acá contesta la pregunta
+ * equivocada.
+ */
+export function useAuditLog(enabled: boolean, f: AuditFiltros) {
+  const qs = new URLSearchParams();
+  if (f.desde) qs.set("desde", f.desde);
+  if (f.actorId) qs.set("actorId", f.actorId);
+  if (f.entityType) qs.set("entityType", f.entityType);
+  if (f.cursor) qs.set("cursor", String(f.cursor));
+  qs.set("limit", "50");
+  return useQuery({
+    queryKey: ["admin", "audit", f],
+    queryFn: () => adminApi.get<AuditApiRow[]>(`/audit?${qs.toString()}`),
+    enabled,
+    staleTime: 0,
+  });
+}
+
+export function useAuditActors(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "audit", "actors"],
+    queryFn: () =>
+      adminApi.get<{ actorId: string | null; quien: string; cuantos: number }[]>("/audit/actors"),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+}
+
 export interface ServiceTierRow {
   slug: string;
   name: string;
