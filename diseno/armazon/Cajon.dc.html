@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+  @import url("https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap");
+  :root {
+    --papel: oklch(0.985 0.008 85);
+    --tinta: oklch(0.32 0.015 60);
+    --tinta-suave: oklch(0.56 0.015 65);
+    --linea: oklch(0.82 0.015 78);
+    --linea-tenue: oklch(0.89 0.012 78);
+    --marca: oklch(0.7 0.07 70);
+    --marca-tenue: oklch(0.94 0.03 82);
+  }
+  body {
+    margin: 0;
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: "Patrick Hand", "Comic Sans MS", cursive, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--marca); }
+  a:hover { color: var(--tinta); }
+  .pantalla {
+    width: 390px;
+    height: 844px;
+    box-sizing: border-box;
+    background: var(--papel);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 20px 12px;
+    border-bottom: 1px solid var(--linea-tenue);
+  }
+  .marca-txt { font-size: 17px; letter-spacing: 0.02em; }
+  .quien { font-size: 13px; color: var(--tinta-suave); }
+  .grupo { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--tinta-suave); }
+  .cuerpo { flex-grow: 1; overflow: hidden; padding: 0 20px; }
+  .turno {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 13px 14px;
+    border: 1px solid var(--linea);
+    border-radius: 14px;
+    background: #fff;
+  }
+  .hora { font-size: 17px; min-width: 46px; }
+  .quienviene { font-size: 15px; }
+  .detalle { font-size: 12px; color: var(--tinta-suave); }
+  .nota-lapiz {
+    font-size: 12px;
+    color: var(--marca);
+    border: 1px dashed var(--marca);
+    border-radius: 10px;
+    padding: 7px 10px;
+    background: var(--marca-tenue);
+  }
+
+  </style>
+</helmet>
+
+<div class="pantalla" style="position: relative;">
+  <div class="cabecera">
+    <div style="display: flex; align-items: center; gap: 11px;">
+      <span style="color: var(--marca);"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></span>
+      <span class="marca-txt">Hoy</span>
+    </div>
+    <span class="quien">Miércoles 10</span>
+  </div>
+
+  <div class="cuerpo" style="padding-top: 14px;">
+    <div style="display: flex; flex-direction: column; gap: 9px;">
+      <div class="turno">\n        <span class="hora">9:00</span>\n        <div style="display: flex; flex-direction: column; gap: 2px;">\n          <span class="quienviene">Marcela</span>\n          <span class="detalle">Color y corte · Puesto 2</span>\n        </div>\n      </div>\n      <div class="turno">\n        <span class="hora">10:30</span>\n        <div style="display: flex; flex-direction: column; gap: 2px;">\n          <span class="quienviene">Vanina</span>\n          <span class="detalle">Brushing · Puesto 1</span>\n        </div>\n      </div>\n      <div class="turno">\n        <span class="hora">11:15</span>\n        <div style="display: flex; flex-direction: column; gap: 2px;">\n          <span class="quienviene">Ale</span>\n          <span class="detalle">Semipermanente · Uñas</span>\n        </div>\n      </div>\n      <div class="turno">\n        <span class="hora">12:00</span>\n        <div style="display: flex; flex-direction: column; gap: 2px;">\n          <span class="quienviene">Rocío</span>\n          <span class="detalle">Baño de luz · Puesto 3</span>\n        </div>\n      </div>\n      <div class="turno">\n        <span class="hora">13:30</span>\n        <div style="display: flex; flex-direction: column; gap: 2px;">\n          <span class="quienviene">Noe</span>\n          <span class="detalle">Corte · Puesto 1</span>\n        </div>\n      </div>
+    </div>
+  </div>
+
+  <div style="position: absolute; inset: 0 0 0 88px; background: #fff; border-left: 1px solid var(--linea); box-shadow: -18px 0 34px oklch(0.32 0.015 60 / 0.13); display: flex; flex-direction: column; gap: 15px; padding: 20px 8px;">
+    <span style="font-size: 13px; color: var(--tinta-suave); padding: 0 12px;">El sistema</span>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <span class="grupo" style="padding: 0 12px;">Todos los días</span>
+        <div style="display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border-radius: 11px; background: var(--marca-tenue);">
+          <span style="font-size: 15px;">Hoy</span>
+          <span style="font-size: 11px; color: var(--tinta-suave);">¿Quién viene y a qué hora?</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border-radius: 11px; background: transparent;">
+          <span style="font-size: 15px;">Clientas</span>
+          <span style="font-size: 11px; color: var(--tinta-suave);">¿Qué le hice la última vez?</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border-radius: 11px; background: transparent;">
+          <span style="font-size: 15px;">Los números</span>
+          <span style="font-size: 11px; color: var(--tinta-suave);">¿Cuánto entró y por dónde?</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border-radius: 11px; background: transparent;">
+          <span style="font-size: 15px;">Productos</span>
+          <span style="font-size: 11px; color: var(--tinta-suave);">¿Qué queda y qué usé?</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <span class="grupo" style="padding: 0 12px;">Cada tanto</span>
+        <div style="display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border-radius: 11px; background: transparent;">
+          <span style="font-size: 15px;">El salón</span>
+          <span style="font-size: 11px; color: var(--tinta-suave);">¿Cuánto sale y cuánto lleva?</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border-radius: 11px; background: transparent;">
+          <span style="font-size: 15px;">Quién atiende</span>
+          <span style="font-size: 11px; color: var(--tinta-suave);">¿Cuánto produjo cada una?</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border-radius: 11px; background: transparent;">
+          <span style="font-size: 15px;">Proveedores</span>
+          <span style="font-size: 11px; color: var(--tinta-suave);">¿A quién le compro?</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <span class="grupo" style="padding: 0 12px;">Casi nunca</span>
+        <div style="display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border-radius: 11px; background: transparent;">
+          <span style="font-size: 15px;">Permisos</span>
+          <span style="font-size: 11px; color: var(--tinta-suave);">¿Quién puede ver qué?</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border-radius: 11px; background: transparent;">
+          <span style="font-size: 15px;">Qué pasó</span>
+          <span style="font-size: 11px; color: var(--tinta-suave);">¿Quién cambió esto?</span>
+        </div>
+      </div>
+    <span class="nota-lapiz" style="margin: auto 12px 0;">Se abre con el botón de arriba y se cierra solo</span>
+  </div>
+</div>
+
+</x-dc>
+</body>
+</html>

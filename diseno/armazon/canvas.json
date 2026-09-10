@@ -1,0 +1,54 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",        "x": 0,    "y": 0, "w": 390, "h": 844, "title": "Cómo está hoy" },
+    { "file": "BarraAbajo.dc.html",  "x": 470,  "y": 0, "w": 390, "h": 844, "title": "A · Barra fija abajo" },
+    { "file": "Inicio.dc.html",      "x": 940,  "y": 0, "w": 390, "h": 844, "title": "B · El inicio es el mapa" },
+    { "file": "Cajon.dc.html",       "x": 1410, "y": 0, "w": 390, "h": 844, "title": "C · El día, y un cajón" },
+    { "file": "DosPersonas.dc.html", "x": 0, "y": 1000, "w": 620, "h": 660, "title": "La restricción que decide" }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -430,
+      "w": 900,
+      "text": "Armazón del panel · borrador\n\nNueve módulos, una pantalla de teléfono y dos personas que ven cosas distintas. Esto es para elegir ESTRUCTURA, no dibujo: sin color ni tipografía definitiva a propósito, para que se discuta dónde va cada cosa y no de qué tono es el botón.\n\nLa primera pantalla es cómo está hoy, escalada a los nueve. Las otras tres son caminos distintos. Elegido uno, lo llevo a alta fidelidad con el diseño real del salón."
+    },
+    {
+      "id": "nota-hoy",
+      "x": 0,
+      "y": -215,
+      "w": 390,
+      "text": "Cómo está hoy, con los nueve módulos.\n\nApuesta a: nada nuevo que aprender, y el mapa completo siempre a la vista.\n\nRiesgo: se come media pantalla, todos los días, justo en la que más se usa."
+    },
+    {
+      "id": "nota-a",
+      "x": 470,
+      "y": -215,
+      "w": 390,
+      "text": "A · Barra fija abajo\n\nApuesta a: memoria del pulgar. Lo de todos los días siempre en el mismo lugar, a un toque, sin mirar.\n\nRiesgo: entran cinco. Los otros cuatro quedan detrás de «Más» y pasan a ser de segunda."
+    },
+    {
+      "id": "nota-b",
+      "x": 940,
+      "y": -215,
+      "w": 390,
+      "text": "B · El inicio es el mapa\n\nApuesta a: una cosa por vez. No hay navegación compitiendo: el módulo abierto ocupa la pantalla entera.\n\nRiesgo: ir de la agenda a la ficha de una clienta cuesta dos toques, y eso se hace todo el día."
+    },
+    {
+      "id": "nota-c",
+      "x": 1410,
+      "y": -215,
+      "w": 390,
+      "text": "C · El día, y el resto en un cajón\n\nApuesta a: que el sistema desaparezca. Quien atiende ve una sola pantalla para siempre; Sol abre el cajón cuando va a gestionar.\n\nRiesgo: lo que está en el cajón no se ve, y lo que no se ve no se usa."
+    },
+    {
+      "id": "nota-personas",
+      "x": 700,
+      "y": 1000,
+      "w": 380,
+      "text": "Esto no es una cuarta opción: es la prueba que las tres tienen que pasar.\n\nSi la estructura sólo funciona con los nueve módulos de Sol, quien atiende entra veinte veces por día a una pantalla con puertas cerradas."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}
