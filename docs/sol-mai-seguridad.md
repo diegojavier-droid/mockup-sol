@@ -45,9 +45,23 @@ configuración nuestro.
 Estar autenticado no alcanza: cualquiera puede crearse una cuenta en el
 proyecto de Supabase. La autorización es explícita y separada.
 
-### 2.2. Dos roles, revisados en el servidor
+### 2.2. Cada ruta declara qué módulo la gobierna
 
-`owner` y `staff`. `requireOwner()` protege **22 rutas** de administración.
+Las **55 rutas** del panel dicen qué módulo y qué nivel piden —`view` o
+`full`—, y un único middleware decide. La declaración está en
+`server/src/http/middleware/permisos.ts`, en una tabla que se lee entera
+en dos minutos.
+
+La garantía es por partida triple, porque las dos primeras dependen de
+que alguien se acuerde:
+
+1. La declaración explícita.
+2. Una prueba que le pregunta a Hono qué rutas tiene registradas de
+   verdad y falla si alguna no está declarada, o si sobra una
+   declaración sin ruta.
+3. **En tiempo de ejecución, una ruta sin declarar no se atiende.** Se
+   contesta 403 y queda en el log. Olvidarse falla cerrado.
+
 El frontend además esconde lo que no corresponde, pero eso es comodidad,
 no seguridad: quien atiende recibe 403 en la caja aunque escriba la URL
 a mano.
@@ -91,12 +105,36 @@ sobre la tabla, así que aguanta incluso un `UPDATE` escrito a mano —que
 es exactamente la forma en que alguien se dejaría afuera de su propio
 sistema.
 
-### 3.2. Los roles son dos y están fijos en el código
+### 3.2. ~~Los roles son dos y están fijos en el código~~ · CERRADO (2026-09-10)
 
-Alcanzaban cuando había una pantalla. Con nueve módulos, `staff` pasó a
-significar demasiadas cosas: hoy quien atiende no ve Finanzas, pero
-tampoco hay manera de decir «esta persona sí puede ver Inventario y no
-Compras» sin tocar código.
+Hay una tabla `roles` y una matriz `role_permissions` de módulo por
+nivel. Sol arma los roles que quiera desde «Usuarios y roles › Roles» y
+les da, módulo por módulo, uno de tres niveles: no lo ve, lo mira, lo
+maneja.
+
+**Nadie ganó ni perdió acceso al aplicarlo.** El rol `mostrador`
+reproduce exactamente lo que hacía `staff`, medido sobre las rutas que no
+estaban detrás de `requireOwner()`; el rol `owner` tiene los nueve
+módulos completos. Un cambio de permisos que ocurre solo, sin que nadie
+lo decida, es la peor forma de romper la confianza en un sistema de
+permisos.
+
+Tres niveles y no más. La tentación es hacer permisos por acción —«puede
+cancelar pero no reprogramar»—; eso produce una pantalla que nadie
+entiende y que a los dos meses termina con todo prendido.
+
+**Dos límites que no se mueven.** Al rol de la administradora no se le
+puede recortar un módulo ni borrarlo, porque si se pudiera el sistema
+quedaría sin nadie que lo arregle. Y quien tiene «Usuarios y roles»
+completo administra a la gente del salón pero **no** puede nombrar una
+administradora nueva, ni bajar de rango a una, ni sacarle el acceso: sin
+ese corte podía nombrar administradora a un cómplice y después desactivar
+a Sol, porque el trigger de «siempre una dueña» ya no se habría quejado.
+
+**Dos decisiones que conviene que Sol revise.** Cerrar un turno y marcar
+una seña como devuelta quedaron en `calendario`, no en `finanzas`: son
+operaciones del turno, que hace quien está con la clienta enfrente. La
+caja se mira en Finanzas.
 
 ### 3.3. ~~El registro de cambios se escribe para nadie~~ · CERRADO (2026-09-10)
 
@@ -191,12 +229,14 @@ no cumple estas ocho.
 | --- | --------------------------------------------------------------------------------- | ------------------------------------------------- |
 | 1   | ~~Personas: alta, baja y cambio de rol desde el panel~~ · **HECHO** (2026-09-10)  | Era el agujero operativo real                     |
 | 2   | ~~Registro de cambios: la pantalla que lee `audit_log`~~ · **HECHO** (2026-09-10) | El dato ya se escribía; faltaba la puerta         |
-| 3   | **Roles por módulo**                                                              | Recién tiene sentido con los nueve módulos en pie |
+| 3   | ~~Roles por módulo~~ · **HECHO** (2026-09-10)                                     | Recién tenía sentido con los nueve módulos en pie |
 | 4   | **Accesos**: cuándo entró cada uno, y cortar una sesión                           | Necesita 1 para poder actuar sobre lo que muestra |
 
-Los pasos 1 y 3 tocan permisos, así que van con tests negativos y con
-una invariante en el clean-room: **no se puede dejar el sistema sin
-ninguna dueña activa.**
+Los pasos 1 y 3 tocaban permisos, así que fueron con tests negativos
+—67 contra PostgreSQL, 14 sobre la tabla de rutas y 24 pedidos contra el
+Worker— y con invariantes en el clean-room: **no se puede dejar el
+sistema sin ninguna dueña activa**, y **a la administradora no se le
+puede recortar un módulo**.
 
 ---
 

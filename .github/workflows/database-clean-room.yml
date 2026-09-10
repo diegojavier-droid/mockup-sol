@@ -441,7 +441,7 @@ jobs:
             -- todavía no hay ninguna activa, así que un staff sobrante hace
             -- que el email de CI nunca reciba su fila y el token dé 403.
             insert into public.staff_members (slug, display_name, email, role, is_active)
-            values ('ci-reversa', 'CI', 'ci-reversa@solmai.test', 'staff', true)
+            values ('ci-reversa', 'CI', 'ci-reversa@solmai.test', 'mostrador', true)
             returning id into v_staff;
 
             select public.create_booking('depilacion', now() - interval '2 days',
@@ -521,7 +521,7 @@ jobs:
             v_antes jsonb; v_movs_antes int; v_efectivo_antes bigint;
           begin
             insert into public.staff_members (slug, display_name, email, role, is_active)
-            values ('ci-caja', 'CI', 'ci-caja@solmai.test', 'staff', true)
+            values ('ci-caja', 'CI', 'ci-caja@solmai.test', 'mostrador', true)
             returning id into v_staff;
 
             -- Foto de la caja ANTES. Los bloques anteriores dejan plata del
@@ -1441,7 +1441,7 @@ jobs:
               'name','X','price_amount',10000,'duration_min',60,'process_min',0,'setup_min',0));
 
             insert into public.staff_members (slug, display_name, email, role, is_active)
-            values ('ci-trazabilidad','CI','ci-trazabilidad@solmai.test','staff',true)
+            values ('ci-trazabilidad','CI','ci-trazabilidad@solmai.test','mostrador',true)
             returning id into v_actor;
 
             v_b := (public.create_booking('peluqueria',
@@ -1553,7 +1553,7 @@ jobs:
               'name','X','price_amount',10000,'duration_min',60,'process_min',0,'setup_min',0));
 
             insert into public.staff_members (slug, display_name, email, role, is_active)
-            values ('ci-g15','CI','ci-g15@solmai.test','staff',true) returning id into v_actor;
+            values ('ci-g15','CI','ci-g15@solmai.test','mostrador',true) returning id into v_actor;
 
             -- Una sola definición de la función: si una migración futura
             -- agrega un parámetro sin borrar la anterior, toda llamada
@@ -1746,7 +1746,7 @@ jobs:
               'name','X','price_amount',10000,'duration_min',60,'process_min',0,'setup_min',0));
 
             insert into public.staff_members (slug, display_name, email, role, is_active)
-            values ('ci-g09','CI','ci-g09@solmai.test','staff',true) returning id into v_actor;
+            values ('ci-g09','CI','ci-g09@solmai.test','mostrador',true) returning id into v_actor;
 
             v_b := (public.create_booking('peluqueria',
               (d::text || ' 10:00-03')::timestamptz, (d::text || ' 11:00-03')::timestamptz,
@@ -1833,7 +1833,7 @@ jobs:
             returning id into v_duena;
 
             -- 1. Sumar a alguien
-            v_r := public.invite_staff_member('ci-nueva@solmai.test','CI Nueva','staff',
+            v_r := public.invite_staff_member('ci-nueva@solmai.test','CI Nueva','mostrador',
                                               v_duena,'ci-duena@solmai.test');
             v_otra := (v_r->>'id')::uuid;
             if v_otra is null then
@@ -1845,7 +1845,7 @@ jobs:
 
             -- 2. No se duplica
             begin
-              perform public.invite_staff_member('ci-nueva@solmai.test',null,'staff',v_duena,null);
+              perform public.invite_staff_member('ci-nueva@solmai.test',null,'mostrador',v_duena,null);
               raise exception 'dejó sumar dos veces a la misma persona';
             exception when others then
               if sqlerrm not like '%ya_esta%' then raise; end if;
@@ -1853,17 +1853,21 @@ jobs:
 
             -- 3. Quien NO es dueña no administra a nadie. Es el guard de la
             --    base, independiente del middleware de la ruta.
+            --    Desde «roles por módulo» el guard es el permiso y no el
+            --    rol: quien no tiene «Usuarios y roles» rebota con
+            --    `sin_permiso_usuarios`, que es lo que la pantalla sabe
+            --    traducir.
             begin
-              perform public.invite_staff_member('ci-tercera@solmai.test',null,'staff',v_otra,null);
+              perform public.invite_staff_member('ci-tercera@solmai.test',null,'mostrador',v_otra,null);
               raise exception 'quien atiende pudo sumar a alguien';
             exception when others then
-              if sqlerrm not like '%solo_la_duena%' then raise; end if;
+              if sqlerrm not like '%sin_permiso_usuarios%' then raise; end if;
             end;
             begin
-              perform public.set_staff_role(v_duena,'staff',v_otra,null);
+              perform public.set_staff_role(v_duena,'mostrador',v_otra,null);
               raise exception 'quien atiende pudo cambiar un rol';
             exception when others then
-              if sqlerrm not like '%solo_la_duena%' then raise; end if;
+              if sqlerrm not like '%sin_permiso_usuarios%' then raise; end if;
             end;
 
             -- 4. Sacar y devolver el acceso, sobre la MISMA fila
@@ -1901,7 +1905,7 @@ jobs:
             end;
             begin
               update public.staff_members
-                 set role = 'staff'
+                 set role = 'mostrador'
                where role = 'owner' and is_active and deleted_at is null;
               raise exception 'degradar a mano dejó el salón sin ninguna dueña';
             exception when others then
@@ -1922,6 +1926,161 @@ jobs:
 
           echo "staff administration OK"
 
+      - name: Verify module permissions cannot be widened by accident
+        run: |
+          set -euo pipefail
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+
+          do $$
+          declare
+            v_duena  uuid;
+            v_ana    uuid;
+            v_enca   uuid;
+            v_n      integer;
+            v_slug   text;
+          begin
+            insert into public.staff_members (slug, display_name, email, role, is_active)
+            values ('ci-roles','CI Roles','ci-roles@solmai.test','owner',true)
+            returning id into v_duena;
+
+            -- 1. La migración no le cambió el acceso a nadie. `mostrador`
+            --    reproduce exactamente lo que hacía `staff`: Calendario y
+            --    Clientas, y nada más. Un permiso de regalo acá es una
+            --    persona viendo la plata sin que nadie lo haya decidido.
+            select count(*) into v_n from public.role_permissions
+             where role_slug = 'mostrador' and level <> 'none';
+            if v_n <> 2 then
+              raise exception 'mostrador tiene % modulos abiertos, deberian ser 2', v_n;
+            end if;
+            select count(*) into v_n from public.role_permissions
+             where role_slug = 'mostrador' and module in ('calendario','clientas') and level = 'full';
+            if v_n <> 2 then raise exception 'mostrador perdio calendario o clientas'; end if;
+
+            -- 2. La administradora llega a todo. Si esto se pudiera
+            --    recortar, el sistema quedaría sin nadie que lo arregle.
+            select count(*) into v_n from public.role_permissions
+             where role_slug = 'owner' and level = 'full';
+            if v_n <> 9 then raise exception 'la administradora no llega a los 9 modulos'; end if;
+
+            begin
+              perform public.set_role_permission('owner','finanzas','none',v_duena,null);
+              raise exception 'se le pudo recortar un modulo a la administradora';
+            exception when others then
+              if sqlerrm not like '%rol_del_sistema%' then raise; end if;
+            end;
+            begin
+              perform public.delete_role('owner',v_duena,null);
+              raise exception 'se pudo borrar el rol de la administradora';
+            exception when others then
+              if sqlerrm not like '%rol_del_sistema%' then raise; end if;
+            end;
+
+            -- 3. Un rol nuevo nace sin ver nada.
+            v_slug := public.create_role('CI Recepcion',v_duena,null)->>'slug';
+            select count(*) into v_n from public.role_permissions
+             where role_slug = v_slug and level <> 'none';
+            if v_n <> 0 then raise exception 'un rol nuevo nacio con % permisos', v_n; end if;
+
+            -- 4. Quien no administra usuarios no reparte permisos.
+            v_ana := (public.invite_staff_member('ci-ana@solmai.test','CI Ana','mostrador',
+                                                 v_duena,null)->>'id')::uuid;
+            begin
+              perform public.set_role_permission(v_slug,'finanzas','full',v_ana,null);
+              raise exception 'quien atiende pudo repartir permisos';
+            exception when others then
+              if sqlerrm not like '%sin_permiso_usuarios%' then raise; end if;
+            end;
+            begin
+              perform public.create_role('CI Trucho',v_ana,null);
+              raise exception 'quien atiende pudo crear un rol';
+            exception when others then
+              if sqlerrm not like '%sin_permiso_usuarios%' then raise; end if;
+            end;
+
+            -- 5. `can()` dice que no para lo que no se dio, y deja de
+            --    decir que sí en cuanto se saca. Es la función que
+            --    contesta en cada pedido: si acá se equivoca, se equivoca
+            --    en todo el panel.
+            if public.can(v_ana,'finanzas','view') then
+              raise exception 'quien atiende ve finanzas';
+            end if;
+            if not public.can(v_ana,'calendario','full') then
+              raise exception 'quien atiende no puede trabajar el dia';
+            end if;
+            perform public.set_role_permission('mostrador','finanzas','view',v_duena,null);
+            if not public.can(v_ana,'finanzas','view') then
+              raise exception 'dar el permiso no tuvo efecto';
+            end if;
+            if public.can(v_ana,'finanzas','full') then
+              raise exception 'mirar alcanzo para cambiar';
+            end if;
+            perform public.set_role_permission('mostrador','finanzas','none',v_duena,null);
+            if public.can(v_ana,'finanzas','view') then
+              raise exception 'sacar el permiso no tuvo efecto';
+            end if;
+
+            -- 6. Una persona desactivada no puede nada, tenga el rol que
+            --    tenga. El día que alguien deja el salón, el rol que le
+            --    quedó en la fila no puede seguir abriendo puertas.
+            perform public.set_staff_active(v_ana,false,v_duena,null);
+            if public.can(v_ana,'calendario','view') then
+              raise exception 'una persona sin acceso siguio pudiendo';
+            end if;
+
+            -- 7. Quien administra usuarios NO fabrica administradoras.
+            --    Sin este corte podía nombrar administradora a un cómplice
+            --    y después desactivar a la dueña: el trigger de «siempre
+            --    una dueña» lo habría dejado pasar, porque ya había otra.
+            perform public.set_role_permission(v_slug,'usuarios','full',v_duena,null);
+            v_enca := (public.invite_staff_member('ci-enca@solmai.test','CI Encargada',v_slug,
+                                                  v_duena,null)->>'id')::uuid;
+            begin
+              perform public.invite_staff_member('ci-complice@solmai.test',null,'owner',v_enca,null);
+              raise exception 'quien administra usuarios pudo nombrar una administradora';
+            exception when others then
+              if sqlerrm not like '%solo_la_duena%' then raise; end if;
+            end;
+            begin
+              perform public.set_staff_active(v_duena,false,v_enca,null);
+              raise exception 'quien administra usuarios pudo sacarle el acceso a la duena';
+            exception when others then
+              if sqlerrm not like '%solo_la_duena%' then raise; end if;
+            end;
+
+            -- 8. Un rol que alguien tiene no se borra, ni siquiera si esa
+            --    persona ya no trabaja acá: conserva el rol como parte de
+            --    su historial, y la clave foránea cuenta esa fila igual.
+            begin
+              perform public.delete_role(v_slug,v_duena,null);
+              raise exception 'se borro un rol que todavia usa alguien';
+            exception when others then
+              if sqlerrm not like '%rol_en_uso%' then raise; end if;
+            end;
+
+            -- 9. Todo rol asignado existe. La clave foránea es lo que
+            --    impide que alguien quede apuntando a un rol fantasma y
+            --    entre a nada o a todo, según cómo falle la consulta.
+            select count(*) into v_n from public.staff_members s
+             where not exists (select 1 from public.roles r where r.slug = s.role);
+            if v_n <> 0 then raise exception '% personas con un rol que no existe', v_n; end if;
+
+            -- 10. Repartir permisos queda auditado, con el nivel anterior.
+            if not exists (
+              select 1 from public.audit_log
+               where action = 'role_permission_changed'
+                 and detail ? 'nivel_anterior' and actor_id = v_duena
+            ) then
+              raise exception 'cambiar un permiso no quedo auditado';
+            end if;
+          end $$;
+
+          rollback;
+          SQL
+
+          echo "module permissions OK"
+
       - name: Verify the audit log can be read, and only read
         run: |
           set -euo pipefail
@@ -1940,7 +2099,7 @@ jobs:
             values ('ci-audit','CI Auditoría','ci-audit@solmai.test','owner',true)
             returning id into v_duena;
 
-            v_otra := (public.invite_staff_member('ci-leida@solmai.test','CI Leída','staff',
+            v_otra := (public.invite_staff_member('ci-leida@solmai.test','CI Leída','mostrador',
                                                   v_duena,'ci-audit@solmai.test')->>'id')::uuid;
 
             -- 1. Lo que se escribió, se lee
