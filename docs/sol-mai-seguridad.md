@@ -131,10 +131,10 @@ administradora nueva, ni bajar de rango a una, ni sacarle el acceso: sin
 ese corte podía nombrar administradora a un cómplice y después desactivar
 a Sol, porque el trigger de «siempre una dueña» ya no se habría quejado.
 
-**Dos decisiones que conviene que Sol revise.** Cerrar un turno y marcar
-una seña como devuelta quedaron en `calendario`, no en `finanzas`: son
+**Confirmado por dirección (2026-09-10).** Cerrar un turno y marcar una
+seña como devuelta quedan en `calendario`, no en `finanzas`: son
 operaciones del turno, que hace quien está con la clienta enfrente. La
-caja se mira en Finanzas.
+caja se mira en Finanzas. Queda cerrado, no es una decisión pendiente.
 
 ### 3.3. ~~El registro de cambios se escribe para nadie~~ · CERRADO (2026-09-10)
 
