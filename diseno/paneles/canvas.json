@@ -1,0 +1,54 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",     "x": 0,    "y": 0,    "w": 1440, "h": 900, "title": "Escritorio · los nueve módulos" },
+    { "file": "Lista.dc.html",    "x": 1560, "y": 0,    "w": 1440, "h": 900, "title": "Vista lista · Clientas" },
+    { "file": "Ficha.dc.html",    "x": 0,    "y": 1060, "w": 1440, "h": 900, "title": "Vista ficha · una clienta" },
+    { "file": "Precios.dc.html",  "x": 1560, "y": 1060, "w": 1440, "h": 900, "title": "Lista editable · El salón" },
+    { "file": "Telefono.dc.html", "x": 0,    "y": 2120, "w": 390,  "h": 844, "title": "El mostrador · teléfono" }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -360,
+      "w": 1000,
+      "text": "Paneles internos · lenguaje visual propio\n\nLa web de las clientas y esto son dos productos distintos y no comparten diseño. Allá manda la vidriera del salón: serif, champagne, aire. Acá manda el trabajo: IBM Plex Sans, gris neutro, un solo color funcional, esquinas de 4 px, filas apretadas y números alineados.\n\nDel formato de gestión tipo Odoo se toma la estructura, no la marca: escritorio de módulos, migas de pan, lista y ficha, acciones arriba a la izquierda, buscador arriba a la derecha. Nada de esto es un ERP para contadores: son tres formatos y se repiten en los nueve módulos."
+    },
+    {
+      "id": "nota-escritorio",
+      "x": 0,
+      "y": -175,
+      "w": 700,
+      "text": "La puerta de entrada. Los nueve módulos ordenados por cada cuánto se tocan, no por categoría. Lo que todavía no existe se muestra en punteado: así se ve la forma completa del sistema sin mentir sobre lo que anda."
+    },
+    {
+      "id": "nota-lista",
+      "x": 1560,
+      "y": -175,
+      "w": 700,
+      "text": "Formato 1 de 3: la lista. Sirve igual para clientas, productos, proveedores o turnos. Buscador, filtros que se guardan solos, paginado. Sin puntajes ni «valor de vida»: eso lo prohíbe el documento del CRM."
+    },
+    {
+      "id": "nota-ficha",
+      "x": 0,
+      "y": 885,
+      "w": 700,
+      "text": "Formato 2 de 3: la ficha. Encabezado con lo que hay que saber de un vistazo, datos en dos columnas, y abajo las pestañas con el historial. La alergia va arriba y en color: es lo único de esta pantalla que puede lastimar a alguien."
+    },
+    {
+      "id": "nota-precios",
+      "x": 1560,
+      "y": 885,
+      "w": 700,
+      "text": "Formato 3 de 3: la lista que se edita en el lugar. El número ES el campo; no hay un formulario que se abre. Este módulo ya existe en código —es el que se publicó ayer—, redibujado con el lenguaje nuevo."
+    },
+    {
+      "id": "nota-telefono",
+      "x": 470,
+      "y": 2120,
+      "w": 420,
+      "text": "El mostrador trabaja en el teléfono, no en la computadora. Mismo lenguaje, misma barra, pero filas de 62 px y un botón de 46: en la compu se apunta con el mouse, acá se toca con el pulgar mientras se sostiene un secador.\n\nSol hace lo suyo sentada; quien atiende vive en esta pantalla."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}
