@@ -36,3 +36,9 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Diseño: los lienzos ya sembrados pesan ~2,5 MB —son el editor entero— y
+# se regeneran con `python3 build.py` desde los `.dc.html`. En el repo van
+# las fuentes, no la salida.
+diseno/**/*.html
+!diseno/**/*.dc.html
