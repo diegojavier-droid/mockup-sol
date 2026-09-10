@@ -117,6 +117,10 @@ export const PERMISOS: Record<string, Permiso> = {
   "GET /cash-register": { modulo: "finanzas", nivel: "view" },
   "GET /dashboard": { modulo: "finanzas", nivel: "view" },
   "GET /reconciliation": { modulo: "finanzas", nivel: "view" },
+  "GET /invoicing/pending": { modulo: "finanzas", nivel: "view" },
+  "GET /invoicing/summary": { modulo: "finanzas", nivel: "view" },
+  "POST /bookings/:id/invoiced": { modulo: "finanzas", nivel: "full" },
+  "DELETE /bookings/:id/invoiced": { modulo: "finanzas", nivel: "full" },
 
   // ---------------------------------------------------------- inventario
   "GET /salon/products": { modulo: "inventario", nivel: "view" },

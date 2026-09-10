@@ -15,6 +15,7 @@ import { SalonScreen } from "@/components/booking/admin/SalonScreen";
 import { PeopleScreen } from "@/components/booking/admin/PeopleScreen";
 import { AuditScreen } from "@/components/booking/admin/AuditScreen";
 import { RolesScreen } from "@/components/booking/admin/RolesScreen";
+import { InvoicingScreen } from "@/components/booking/admin/InvoicingScreen";
 import { ModuleNav, type ModuleKey } from "@/components/booking/admin/ModuleNav";
 import { useStaffIdentity } from "@/lib/api/admin-hooks";
 import { clearStaffToken, puede, readStaffToken, writeStaffToken } from "@/lib/staff-session";
@@ -87,7 +88,12 @@ function AgendaRoute() {
             módulo activo sobrevive a que Sol le cambie los permisos a
             alguien mientras tiene la pantalla abierta. */}
         {tab === "finanzas" && puede(identity.data, "finanzas") ? (
-          <DashboardScreen />
+          <>
+            <DashboardScreen />
+            <div className="mt-8 border-t border-border pt-8">
+              <InvoicingScreen />
+            </div>
+          </>
         ) : tab === "servicios" && puede(identity.data, "servicios") ? (
           <SalonScreen />
         ) : tab === "personas" && puede(identity.data, "usuarios") ? (

@@ -888,6 +888,33 @@ adelantado y un saldo en el local. Eso lo responde el contador de Sol. El
 diseño no fuerza ninguna respuesta: ella marca el comprobante cuando lo
 emitió, con el importe que usó.
 
+#### Estado (2026-09-10): construido, sin integrar
+
+«Finanzas › Facturación» existe. Muestra lo que se cobró y todavía no
+tiene comprobante —con el nombre y el importe listos para tipear— y Sol
+marca cada una con el importe, la fecha y, si lo tiene a mano, el número.
+
+Cuatro decisiones que quedaron tomadas al construirlo:
+
+- **El número de comprobante es opcional.** Exigirlo haría que, si no lo
+  tiene a mano, no marque nada; y entonces la lista de pendientes deja de
+  ser cierta, que es lo único que este bloque construye.
+- **El importe facturado puede diferir del cobrado.** El sistema guarda
+  los dos y no opina: cuál corresponde lo dice el contador.
+- **Se puede deshacer.** Tipear mal un importe es lo más fácil que hay, y
+  sin esa salida la única sería que alguien toque la base a mano sobre
+  datos fiscales. Deshacer también queda en el registro.
+- **Media marca no existe.** Una restricción de la base impide decir
+  «facturado» sin importe y sin fecha: si se pudiera, el acumulado contra
+  el tope dejaría de servir.
+
+El tope de la categoría se muestra sólo si está cargado. Mientras no lo
+esté, la pantalla dice **No disponible** y de quién depende cargarlo; y
+si alguien carga algo que no es un número, vuelve a decir que no lo sabe
+en vez de inventar uno. El clean-room falla si aparece un número puesto
+por nosotros, y también si aparece cualquier función que emita
+comprobantes.
+
 ---
 
 ---
@@ -912,8 +939,8 @@ práctica.
 | 3   | ~~Usuarios y roles › Personas~~ · **HECHO** (2026-09-10)            | Era el agujero operativo real; y era condición para Finanzas y Personal                                            |
 | 4   | ~~Usuarios y roles › Registro de cambios~~ · **HECHO** (2026-09-10) | El dato ya se escribía; faltaba la puerta                                                                          |
 | 5   | ~~Usuarios y roles › Roles por módulo~~ · **HECHO** (2026-09-10)    | Con nueve módulos, «quien atiende» pasó a significar demasiadas cosas; era condición para abrir Finanzas a alguien más |
-| 6   | **Finanzas › Facturación**                                          | Sale de la caja que ya está y cierra el hueco de §8.3: hoy nada le dice a Sol qué atenciones no tienen comprobante |
-| 7   | El panel pregunta lo mismo que la web al tomar un turno             | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1)           |
+| 6   | ~~Finanzas › Facturación~~ · **HECHO** (2026-09-10)                 | Salió de la caja que ya estaba y cerró el hueco de §8.3: nada le decía a Sol qué atenciones no tenían comprobante  |
+| 7   | **El panel pregunta lo mismo que la web al tomar un turno**         | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1)           |
 | 8   | Clientas › Fichas                                                   | El backend está entero; falta sólo la pantalla                                                                     |
 | 9   | El aviso de cancelación con sus dos momentos (§11.4)                | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo                               |
 | 10  | Inventario, y el precio que sale del producto usado                 | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación                                   |

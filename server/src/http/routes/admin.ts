@@ -14,6 +14,14 @@ import { createSupabaseAdminClient } from "../../lib/supabase";
 import { staffAuth, type StaffVars } from "../middleware/staffAuth";
 import { MODULOS, requirePermission } from "../middleware/permisos";
 import {
+  INVOICING_MESSAGES,
+  InvoicingError,
+  listPendingInvoices,
+  markInvoiced,
+  readInvoicingSummary,
+  unmarkInvoiced,
+} from "../../lib/admin/invoicing-repository";
+import {
   createRole,
   deleteRole,
   listRoles,
@@ -1518,6 +1526,78 @@ export function createAdminRoute(env: ServerEnv) {
     const staff = c.get("staff");
     return rolesAdmin(c, () =>
       deleteRole(createSupabaseAdminClient(env), c.req.param("slug"), staff.staffId, staff.email),
+    );
+  });
+
+  // ------------------------------------------------- facturación (finanzas)
+  //
+  // El sistema NO emite comprobantes: Sol los emite desde la app de ARCA.
+  // Lo que falta hoy no es emitir, es saber qué falta emitir. Ver §8.3.
+  const facturacion = async <T>(c: Context<{ Variables: StaffVars }>, fn: () => Promise<T>) => {
+    try {
+      return c.json({ data: await fn() });
+    } catch (error) {
+      const code = error instanceof InvoicingError ? error.code : "";
+      const conocido = Object.keys(INVOICING_MESSAGES).find((k) => code.includes(k));
+      if (conocido) {
+        const { status, message } = INVOICING_MESSAGES[conocido]!;
+        throw new HTTPException(status, { message });
+      }
+      throw error;
+    }
+  };
+
+  const FECHA = /^\d{4}-\d{2}-\d{2}$/;
+
+  owner.get("/invoicing/pending", async (c) => {
+    const q = c.req.query();
+    return facturacion(c, () =>
+      listPendingInvoices(createSupabaseAdminClient(env), {
+        desde: FECHA.test(q.from ?? "") ? q.from : null,
+        hasta: FECHA.test(q.to ?? "") ? q.to : null,
+      }),
+    );
+  });
+
+  owner.get("/invoicing/summary", async (c) => {
+    const anio = Number.parseInt(c.req.query("year") ?? "", 10);
+    return facturacion(c, () =>
+      readInvoicingSummary(createSupabaseAdminClient(env), Number.isFinite(anio) ? anio : null),
+    );
+  });
+
+  owner.post("/bookings/:id/invoiced", async (c) => {
+    const schema = z.object({
+      // Entero y en pesos, igual que el resto de los importes del sistema.
+      amount: z.number().int().positive(),
+      on: z.string().regex(FECHA),
+      number: z.string().max(60).nullish(),
+    });
+    const parsed = schema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) {
+      throw new HTTPException(400, { message: "Poné el importe y la fecha del comprobante." });
+    }
+    const staff = c.get("staff");
+    return facturacion(c, () =>
+      markInvoiced(createSupabaseAdminClient(env), {
+        bookingId: c.req.param("id"),
+        amount: parsed.data.amount,
+        on: parsed.data.on,
+        number: parsed.data.number ?? null,
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  owner.delete("/bookings/:id/invoiced", async (c) => {
+    const staff = c.get("staff");
+    return facturacion(c, () =>
+      unmarkInvoiced(createSupabaseAdminClient(env), {
+        bookingId: c.req.param("id"),
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      }),
     );
   });
 
