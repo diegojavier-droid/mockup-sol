@@ -103,10 +103,22 @@ begin
     raise exception 'sin_permiso_finanzas';
   end if;
 
-  select * into v from public.service_execution_records where booking_id = p_booking_id;
+  -- `for update` y no un SELECT pelado: con READ COMMITTED —el default de
+  -- PostgreSQL— dos pedidos simultáneos leen los dos la fila sin facturar,
+  -- los dos pasan el guard, y el segundo pisa el importe del primero. Los
+  -- dos devuelven éxito y los dos dejan su renglón en el registro, así que
+  -- el número que queda no es el que nadie ve confirmado. Sobre un dato
+  -- fiscal eso no es una molestia: es un comprobante mal registrado.
+  --
+  -- Con el lock, el segundo espera y vuelve a leer la fila DESPUÉS de que
+  -- el primero terminó, así que ve `invoiced_on` y sale por `ya_facturado`.
+  -- Un doble clic o dos pestañas abiertas dejan de poder alterar la plata.
+  select * into v from public.service_execution_records
+   where booking_id = p_booking_id
+     for update;
   if not found then
-    -- Sin cierre no hay importe cobrado, y facturar algo que todavía no
-    -- se cobró es afirmar un hecho que no ocurrió.
+    -- Sin cierre no hay atención registrada, y facturar algo que no se
+    -- hizo es afirmar un hecho que no ocurrió.
     raise exception 'turno_sin_cerrar';
   end if;
   if v.invoiced_on is not null then
@@ -139,7 +151,7 @@ begin
   values (p_actor_id, p_actor_label, 'booking_invoiced', 'booking', p_booking_id,
           jsonb_build_object('importe', p_amount, 'fecha', p_on,
                              'numero', nullif(btrim(coalesce(p_number, '')), ''),
-                             'cobrado', v.final_price_amount));
+                             'precio_cerrado', v.final_price_amount));
 
   return jsonb_build_object('bookingId', p_booking_id, 'importe', p_amount,
                             'fecha', p_on, 'facturado', true);
@@ -166,7 +178,11 @@ begin
     raise exception 'sin_permiso_finanzas';
   end if;
 
-  select * into v from public.service_execution_records where booking_id = p_booking_id;
+  -- Mismo motivo que al marcar: dos «Deshacer» simultáneos escribirían dos
+  -- renglones en el registro para una sola vuelta atrás.
+  select * into v from public.service_execution_records
+   where booking_id = p_booking_id
+     for update;
   if not found then raise exception 'turno_sin_cerrar'; end if;
   if v.invoiced_on is null then raise exception 'no_estaba_facturado'; end if;
 
@@ -204,6 +220,18 @@ create or replace function public.pending_invoices(
   cuando       timestamptz,
   clienta      text,
   servicios    text,
+  -- LOS DOS NÚMEROS, Y POR QUÉ SON DOS
+  --
+  -- `precio` es lo que se acordó al cerrar la atención; `cobrado` es lo
+  -- que de verdad entró, sumado de los pagos aprobados. `close_service`
+  -- permite cerrar con saldo —una seña y el resto pendiente—, así que no
+  -- son el mismo número.
+  --
+  -- Antes acá viajaba el precio con el nombre `cobrado`, que es una
+  -- afirmación falsa sobre plata: metía en la lista de pendientes y en el
+  -- acumulado del año dinero que nunca entró. Cuál corresponde facturar
+  -- lo dice el contador de Sol; el sistema muestra los dos y no opina.
+  precio       integer,
   cobrado      integer,
   medio        text
 )
@@ -224,6 +252,9 @@ as $$
                     order by bi.sort_order limit 1),
                   'Atención'),
          r.final_price_amount,
+         (select coalesce(sum(p.amount), 0)::integer
+            from public.payments p
+           where p.booking_id = b.id and p.status = 'approved'),
          r.payment_method
     from public.service_execution_records r
     join public.bookings b  on b.id = r.booking_id
@@ -261,6 +292,7 @@ declare
   v_year      integer;
   v_facturado bigint;
   v_pendiente bigint;
+  v_pendiente_cobrado bigint;
   v_cuantos   integer;
   v_tope      bigint;
 begin
@@ -271,7 +303,11 @@ begin
    where invoiced_on >= make_date(v_year, 1, 1)
      and invoiced_on <  make_date(v_year + 1, 1, 1);
 
-  select coalesce(sum(cobrado), 0), count(*) into v_pendiente, v_cuantos
+  -- `pendiente` son los precios de lo que falta facturar; `pendiente_cobrado`,
+  -- lo que de eso ya entró. Si difieren, hay atenciones cerradas con saldo
+  -- impago, y Sol lo ve en vez de que el sistema elija por ella.
+  select coalesce(sum(precio), 0), coalesce(sum(cobrado), 0), count(*)
+    into v_pendiente, v_pendiente_cobrado, v_cuantos
     from public.pending_invoices(make_date(v_year, 1, 1), make_date(v_year, 12, 31), 500);
 
   -- Sin valor cargado, `v_tope` queda en null y el resto de la respuesta
@@ -287,6 +323,7 @@ begin
     'anio', v_year,
     'facturado', v_facturado,
     'pendiente', v_pendiente,
+    'pendiente_cobrado', v_pendiente_cobrado,
     'cuantos_pendientes', v_cuantos,
     'tope', v_tope,
     'tope_cargado', v_tope is not null

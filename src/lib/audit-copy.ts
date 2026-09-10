@@ -45,7 +45,32 @@ const pesos = (n: unknown) =>
 
 const minutos = (n: unknown) => (typeof n === "number" ? `${n} min` : String(n ?? "—"));
 
-const ROL: Record<string, string> = { owner: "administradora", staff: "mostrador" };
+/**
+ * Los dos roles que trae el sistema. Cualquier otro lo armó Sol, y se
+ * muestra con su slug: inventarle un nombre acá sería adivinar cómo lo
+ * llamó ella, y el registro no adivina.
+ */
+const ROL: Record<string, string> = { owner: "administradora", mostrador: "mostrador" };
+
+/** Los módulos, con el nombre que tienen en la pantalla. */
+const MODULO: Record<string, string> = {
+  calendario: "Calendario",
+  clientas: "Clientas",
+  finanzas: "Finanzas",
+  inventario: "Inventario",
+  servicios: "Servicios",
+  personal: "Personal",
+  compras: "Compras",
+  usuarios: "Usuarios y roles",
+  configuracion: "Configuración",
+};
+
+/** Los tres niveles, dichos como los dice la pantalla de roles. */
+const NIVEL: Record<string, string> = {
+  none: "no lo ve",
+  view: "lo mira",
+  full: "lo maneja",
+};
 
 const ESTADO: Record<string, string> = {
   pending_payment: "esperando la seña",
@@ -147,6 +172,39 @@ export function describirCambio(fila: AuditRow): CambioDicho {
     case "product_updated":
       return { frase: "Cambió un producto" };
 
+    // ------------------------------------------------- roles y permisos
+    case "role_created":
+      return { frase: `Creó el rol ${texto(d.nombre ?? d.rol, {})}` };
+
+    case "role_deleted":
+      return { frase: `Borró el rol ${texto(d.rol, {})}` };
+
+    case "role_permission_changed":
+      // El cambio entero en una línea: qué rol, qué módulo, de qué a qué.
+      // Es la acción del sistema que más conviene poder auditar de un
+      // vistazo, porque es la que reparte quién ve la plata.
+      return {
+        frase:
+          `${texto(d.rol, ROL)}: ${texto(d.modulo, MODULO)} — ` +
+          `${texto(d.nivel_anterior, NIVEL)} → ${texto(d.nivel_nuevo, NIVEL)}`,
+      };
+
+    // ------------------------------------------------------- facturación
+    case "booking_invoiced":
+      return {
+        frase:
+          `Anotó la factura por ${pesos(d.importe)}` +
+          (d.numero ? `, ${texto(d.numero, {})}` : "") +
+          (typeof d.precio_cerrado === "number" && d.precio_cerrado !== d.importe
+            ? ` (la atención se cerró en ${pesos(d.precio_cerrado)})`
+            : ""),
+      };
+
+    case "booking_invoice_undone":
+      return {
+        frase: `Deshizo la factura de ${pesos(d.importe_anterior)}`,
+      };
+
     default:
       // Una acción que todavía no sabemos decir. Se muestra igual: una
       // pantalla que esconde lo que no entiende deja de ser un registro.
@@ -165,4 +223,5 @@ export const SOBRE_QUE: Record<string, string> = {
   service: "Servicio",
   product: "Producto",
   resource: "Puesto",
+  role: "Rol",
 };

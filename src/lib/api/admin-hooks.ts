@@ -246,6 +246,9 @@ export interface PendingInvoice {
   cuando: string;
   clienta: string;
   servicios: string;
+  /** Lo que se acordó al cerrar la atención. */
+  precio: number;
+  /** Lo que de verdad entró. Puede ser menor: se cierra con saldo. */
   cobrado: number;
   medio: string | null;
 }
@@ -253,7 +256,10 @@ export interface PendingInvoice {
 export interface InvoicingSummary {
   anio: number;
   facturado: number;
+  /** A precio de la atención. */
   pendiente: number;
+  /** Cuánto de eso ya entró. */
+  pendienteCobrado: number;
   cuantosPendientes: number;
   /** `null` cuando el contador de Sol todavía no cargó el tope. */
   tope: number | null;

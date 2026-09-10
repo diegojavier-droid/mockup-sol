@@ -26,6 +26,27 @@ const browser = await chromium.launch({
   ],
 });
 
+/**
+ * Espera a que un texto aparezca en la pantalla, en vez de leerla una sola
+ * vez después de un `waitForTimeout` fijo.
+ *
+ * El registro de cambios se llena con una consulta que puede tardar más
+ * que la espera de dos segundos que había antes, así que la prueba fallaba
+ * o pasaba según cuánta agua tuviera la base: en una recién construida
+ * daba rojo, y en la segunda corrida verde. Una prueba que depende de eso
+ * no dice nada.
+ */
+async function esperarTexto(page, patron, ms = 12000) {
+  const hasta = Date.now() + ms;
+  let texto = "";
+  while (Date.now() < hasta) {
+    texto = await page.locator("body").innerText();
+    if (patron.test(texto)) return texto;
+    await page.waitForTimeout(400);
+  }
+  return texto;
+}
+
 async function abrirPanel(token, { sinAsistente = false } = {}) {
   const page = await browser.newPage({ viewport: { width: 420, height: 950 } });
   await page.route("**/*", (r) => {
@@ -218,8 +239,8 @@ console.log("\n── Usuarios y roles · Personas");
 // por qué saber qué es `staff_invited`— y que no ofrezca borrar nada.
 console.log("\n── Usuarios y roles · Registro de cambios");
 {
-  const t = await sol.locator("body").innerText();
-  ok("el registro está en la misma pantalla", t.includes("Registro de cambios"));
+  const t = await esperarTexto(sol, /le dio acceso al panel/i);
+  ok("el registro está en la misma pantalla", /no se puede editar ni borrar/i.test(t));
   ok(
     "traduce las acciones a castellano en vez de mostrar el código",
     /le dio acceso al panel/i.test(t) && !t.includes("staff_invited"),
@@ -229,12 +250,20 @@ console.log("\n── Usuarios y roles · Registro de cambios");
   ok("no ofrece borrar ni editar el registro", !/borrar el registro|editar el registro/i.test(t));
   ok("avisa que no se puede editar ni borrar", /no se puede editar ni borrar/i.test(t));
 
+  // El registro es una función de este mismo bloque, y hasta acá no sabía
+  // decir la mitad de lo que el bloque escribe: mostraba el código con el
+  // JSON crudo al lado.
+  ok(
+    "no muestra el código de las acciones nuevas",
+    !/role_permission_changed|role_created|role_deleted|booking_invoiced|booking_invoice_undone/.test(t),
+    t.slice(-400),
+  );
+
   const filtro = sol.locator('select[aria-label="Filtrar por persona"]');
   ok("se puede filtrar por persona", (await filtro.count()) > 0);
   if (await filtro.count()) {
     await sol.locator('select[aria-label="Filtrar por tipo de cosa"]').selectOption("service");
-    await sol.waitForTimeout(2000);
-    const t2 = await sol.locator("body").innerText();
+    const t2 = await esperarTexto(sol, /cambió el precio/i);
     ok("filtrar por tipo cambia la lista", /cambió el precio/i.test(t2));
   }
 }
@@ -307,7 +336,11 @@ console.log("\n── Finanzas · Facturación");
     await marcar.click();
     await sol.waitForTimeout(500);
     const importe = sol.locator('input[aria-label^="Importe facturado"]').first();
-    ok("el importe viene cargado con lo cobrado", (await importe.inputValue()) !== "");
+    ok("el importe viene cargado con el precio de la atención", (await importe.inputValue()) === "25000");
+
+    // El saldo impago se muestra: si no, Sol facturaría sobre plata que
+    // todavía no entró. Esta atención se cerró en $25.000 sin ningún pago.
+    ok("avisa cuánto entró de verdad cuando difiere del precio", /entró \$0/i.test(t));
 
     const fecha = sol.locator('input[aria-label^="Fecha del comprobante"]').first();
     ok("la fecha no deja elegir un día futuro", (await fecha.getAttribute("max")) !== null);

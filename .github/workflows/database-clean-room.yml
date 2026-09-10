@@ -1944,7 +1944,8 @@ jobs:
 
           do $$
           declare
-            v_duena uuid; v_ana uuid; v_cli uuid; v_b uuid; v_n integer; v_r jsonb;
+            v_duena uuid; v_ana uuid; v_cli uuid; v_b uuid; v_n integer;
+            v_cobrado integer; v_r jsonb;
           begin
             insert into public.staff_members (slug, display_name, email, role, is_active)
             values ('ci-fact','CI Facturación','ci-fact@solmai.test','owner',true)
@@ -2028,6 +2029,34 @@ jobs:
             if not exists (select 1 from public.audit_log
                             where action = 'booking_invoice_undone' and entity_id = v_b) then
               raise exception 'deshacer no quedo auditado';
+            end if;
+
+            -- 7b. El precio de la atención y lo que entró NO son el mismo
+            --     número: `close_service` deja cerrar con saldo impago.
+            --     Confundirlos metía en la lista de pendientes y en el
+            --     acumulado del año plata que nunca entró.
+            insert into public.payments (booking_id, provider, provider_ref,
+                                         amount, status, method, kind)
+            values (v_b, 'cash', 'ci-fact-parcial', 9000, 'approved', 'efectivo', 'deposit');
+            select precio, cobrado into v_n, v_cobrado
+              from public.pending_invoices() where booking_id = v_b;
+            if v_n <> 25000 then
+              raise exception 'el precio de la atencion cambio: %', v_n;
+            end if;
+            if v_cobrado <> 9000 then
+              raise exception 'lo cobrado no sale de los pagos aprobados: %', v_cobrado;
+            end if;
+
+            -- 7c. Dos pedidos simultáneos no pueden alterar un comprobante.
+            --     El lock de fila es lo único que lo impide: sin él las dos
+            --     sesiones pasan el guard y la segunda pisa a la primera.
+            --     La carrera de verdad se prueba con dos sesiones en
+            --     scripts/sql-tests/facturacion-concurrencia.sh; acá se
+            --     verifica que el lock siga estando declarado.
+            if (select prosrc from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                 where n.nspname = 'public' and p.proname = 'mark_invoiced')
+               not like '%for update%' then
+              raise exception 'mark_invoiced perdio el lock de fila';
             end if;
 
             -- 8. LA REGLA DEL BLOQUE: el tope de la categoría lo carga el

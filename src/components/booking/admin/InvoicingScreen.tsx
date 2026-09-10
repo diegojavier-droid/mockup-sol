@@ -138,9 +138,13 @@ function Resumen({ resumen }: { resumen: ReturnType<typeof useInvoicingSummary>[
         titulo="Falta facturar"
         valor={pesos(resumen.pendiente)}
         pie={
-          resumen.cuantosPendientes === 1
-            ? "1 atención"
-            : `${resumen.cuantosPendientes} atenciones`
+          resumen.pendiente !== resumen.pendienteCobrado
+            ? `${resumen.cuantosPendientes} ${
+                resumen.cuantosPendientes === 1 ? "atención" : "atenciones"
+              } · entró ${pesos(resumen.pendienteCobrado)}`
+            : `${resumen.cuantosPendientes} ${
+                resumen.cuantosPendientes === 1 ? "atención" : "atenciones"
+              }`
         }
       />
       <Dato
@@ -201,10 +205,11 @@ function Pendiente({
   // Sólo se bloquea la fila que se está guardando, no todas.
   const guardando = marcar.isPending && marcar.variables?.bookingId === fila.bookingId;
   const [abierto, setAbierto] = useState(false);
-  // El importe arranca en lo cobrado porque es lo que va a facturar casi
-  // siempre; que sea editable es lo que permite que el contador de Sol
-  // decida otra cosa sin que el sistema opine.
-  const [importe, setImporte] = useState(String(fila.cobrado));
+  // Arranca en el precio de la atención, que es lo que se factura casi
+  // siempre. Que sea editable es lo que permite que el contador de Sol
+  // decida otra cosa —facturar sólo lo cobrado, por ejemplo— sin que el
+  // sistema opine.
+  const [importe, setImporte] = useState(String(fila.precio));
   const [fecha, setFecha] = useState(() => hoyEnElSalon());
   const [numero, setNumero] = useState("");
 
@@ -223,7 +228,16 @@ function Pendiente({
           </p>
           <p className="truncate text-xs text-muted-foreground">{fila.servicios}</p>
         </div>
-        <p className="shrink-0 text-sm tabular-nums text-foreground">{pesos(fila.cobrado)}</p>
+        <div className="shrink-0 text-right">
+          <p className="text-sm tabular-nums text-foreground">{pesos(fila.precio)}</p>
+          {/* El saldo impago se dice sólo cuando existe. Callarlo haría que
+              Sol facturara sobre plata que todavía no entró. */}
+          {fila.cobrado !== fila.precio && (
+            <p className="text-[11px] tabular-nums text-muted-foreground">
+              entró {pesos(fila.cobrado)}
+            </p>
+          )}
+        </div>
         {puedeMarcar && (
           <button
             aria-label={`Marcar como facturada la atención de ${fila.clienta}`}
