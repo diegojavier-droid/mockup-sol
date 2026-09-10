@@ -1,0 +1,78 @@
+  @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+  :root {
+    --fondo:      oklch(0.965 0.003 250);
+    --panel:      #ffffff;
+    --borde:      oklch(0.905 0.004 250);
+    --borde-suave:oklch(0.945 0.003 250);
+    --texto:      oklch(0.29 0.012 250);
+    --texto-2:    oklch(0.52 0.012 250);
+    --texto-3:    oklch(0.64 0.010 250);
+    --acento:     oklch(0.52 0.085 200);
+    --acento-2:   oklch(0.955 0.022 200);
+    --barra:      oklch(0.26 0.018 250);
+    --barra-txt:  oklch(0.93 0.005 250);
+    --ok:         oklch(0.52 0.10 152);
+    --alerta:     oklch(0.56 0.14 55);
+    --fila-hover: oklch(0.975 0.004 250);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--acento); text-decoration: none; }
+  a:hover { color: var(--texto); text-decoration: underline; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* --- armazón ------------------------------------------------------ */
+  .app { width: 1440px; height: 900px; display: flex; flex-direction: column; background: var(--fondo); overflow: hidden; }
+  .barra-sup {
+    height: 44px; flex-shrink: 0; background: var(--barra); color: var(--barra-txt);
+    display: flex; align-items: center; gap: 18px; padding: 0 14px;
+  }
+  .barra-marca { font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
+  .barra-modulo { font-size: 13px; opacity: 0.92; }
+  .barra-der { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 12px; opacity: 0.85; }
+
+  .barra-acc {
+    height: 46px; flex-shrink: 0; background: var(--panel); border-bottom: 1px solid var(--borde);
+    display: flex; align-items: center; gap: 12px; padding: 0 14px;
+  }
+  .miga { font-size: 13px; color: var(--texto-2); display: flex; align-items: center; gap: 7px; }
+  .miga strong { font-weight: 600; color: var(--texto); }
+
+  .btn {
+    height: 30px; padding: 0 13px; border-radius: 4px; border: 1px solid var(--borde);
+    background: var(--panel); color: var(--texto); font: inherit; font-size: 12.5px;
+    display: inline-flex; align-items: center; gap: 6px; cursor: default;
+  }
+  .btn-p { background: var(--acento); border-color: var(--acento); color: #fff; font-weight: 500; }
+
+  .buscador {
+    margin-left: auto; height: 30px; min-width: 300px; border: 1px solid var(--borde);
+    border-radius: 4px; background: var(--panel); display: flex; align-items: center;
+    gap: 8px; padding: 0 10px; color: var(--texto-3); font-size: 12.5px;
+  }
+  .pildora {
+    height: 22px; padding: 0 9px; border-radius: 3px; background: var(--acento-2);
+    color: var(--acento); font-size: 11.5px; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .lienzo { flex-grow: 1; padding: 14px; overflow: hidden; }
+  .hoja { background: var(--panel); border: 1px solid var(--borde); border-radius: 5px; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* --- tablas ------------------------------------------------------- */
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--texto-3); padding: 9px 12px;
+    border-bottom: 1px solid var(--borde); background: var(--panel);
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--borde-suave); font-size: 13px; }
+  .der { text-align: right; }
+  .paginador { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--texto-2); }
+  .rotulo { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-3); }
