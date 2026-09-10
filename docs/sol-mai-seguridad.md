@@ -98,11 +98,21 @@ significar demasiadas cosas: hoy quien atiende no ve Finanzas, pero
 tampoco hay manera de decir «esta persona sí puede ver Inventario y no
 Compras» sin tocar código.
 
-### 3.3. El registro de cambios se escribe para nadie
+### 3.3. ~~El registro de cambios se escribe para nadie~~ · CERRADO (2026-09-10)
 
-`audit_log` no tiene **ningún** endpoint que lo lea. Un registro que
-nadie puede consultar no cumple su función: no sirve para entender por
-qué un número no cierra, ni para saber quién cambió qué.
+`Usuarios y roles › Registro de cambios` lo lee, con filtros por
+período, persona y tipo de cosa, y traduce los códigos a castellano —«Sol
+cambió el precio de Corte femenino, $47.000 → $21.000», no
+`service_price_changed`—.
+
+La traducción vive en el frontend a propósito: la base guarda hechos, que
+es lo que la hace servir dentro de diez años, y la redacción se corrige
+sin migrar nada. Lo que el sistema todavía no sabe decir se muestra tal
+cual, con su detalle: una pantalla que esconde lo que no entiende deja de
+ser un registro.
+
+**No existe la contracara y no la va a haber.** No hay función para
+editar ni para borrar, y el clean-room falla si alguna aparece.
 
 ### 3.4. Cambiar quién entra exige un despliegue
 
@@ -177,12 +187,12 @@ no cumple estas ocho.
 
 ## 5. Qué hay que construir, en orden
 
-| #   | Qué                                                                              | Por qué primero                                                  |
-| --- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| 1   | ~~Personas: alta, baja y cambio de rol desde el panel~~ · **HECHO** (2026-09-10) | Era el agujero operativo real                                    |
-| 2   | **Registro de cambios**: la pantalla que lee `audit_log`                         | Es lo más barato de todo: el dato ya se escribe, falta la puerta |
-| 3   | **Roles por módulo**                                                             | Recién tiene sentido con los nueve módulos en pie                |
-| 4   | **Accesos**: cuándo entró cada uno, y cortar una sesión                          | Necesita 1 para poder actuar sobre lo que muestra                |
+| #   | Qué                                                                               | Por qué primero                                   |
+| --- | --------------------------------------------------------------------------------- | ------------------------------------------------- |
+| 1   | ~~Personas: alta, baja y cambio de rol desde el panel~~ · **HECHO** (2026-09-10)  | Era el agujero operativo real                     |
+| 2   | ~~Registro de cambios: la pantalla que lee `audit_log`~~ · **HECHO** (2026-09-10) | El dato ya se escribía; faltaba la puerta         |
+| 3   | **Roles por módulo**                                                              | Recién tiene sentido con los nueve módulos en pie |
+| 4   | **Accesos**: cuándo entró cada uno, y cortar una sesión                           | Necesita 1 para poder actuar sobre lo que muestra |
 
 Los pasos 1 y 3 tocan permisos, así que van con tests negativos y con
 una invariante en el clean-room: **no se puede dejar el sistema sin

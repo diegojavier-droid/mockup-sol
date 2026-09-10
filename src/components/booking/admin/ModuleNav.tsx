@@ -82,7 +82,7 @@ export const MODULOS: { grupo: string; items: ModuleDef[] }[] = [
       {
         key: "personas",
         label: "Usuarios y roles",
-        secciones: "Personas",
+        secciones: "Personas · Registro de cambios",
         soloSol: true,
         listo: true,
       },

@@ -24,8 +24,10 @@ import {
   SALON_EDIT_MESSAGES,
 } from "../../lib/admin/salon-repository";
 import {
+  auditActors,
   inviteStaff,
   listStaff,
+  readAuditLog,
   setStaffActive,
   setStaffRole,
   StaffAdminError,
@@ -911,6 +913,46 @@ export function createAdminRoute(env: ServerEnv) {
       }),
     );
   });
+
+  /**
+   * El registro de cambios.
+   *
+   * `audit_log` se escribe desde el principio y hasta acá no lo leía
+   * nadie. Sólo lectura: no existe la contracara y no la va a haber.
+   *
+   * Va detrás de `owner` porque el registro nombra clientas y montos.
+   */
+  owner.get("/audit", async (c) => {
+    const q = c.req.query();
+    const parsed = z
+      .object({
+        desde: z.string().datetime().optional(),
+        hasta: z.string().datetime().optional(),
+        actorId: z.string().uuid().optional(),
+        entityType: z
+          .enum(["booking", "customer", "staff_member", "service", "product", "resource"])
+          .optional(),
+        cursor: z.coerce.number().int().positive().optional(),
+        limit: z.coerce.number().int().min(1).max(200).optional(),
+      })
+      .safeParse(q);
+    if (!parsed.success) throw new HTTPException(400, { message: "Filtros inválidos." });
+
+    return staffAdmin(c, () =>
+      readAuditLog(createSupabaseAdminClient(env), {
+        desde: parsed.data.desde ?? null,
+        hasta: parsed.data.hasta ?? null,
+        actorId: parsed.data.actorId ?? null,
+        entityType: parsed.data.entityType ?? null,
+        cursor: parsed.data.cursor ?? null,
+        limit: parsed.data.limit ?? 50,
+      }),
+    );
+  });
+
+  owner.get("/audit/actors", async (c) =>
+    staffAdmin(c, () => auditActors(createSupabaseAdminClient(env))),
+  );
 
   owner.get("/salon/services", async (c) =>
     salon(c, () => listServiceTiers(createSupabaseAdminClient(env))),
