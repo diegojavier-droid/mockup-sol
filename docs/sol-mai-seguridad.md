@@ -78,18 +78,18 @@ valor anterior.
 
 Esto es lo que un segundo auditor debería mirar primero.
 
-### 3.1. No se puede dar de alta ni de baja a nadie
+### 3.1. ~~No se puede dar de alta ni de baja a nadie~~ · CERRADO (2026-09-10)
 
-**No hay una sola escritura a `staff_members` en todo el backend.**
-Sumar a alguien hoy es: editar un secreto en GitHub, desplegar, y meter
-una fila a mano en SQL. Sacarlo, lo mismo al revés.
+Era el agujero real, y era operativo y no criptográfico: no había una
+sola escritura a `staff_members` en todo el backend, así que sacarle el
+acceso a alguien dependía de que nosotros estuviéramos disponibles.
 
-La migración que creó los roles
-(`20260822190000_staff_access.sql`) dice textualmente _«Al equipo lo da
-de alta la dueña desde el panel»_. Esa pantalla nunca se construyó.
-
-**Consecuencia real:** el día que alguien deja el salón, sacarle el
-acceso depende de que nosotros estemos disponibles. Eso no puede ser.
+**Resuelto.** `Usuarios y roles › Personas` suma, saca el acceso, lo
+devuelve y cambia el rol, con auditoría y con el guard del rol también en
+la base. La invariante «el salón nunca queda sin dueña» es un trigger
+sobre la tabla, así que aguanta incluso un `UPDATE` escrito a mano —que
+es exactamente la forma en que alguien se dejaría afuera de su propio
+sistema.
 
 ### 3.2. Los roles son dos y están fijos en el código
 
@@ -177,12 +177,12 @@ no cumple estas ocho.
 
 ## 5. Qué hay que construir, en orden
 
-| #   | Qué                                                      | Por qué primero                                                                   |
-| --- | -------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| 1   | **Personas**: alta, baja y cambio de rol desde el panel  | Es el agujero operativo real: hoy sacarle el acceso a alguien depende de nosotros |
-| 2   | **Registro de cambios**: la pantalla que lee `audit_log` | Es lo más barato de todo: el dato ya se escribe, falta la puerta                  |
-| 3   | **Roles por módulo**                                     | Recién tiene sentido con los nueve módulos en pie                                 |
-| 4   | **Accesos**: cuándo entró cada uno, y cortar una sesión  | Necesita 1 para poder actuar sobre lo que muestra                                 |
+| #   | Qué                                                                              | Por qué primero                                                  |
+| --- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 1   | ~~Personas: alta, baja y cambio de rol desde el panel~~ · **HECHO** (2026-09-10) | Era el agujero operativo real                                    |
+| 2   | **Registro de cambios**: la pantalla que lee `audit_log`                         | Es lo más barato de todo: el dato ya se escribe, falta la puerta |
+| 3   | **Roles por módulo**                                                             | Recién tiene sentido con los nueve módulos en pie                |
+| 4   | **Accesos**: cuándo entró cada uno, y cortar una sesión                          | Necesita 1 para poder actuar sobre lo que muestra                |
 
 Los pasos 1 y 3 tocan permisos, así que van con tests negativos y con
 una invariante en el clean-room: **no se puede dejar el sistema sin

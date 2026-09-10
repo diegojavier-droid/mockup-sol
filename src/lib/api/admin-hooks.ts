@@ -186,6 +186,59 @@ export function usePendingRefunds() {
  * la clienta vino y nadie tocó «Llegó». Sin esto, esa clienta queda
  * anotada como ausente y sin su seña, por una distracción.
  */
+export interface StaffRow {
+  id: string;
+  displayName: string;
+  email: string;
+  role: "owner" | "staff";
+  isActive: boolean;
+  createdAt: string;
+}
+
+/** Quién puede entrar al panel. Sólo la dueña ve y toca esto. */
+export function useStaffList(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "staff"],
+    queryFn: () => adminApi.get<StaffRow[]>("/staff"),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+function useStaffMutation<V, R>(fn: (v: V) => Promise<R>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "staff"] });
+      // Si la dueña se cambió el rol a sí misma o quedó sin acceso, el
+      // panel entero tiene que enterarse: lo que se ve depende del rol.
+      qc.invalidateQueries({ queryKey: ["admin", "me"] });
+    },
+  });
+}
+
+export function useInviteStaff() {
+  return useStaffMutation(
+    (v: { email: string; displayName?: string | null; role: "owner" | "staff" }) =>
+      adminApi.post<{ id: string; reingreso: boolean }>("/staff", v),
+  );
+}
+
+export function useSetStaffActive() {
+  return useStaffMutation((v: { staffId: string; active: boolean }) =>
+    adminApi.post<{ id: string; activa: boolean }>(`/staff/${v.staffId}/active`, {
+      active: v.active,
+    }),
+  );
+}
+
+export function useSetStaffRole() {
+  return useStaffMutation((v: { staffId: string; role: "owner" | "staff" }) =>
+    adminApi.post<{ id: string; rol: string }>(`/staff/${v.staffId}/role`, { role: v.role }),
+  );
+}
+
 export interface ServiceTierRow {
   slug: string;
   name: string;

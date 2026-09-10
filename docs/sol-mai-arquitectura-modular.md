@@ -517,8 +517,9 @@ antes, que ya era falso:
 
 - Para entrar hacen falta **tres** cosas: un token válido, un proveedor
   que verifique el email —en producción sólo Google, con un guard que
-  tumba el arranque si se afloja— y estar a la vez en
-  `INTERNAL_AUTH_ALLOWED_EMAILS` y en `staff_members`.
+  tumba el arranque si se afloja— y una fila activa en `staff_members`,
+  que administra la dueña. `INTERNAL_AUTH_ALLOWED_EMAILS` pasó a
+  gobernar sólo el arranque en frío (ver `docs/sol-mai-seguridad.md`).
 - **Los dos roles NO ven lo mismo.** `requireOwner()` protege 22 rutas.
   Quien atiende recibe 403 en la caja y 200 en la agenda, aunque escriba
   la URL a mano. (La versión anterior de este párrafo decía lo
@@ -530,14 +531,12 @@ antes, que ya era falso:
 
 **Los tres agujeros, y por qué este módulo sube de prioridad:**
 
-1. **No se puede dar de alta ni de baja a nadie.** No hay una sola
-   escritura a `staff_members` en todo el backend. Sumar a alguien es
-   editar un secreto, desplegar e insertar SQL a mano. La migración que
-   creó los roles ya prometía «al equipo lo da de alta la dueña desde el
-   panel», y esa pantalla nunca existió. **El día que alguien deja el
-   salón, sacarle el acceso depende de que nosotros estemos
-   disponibles.** Ese es el agujero real, y no es criptográfico: es
-   operativo.
+1. ~~**No se puede dar de alta ni de baja a nadie.**~~ **Cerrado el
+   2026-09-10.** `Usuarios y roles › Personas` suma, saca el acceso, lo
+   devuelve y cambia el rol, con auditoría, con el guard del rol también
+   en la base, y con la invariante «el salón nunca queda sin dueña» como
+   trigger sobre la tabla —para que aguante también un `UPDATE` escrito
+   a mano, que es como alguien se dejaría afuera de su propio sistema.
 2. **Dos roles fijos en código.** Alcanzaban con una pantalla. Con nueve
    módulos, «quien atiende» pasó a significar demasiadas cosas.
 3. **`audit_log` no tiene lector.** Se escribe en cada cambio de plata,
@@ -904,22 +903,22 @@ el cierre, la reprogramación cuando se construya, la excepción cuando se
 toque la agenda. Separarlo era ordenado en un documento y molesto en la
 práctica.
 
-| #   | Bloque                                                     | Por qué                                                                                                                        |
-| --- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | ~~Finanzas › Caja del día~~ · **HECHO** (2026-09-09)       | Salió entera de `payments`, sin tablas nuevas ni carga manual                                                                  |
-| 2   | ~~Servicios › Precios y tiempos~~ · **HECHO** (2026-09-09) | Sol ya cambia precios, tiempos, puestos y productos sin que nadie despliegue                                                   |
-| 3   | **Usuarios y roles › Personas**                            | El agujero operativo real: hoy sacarle el acceso a alguien depende de nosotros (§5.8). Y es condición para Finanzas y Personal |
-| 4   | **Usuarios y roles › Registro de cambios**                 | Lo más barato del plan: `audit_log` ya se escribe en cada cambio, falta la puerta para leerlo                                  |
-| 5   | **Finanzas › Facturación**                                 | Sale de la caja que ya está y cierra el hueco de §8.3: hoy nada le dice a Sol qué atenciones no tienen comprobante             |
-| 6   | El panel pregunta lo mismo que la web al tomar un turno    | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1)                       |
-| 7   | Clientas › Fichas                                          | El backend está entero; falta sólo la pantalla                                                                                 |
-| 8   | El aviso de cancelación con sus dos momentos (§11.4)       | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo                                           |
-| 9   | Inventario, y el precio que sale del producto usado        | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación                                               |
-| 10  | Calendario › Mes y Año                                     | Existen los datos; falta la vista. Barata comparada con las de arriba                                                          |
-| 11  | Finanzas › Gastos                                          | Primera tabla nueva                                                                                                            |
-| 12  | Clientas › Sin venir hace tiempo                           | Necesita historial suficiente para no equivocarse                                                                              |
-| 13  | Personal › Producción                                      | Necesita el porcentaje, que es dato de Sol (§12)                                                                               |
-| 14  | Compras                                                    | Ninguna urgencia hoy                                                                                                           |
+| #   | Bloque                                                     | Por qué                                                                                                            |
+| --- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 1   | ~~Finanzas › Caja del día~~ · **HECHO** (2026-09-09)       | Salió entera de `payments`, sin tablas nuevas ni carga manual                                                      |
+| 2   | ~~Servicios › Precios y tiempos~~ · **HECHO** (2026-09-09) | Sol ya cambia precios, tiempos, puestos y productos sin que nadie despliegue                                       |
+| 3   | ~~Usuarios y roles › Personas~~ · **HECHO** (2026-09-10)   | Era el agujero operativo real; y era condición para Finanzas y Personal                                            |
+| 4   | **Usuarios y roles › Registro de cambios**                 | Lo más barato del plan: `audit_log` ya se escribe en cada cambio, falta la puerta para leerlo                      |
+| 5   | **Finanzas › Facturación**                                 | Sale de la caja que ya está y cierra el hueco de §8.3: hoy nada le dice a Sol qué atenciones no tienen comprobante |
+| 6   | El panel pregunta lo mismo que la web al tomar un turno    | Reutiliza un motor que ya existe; hoy la secretaria al teléfono recibe menos ayuda que la clienta (§4.1)           |
+| 7   | Clientas › Fichas                                          | El backend está entero; falta sólo la pantalla                                                                     |
+| 8   | El aviso de cancelación con sus dos momentos (§11.4)       | Cierra un defecto de plata que hoy puede perjudicar a una clienta que avisó a tiempo                               |
+| 9   | Inventario, y el precio que sale del producto usado        | Es el modelo de negocio real (§5.10); hoy el ajuste es un número sin explicación                                   |
+| 10  | Calendario › Mes y Año                                     | Existen los datos; falta la vista. Barata comparada con las de arriba                                              |
+| 11  | Finanzas › Gastos                                          | Primera tabla nueva                                                                                                |
+| 12  | Clientas › Sin venir hace tiempo                           | Necesita historial suficiente para no equivocarse                                                                  |
+| 13  | Personal › Producción                                      | Necesita el porcentaje, que es dato de Sol (§12)                                                                   |
+| 14  | Compras                                                    | Ninguna urgencia hoy                                                                                               |
 
 Reordenar esto es una decisión de dirección, no técnica.
 

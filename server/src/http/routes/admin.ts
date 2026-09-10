@@ -24,6 +24,14 @@ import {
   SALON_EDIT_MESSAGES,
 } from "../../lib/admin/salon-repository";
 import {
+  inviteStaff,
+  listStaff,
+  setStaffActive,
+  setStaffRole,
+  StaffAdminError,
+  STAFF_ADMIN_MESSAGES,
+} from "../../lib/admin/staff-repository";
+import {
   aplicarCambios,
   asistenteDisponible,
   interpretarInstruccion,
@@ -820,6 +828,89 @@ export function createAdminRoute(env: ServerEnv) {
       throw error;
     }
   };
+
+  /**
+   * Quién puede entrar al panel.
+   *
+   * Hasta este bloque no existía una sola escritura a `staff_members`:
+   * sumar o sacar a alguien era editar un secreto, desplegar y tocar la
+   * base a mano. El día que una persona deja el salón, sacarle el acceso
+   * no puede depender de que estemos nosotros.
+   *
+   * Va detrás de `owner` y ADEMÁS cada función de la base verifica el
+   * rol. No es redundancia inútil: la ruta protege el camino que
+   * conocemos, la función protege la tabla.
+   */
+  const staffAdmin = async <T>(c: Context<{ Variables: StaffVars }>, fn: () => Promise<T>) => {
+    try {
+      return c.json({ data: await fn() });
+    } catch (error) {
+      const code = error instanceof StaffAdminError ? error.code : "";
+      const conocido = Object.keys(STAFF_ADMIN_MESSAGES).find((k) => code.includes(k));
+      if (conocido) {
+        const { status, message } = STAFF_ADMIN_MESSAGES[conocido]!;
+        throw new HTTPException(status, { message });
+      }
+      throw error;
+    }
+  };
+
+  owner.get("/staff", async (c) => staffAdmin(c, () => listStaff(createSupabaseAdminClient(env))));
+
+  owner.post("/staff", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({
+        email: z.string().email().max(160),
+        displayName: z.string().max(120).nullish(),
+        role: z.enum(["owner", "staff"]),
+      })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+      throw new HTTPException(400, { message: "Revisá el correo y el rol." });
+    }
+    return staffAdmin(c, () =>
+      inviteStaff(createSupabaseAdminClient(env), {
+        email: parsed.data.email,
+        displayName: parsed.data.displayName ?? null,
+        role: parsed.data.role,
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  owner.post("/staff/:id/active", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({ active: z.boolean() })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) throw new HTTPException(400, { message: "Datos inválidos." });
+    return staffAdmin(c, () =>
+      setStaffActive(createSupabaseAdminClient(env), {
+        staffId: c.req.param("id"),
+        active: parsed.data.active,
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  owner.post("/staff/:id/role", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({ role: z.enum(["owner", "staff"]) })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) throw new HTTPException(400, { message: "Ese rol no existe." });
+    return staffAdmin(c, () =>
+      setStaffRole(createSupabaseAdminClient(env), {
+        staffId: c.req.param("id"),
+        role: parsed.data.role,
+        actorId: staff.staffId,
+        actorLabel: staff.email,
+      }),
+    );
+  });
 
   owner.get("/salon/services", async (c) =>
     salon(c, () => listServiceTiers(createSupabaseAdminClient(env))),

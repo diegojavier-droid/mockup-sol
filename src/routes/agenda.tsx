@@ -12,6 +12,7 @@ import { useState } from "react";
 import { AgendaScreen } from "@/components/booking/admin/AgendaScreen";
 import { DashboardScreen } from "@/components/booking/admin/DashboardScreen";
 import { SalonScreen } from "@/components/booking/admin/SalonScreen";
+import { PeopleScreen } from "@/components/booking/admin/PeopleScreen";
 import { ModuleNav, type ModuleKey } from "@/components/booking/admin/ModuleNav";
 import { useStaffIdentity } from "@/lib/api/admin-hooks";
 import { clearStaffToken, readStaffToken, writeStaffToken } from "@/lib/staff-session";
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/agenda")({
 
 function AgendaRoute() {
   const [hasToken, setHasToken] = useState(() => Boolean(readStaffToken()));
-  const [tab, setTab] = useState<ModuleKey>("hoy");
+  const [tab, setTab] = useState<ModuleKey>("calendario");
   const identity = useStaffIdentity();
   const qc = useQueryClient();
 
@@ -79,10 +80,15 @@ function AgendaRoute() {
           <ModuleNav activo={tab} isOwner={identity.data?.role === "owner"} onElegir={setTab} />
         </div>
 
-        {tab === "caja" && identity.data?.role === "owner" ? (
+        {/* El rol se vuelve a mirar acá aunque `ModuleNav` ya esconda lo
+            que no corresponde: esconder no es una frontera, y el estado
+            del módulo activo sobrevive a un cambio de rol. */}
+        {tab === "finanzas" && identity.data?.role === "owner" ? (
           <DashboardScreen />
-        ) : tab === "salon" && identity.data?.role === "owner" ? (
+        ) : tab === "servicios" && identity.data?.role === "owner" ? (
           <SalonScreen />
+        ) : tab === "personas" && identity.data?.role === "owner" ? (
+          <PeopleScreen />
         ) : (
           <AgendaScreen />
         )}
