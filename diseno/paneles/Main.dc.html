@@ -95,7 +95,7 @@
     <span style="display: flex; align-items: center; gap: 9px;"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg></span>
     <span class="barra-marca">Sol Mai</span>
     <span style="opacity: 0.35;">/</span>
-    <span class="barra-modulo">Escritorio</span>
+    <span class="barra-modulo" style="font-weight: 500;">Escritorio</span>
     <span class="barra-der">
       <span>Sol · dueña</span>
     </span>
@@ -106,68 +106,101 @@
     <span class="buscador"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4.4-4.4"></path></svg><span>Buscar una clienta, un turno, un producto…</span></span>
   </div>
 
-  <div class="lienzo" style="padding: 22px 26px;">
-    <div style="display: flex; flex-direction: column; gap: 22px; max-width: 1120px;">
+  <div class="lienzo" style="padding: 20px 24px; overflow: hidden;">
+    <div style="display: flex; flex-direction: column; gap: 18px;">
       <div style="display: flex; flex-direction: column; gap: 9px;">
         <span class="rotulo">Todos los días</span>
-        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;">
-        <div style="border: 1px solid var(--borde); background: var(--panel); border-radius: 5px; padding: 14px 15px; height: 104px; display: flex; flex-direction: column; gap: 3px;">
-          <span style="font-size: 15px; font-weight: 600; color: var(--texto);">Hoy</span>
-          <span style="font-size: 12.5px; color: var(--texto-2);">Quién viene y a qué hora</span>
-          <span style="margin-top: auto;"><span style="font-size: 12px; color: var(--acento);" class="num">6 turnos</span></span>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start;">
+        <div style="border: 1px solid var(--borde); background: var(--panel); border-radius: 5px; padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 9px;">
+          <span style="font-size: 14.5px; font-weight: 600; color: var(--texto);">Calendario</span>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Hoy</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Semana</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Mes</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Año</span>
+          </div>
         </div>
-        <div style="border: 1px dashed var(--borde); background: transparent; border-radius: 5px; padding: 14px 15px; height: 104px; display: flex; flex-direction: column; gap: 3px;">
-          <span style="font-size: 15px; font-weight: 600; color: var(--texto-3);">Clientas</span>
-          <span style="font-size: 12.5px; color: var(--texto-3);">Qué le hice la última vez</span>
-          <span style="margin-top: auto;"><span style="font-size: 11.5px; color: var(--texto-3);">Todavía no</span></span>
+        <div style="border: 1px solid var(--borde-suave); background: var(--panel); border-radius: 5px; padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 9px;">
+          <span style="font-size: 14.5px; font-weight: 600; color: var(--texto-2);">Clientas</span>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Fichas</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Sin venir hace tiempo</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Consentimientos</span>
+          </div>
         </div>
-        <div style="border: 1px solid var(--borde); background: var(--panel); border-radius: 5px; padding: 14px 15px; height: 104px; display: flex; flex-direction: column; gap: 3px;">
-          <span style="font-size: 15px; font-weight: 600; color: var(--texto);">Los números</span>
-          <span style="font-size: 12.5px; color: var(--texto-2);">Cuánto entró y por dónde</span>
-          <span style="margin-top: auto;"><span style="font-size: 12px; color: var(--acento);" class="num">la caja de hoy</span></span>
+        <div style="border: 1px solid var(--borde); background: var(--panel); border-radius: 5px; padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 9px;">
+          <span style="font-size: 14.5px; font-weight: 600; color: var(--texto);">Finanzas</span>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Caja del día</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Cobros</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Devoluciones</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Facturación</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Gastos</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Resumen</span>
+          </div>
         </div>
-        <div style="border: 1px dashed var(--borde); background: transparent; border-radius: 5px; padding: 14px 15px; height: 104px; display: flex; flex-direction: column; gap: 3px;">
-          <span style="font-size: 15px; font-weight: 600; color: var(--texto-3);">Productos</span>
-          <span style="font-size: 12.5px; color: var(--texto-3);">Qué queda y qué usé</span>
-          <span style="margin-top: auto;"><span style="font-size: 11.5px; color: var(--texto-3);">Todavía no</span></span>
+        <div style="border: 1px solid var(--borde); background: var(--panel); border-radius: 5px; padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 9px;">
+          <span style="font-size: 14.5px; font-weight: 600; color: var(--texto);">Inventario</span>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Productos</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Stock</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Movimientos</span>
+          </div>
         </div>
         </div>
       </div>
       <div style="display: flex; flex-direction: column; gap: 9px;">
         <span class="rotulo">Cada tanto</span>
-        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;">
-        <div style="border: 1px solid var(--borde); background: var(--panel); border-radius: 5px; padding: 14px 15px; height: 104px; display: flex; flex-direction: column; gap: 3px;">
-          <span style="font-size: 15px; font-weight: 600; color: var(--texto);">El salón</span>
-          <span style="font-size: 12.5px; color: var(--texto-2);">Cuánto sale y cuánto lleva</span>
-          <span style="margin-top: auto;"><span style="font-size: 12px; color: var(--acento);" class="num">127 precios</span></span>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start;">
+        <div style="border: 1px solid var(--borde); background: var(--panel); border-radius: 5px; padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 9px;">
+          <span style="font-size: 14.5px; font-weight: 600; color: var(--texto);">Servicios</span>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Precios y tiempos</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Áreas</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Puestos de trabajo</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Horarios</span>
+          </div>
         </div>
-        <div style="border: 1px dashed var(--borde); background: transparent; border-radius: 5px; padding: 14px 15px; height: 104px; display: flex; flex-direction: column; gap: 3px;">
-          <span style="font-size: 15px; font-weight: 600; color: var(--texto-3);">Quién atiende</span>
-          <span style="font-size: 12.5px; color: var(--texto-3);">Cuánto produjo cada una</span>
-          <span style="margin-top: auto;"><span style="font-size: 11.5px; color: var(--texto-3);">Todavía no</span></span>
+        <div style="border: 1px solid var(--borde-suave); background: var(--panel); border-radius: 5px; padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 9px;">
+          <span style="font-size: 14.5px; font-weight: 600; color: var(--texto-2);">Personal</span>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Empleados</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Horarios</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Producción</span>
+          </div>
         </div>
-        <div style="border: 1px dashed var(--borde); background: transparent; border-radius: 5px; padding: 14px 15px; height: 104px; display: flex; flex-direction: column; gap: 3px;">
-          <span style="font-size: 15px; font-weight: 600; color: var(--texto-3);">Proveedores</span>
-          <span style="font-size: 12.5px; color: var(--texto-3);">A quién le compro</span>
-          <span style="margin-top: auto;"><span style="font-size: 11.5px; color: var(--texto-3);">Todavía no</span></span>
+        <div style="border: 1px solid var(--borde-suave); background: var(--panel); border-radius: 5px; padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 9px;">
+          <span style="font-size: 14.5px; font-weight: 600; color: var(--texto-2);">Compras</span>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Proveedores</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Pedidos</span>
+          </div>
         </div>
         </div>
       </div>
       <div style="display: flex; flex-direction: column; gap: 9px;">
         <span class="rotulo">Casi nunca, pero tiene que estar</span>
-        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;">
-        <div style="border: 1px dashed var(--borde); background: transparent; border-radius: 5px; padding: 14px 15px; height: 104px; display: flex; flex-direction: column; gap: 3px;">
-          <span style="font-size: 15px; font-weight: 600; color: var(--texto-3);">Permisos</span>
-          <span style="font-size: 12.5px; color: var(--texto-3);">Quién puede ver qué</span>
-          <span style="margin-top: auto;"><span style="font-size: 11.5px; color: var(--texto-3);">Todavía no</span></span>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start;">
+        <div style="border: 1px solid var(--borde); background: var(--panel); border-radius: 5px; padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 9px;">
+          <span style="font-size: 14.5px; font-weight: 600; color: var(--texto);">Configuración</span>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Usuarios y permisos</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Datos del negocio</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2);"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento); flex-shrink: 0;"></span>Términos y privacidad</span>
+          </div>
         </div>
-        <div style="border: 1px dashed var(--borde); background: transparent; border-radius: 5px; padding: 14px 15px; height: 104px; display: flex; flex-direction: column; gap: 3px;">
-          <span style="font-size: 15px; font-weight: 600; color: var(--texto-3);">Qué pasó</span>
-          <span style="font-size: 12.5px; color: var(--texto-3);">Quién cambió esto y cuándo</span>
-          <span style="margin-top: auto;"><span style="font-size: 11.5px; color: var(--texto-3);">Todavía no</span></span>
+        <div style="border: 1px solid var(--borde-suave); background: var(--panel); border-radius: 5px; padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 9px;">
+          <span style="font-size: 14.5px; font-weight: 600; color: var(--texto-2);">Auditoría</span>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-3);"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box; flex-shrink: 0;"></span>Registro de cambios</span>
+          </div>
         </div>
         </div>
       </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 18px; padding-top: 16px; font-size: 12px; color: var(--texto-3);">
+      <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--acento);"></span>anda</span>
+      <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--texto-3); box-sizing: border-box;"></span>todavía no</span>
     </div>
   </div>
 </div>
