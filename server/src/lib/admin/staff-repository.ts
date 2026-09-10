@@ -25,7 +25,8 @@ export interface StaffRow {
   id: string;
   displayName: string;
   email: string;
-  role: "owner" | "staff";
+  /** El slug del rol. Dejó de ser una lista fija cuando Sol pudo armarlos. */
+  role: string;
   isActive: boolean;
   createdAt: string;
 }
@@ -46,7 +47,7 @@ export async function listStaff(admin: SupabaseAdminClient): Promise<StaffRow[]>
     id: r.id,
     displayName: r.display_name,
     email: r.email,
-    role: r.role === "owner" ? "owner" : "staff",
+    role: r.role,
     isActive: r.is_active,
     createdAt: r.created_at,
   }));
@@ -57,7 +58,7 @@ export async function inviteStaff(
   p: {
     email: string;
     displayName?: string | null;
-    role: "owner" | "staff";
+    role: string;
     actorId: string;
     actorLabel?: string | null;
   },
@@ -91,7 +92,7 @@ export async function setStaffRole(
   admin: SupabaseAdminClient,
   p: {
     staffId: string;
-    role: "owner" | "staff";
+    role: string;
     actorId: string;
     actorLabel?: string | null;
   },
