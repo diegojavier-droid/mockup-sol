@@ -4,6 +4,25 @@ Este archivo existe porque las sesiones se pierden y el repositorio no.
 Es corto a propósito: lo que hay que decidir y lo que sigue, nada más.
 Cuando el bloque de navegación esté hecho, se borra.
 
+## EMPEZÁ POR ACÁ
+
+En este orden, sin saltear:
+
+1. **Comprobá la red.** `curl -sS -o /dev/null -w '%{http_code}' --max-time 15
+   https://developers.facebook.com/docs/whatsapp/`. Si da 403, decilo y
+   seguí igual: no bloquea nada de abajo.
+2. **Preguntá las tres definiciones** de la sección siguiente, las tres
+   juntas y con `AskUserQuestion`, que se contesta con un clic. NO
+   empieces a escribir código antes de tener las respuestas.
+3. **Implementá la navegación** con el alcance de más abajo, mirando el
+   boceto en `diseno/navegacion/`.
+
+Lo que NO hay que hacer en este bloque: rehacer las pantallas de adentro
+(Servicios, Roles, Personas, Finanzas). Están feas y no importa todavía.
+El acuerdo fue arreglar **cómo se llega** a las cosas, nada más.
+
+---
+
 ## Lo que está esperando una respuesta de dirección
 
 **1. Las tres definiciones de la navegación.** Sin esto no arranca la
