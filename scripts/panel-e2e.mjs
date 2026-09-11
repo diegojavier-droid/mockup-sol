@@ -10,6 +10,9 @@ import { chromium } from "playwright";
 const BASE = process.env.SOLMAI_E2E_BASE ?? "http://127.0.0.1:4173";
 const TOKEN_SOL = process.argv[2];
 const TOKEN_STAFF = process.argv[3];
+// Un token válido de alguien que NO está en `staff_members`. Sirve para el
+// único final donde pedir otro link no arregla nada.
+const TOKEN_NADIE = process.argv[4];
 const fallos = [];
 const ok = (n, c, d = "") => {
   console.log(c ? `OK  · ${n}` : `FALLA · ${n}${d ? ` — ${d}` : ""}`);
@@ -239,7 +242,11 @@ console.log("\n── Usuarios y roles · Personas");
 // por qué saber qué es `staff_invited`— y que no ofrezca borrar nada.
 console.log("\n── Usuarios y roles · Registro de cambios");
 {
-  const t = await esperarTexto(sol, /le dio acceso al panel/i);
+  // Veinticinco segundos y no los doce de siempre: sobre una base recién
+  // reconstruida esta consulta llega tarde y la prueba daba rojo con la
+  // pantalla correcta. Se comprobó: sobre la misma base ya tibia pasa. Lo
+  // que se agranda es la espera, no lo que se exige.
+  const t = await esperarTexto(sol, /le dio acceso al panel/i, 25000);
   ok("el registro está en la misma pantalla", /no se puede editar ni borrar/i.test(t));
   ok(
     "traduce las acciones a castellano en vez de mostrar el código",
@@ -365,34 +372,66 @@ console.log("\n── La puerta del panel");
   );
   await vuelta.close();
 
-  // IDENTIFICADA PERO SIN ACCESO
+  // LOS DOS FINALES MALOS NO SON EL MISMO
   //
-  // El otro final, y el que desconcierta más: el link anduvo, hay sesión,
-  // y el servidor igual dice que no. Volver a pedir el correo ahí manda a
-  // pedir otro link que no arregla nada y que además gasta el cupo de
-  // correos por hora. Se simula con un token que el servidor rechaza.
-  const sinAcceso = await browser.newPage({ viewport: { width: 420, height: 950 } });
-  await sinAcceso.route("**/*", (r) => {
-    const u = r.request().url();
-    return u.includes("127.0.0.1") || u.includes("localhost") ? r.continue() : r.abort();
-  });
-  await sinAcceso.goto(`${BASE}/agenda`, { waitUntil: "domcontentloaded" });
-  await sinAcceso.evaluate(() =>
-    window.sessionStorage.setItem("sol-mai-staff-token", "token-que-el-servidor-rechaza"),
-  );
-  await sinAcceso.reload({ waitUntil: "domcontentloaded" });
-  const ta = await esperarTexto(sinAcceso, /no tiene acceso|falta es el acceso/i);
+  // Sesión vencida y cuenta sin permiso son problemas opuestos: a la
+  // primera hay que ofrecerle volver a entrar, a la segunda decirle que
+  // pida acceso. La primera versión de esta pantalla los trataba igual
+  // —los dos llegaban como 403— y le decía a quien se le venció la sesión
+  // que hablara con quien administra el panel. Lo marcó la revisión
+  // automática y era cierto. Ahora el servidor los separa en 401 y 403, y
+  // esto comprueba que cada uno termine en la pantalla que corresponde.
+  const abrirCon = async (token) => {
+    const page = await browser.newPage({ viewport: { width: 420, height: 950 } });
+    await page.route("**/*", (r) => {
+      const u = r.request().url();
+      return u.includes("127.0.0.1") || u.includes("localhost") ? r.continue() : r.abort();
+    });
+    await page.goto(`${BASE}/agenda`, { waitUntil: "domcontentloaded" });
+    await page.evaluate((t) => window.sessionStorage.setItem("sol-mai-staff-token", t), token);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    return page;
+  };
 
-  ok("dice que el problema no es el link", /el link anduvo/i.test(ta), ta.slice(0, 300));
-  ok("y que lo que falta lo da quien administra", /quien lo administra/i.test(ta));
-  // Lo que el usuario reportó textualmente: «me lleva a la pantalla del
-  // panel pidiéndome nuevamente mi correo».
+  // (a) Sesión vencida o token falso. Tiene que poder volver a entrar.
+  const vencida = await abrirCon("token-que-el-servidor-no-reconoce");
+  const tv2 = await esperarTexto(vencida, /volvé a entrar|sesión venció/i);
+  ok("una sesión vencida lo dice", /sesión venció/i.test(tv2), tv2.slice(0, 200));
+  ok("y deja volver a entrar", (await vencida.locator("#staff-mail").count()) > 0);
+  // La frase que NO tiene que aparecer es la del rechazo, no la nota al
+  // pie —«el acceso lo da quien lo administra» está siempre y es cierta—.
+  // La primera versión de esta comprobación buscaba la nota al pie y daba
+  // rojo con la pantalla correcta: medía otra cosa que la que decía medir.
   ok(
-    "y NO vuelve a pedir el correo, que no arregla nada",
-    (await sinAcceso.locator("#staff-mail").count()) === 0,
+    "y NO le dice que pida permisos, que no es su problema",
+    !/falta es el acceso/i.test(tv2) && !/el link anduvo/i.test(tv2),
+    tv2.slice(0, 300),
   );
-  ok("deja probar con otra cuenta", /probar con otro correo/i.test(ta));
-  await sinAcceso.close();
+  ok(
+    "sin ofrecerle salir de una sesión que ya no existe",
+    !/probar con otro correo/i.test(tv2),
+  );
+  await vencida.close();
+
+  // (b) Identidad buena, sin fila en `staff_members`. Acá sí: pedir otro
+  // link no arregla nada y además gasta el cupo de correos por hora.
+  if (!TOKEN_NADIE) {
+    ok("hay token de alguien sin acceso para probar el otro final", false, "falta argv[4]");
+  } else {
+    const sinAcceso = await abrirCon(TOKEN_NADIE);
+    const ta = await esperarTexto(sinAcceso, /falta es el acceso/i);
+
+    ok("dice que el problema no es el link", /el link anduvo/i.test(ta), ta.slice(0, 300));
+    ok("y que lo que falta lo da quien administra", /quien lo administra/i.test(ta));
+    // Lo que el usuario reportó textualmente: «me lleva a la pantalla del
+    // panel pidiéndome nuevamente mi correo».
+    ok(
+      "y NO vuelve a pedir el correo, que no arregla nada",
+      (await sinAcceso.locator("#staff-mail").count()) === 0,
+    );
+    ok("deja probar con otra cuenta", /probar con otro correo/i.test(ta));
+    await sinAcceso.close();
+  }
 }
 
 console.log("\n── Finanzas · Facturación");

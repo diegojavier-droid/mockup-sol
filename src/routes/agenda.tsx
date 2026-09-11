@@ -196,10 +196,21 @@ function SignIn({
   // link, que no arregla nada y consume el cupo de correos por hora—, así
   // que el formulario se guarda y se explica qué falta de verdad.
   //
-  // Sólo cuenta si el servidor RECHAZÓ. Un 0 —quedarse sin conexión— o un
-  // 500 no prueban nada sobre el acceso, y tratarlos igual le diría a
-  // alguien que no tiene permisos cuando lo que tiene es mal el wifi.
-  const rechazado = error instanceof ApiError && (error.status === 401 || error.status === 403);
+  // SÓLO 403, y la diferencia con el 401 es la que hace que esto sirva.
+  //
+  // La primera versión también contaba el 401, y eso convertía una sesión
+  // vencida en «pedile acceso a quien administra el panel»: el consejo
+  // opuesto al que necesita alguien que sólo tiene que volver a entrar.
+  // Lo marcó la revisión automática y era cierto.
+  //
+  // Ahora el servidor los separa: 401 es «no sé quién sos» —token vencido,
+  // falso, o de un proveedor que no aceptamos—, y ahí el cliente borra el
+  // token solo y vuelve el formulario. 403 es «sé quién sos y no te
+  // alcanza», el único caso donde pedir otro link no sirve de nada.
+  //
+  // Un 0 —quedarse sin conexión— o un 500 tampoco cuentan: dirían que no
+  // tiene permisos a alguien que lo que tiene es mal el wifi.
+  const rechazado = error instanceof ApiError && error.status === 403;
 
   useEffect(() => {
     let vivo = true;

@@ -42,10 +42,11 @@ configuración nuestro.
 `server/src/http/middleware/staffAuth.ts`:
 
 1. Un **access token válido** emitido por Supabase Auth.
-2. Que el proveedor sea **confiable**. En producción sólo Google:
-   `INTERNAL_AUTH_ALLOWED_PROVIDERS` lo controla y el arranque **falla**
-   si alguien pone ahí un proveedor que no verifica el email. Sin esto,
-   cualquiera se registra con el correo de Sol y entra.
+2. Que el proveedor sea **confiable**. `INTERNAL_AUTH_ALLOWED_PROVIDERS`
+   lo controla, y el arranque **falla** si alguien pone ahí un proveedor
+   que no verifica el email —`phone`, `facebook`, `anonymous`—, aunque
+   venga acompañado de otros dos buenos. Sin esto, cualquiera se registra
+   con el correo de Sol y entra.
 3. Que tenga una **fila activa en `staff_members`**.
    `INTERNAL_AUTH_ALLOWED_EMAILS` ya sólo gobierna el arranque en frío
    (§3.1): con el sistema andando manda `staff_members`, que administra
@@ -54,9 +55,30 @@ configuración nuestro.
 Estar autenticado no alcanza: cualquiera puede crearse una cuenta en el
 proyecto de Supabase. La autorización es explícita y separada.
 
-**Cómo entra Sol (desde 2026-09-10).** Con el botón «Entrar con Google».
-Antes la pantalla pedía pegar a mano un token de sesión de Supabase, lo
-que significaba que no podía entrar sola a su propio sistema.
+**Cómo se entra (desde 2026-09-11).** Con un **link de un solo uso al
+correo**. Google sigue existiendo como alternativa y aparece sólo si está
+configurado de verdad. Antes la pantalla pedía pegar a mano un token de
+sesión de Supabase, y entre medio hubo un día en que el único camino era
+Google: eso dejaba el panel detrás de credenciales en Google Cloud, y
+mientras no estuvieran cargadas **nadie** podía entrar, ni Sol ni quien
+construye el sistema.
+
+**Por qué el link al mail no afloja la barrera 2.** El proveedor `email`
+está admitido en la variable, pero eso no alcanza para que se acepte: en
+producción el servidor le pregunta a Supabase, por `/auth/v1/settings`, si
+exige confirmar el correo. Si auto-confirma —o si no se pudo averiguar— el
+proveedor se descarta igual, porque con auto-confirmación cualquiera se
+registra con el correo de Sol y el token que sale es indistinguible del de
+ella. Falla del lado seguro en los cuatro casos
+(`server/src/lib/identity/supabase-settings.ts`).
+
+**Los dos finales malos son distintos, y el código los separa.** Un token
+vencido o falso devuelve **401** —«no sé quién sos»—, y una identidad
+buena sin fila en `staff_members` devuelve **403** —«sé quién sos y no te
+alcanza»—. Mientras los dos salían por 403, la pantalla le decía a quien
+se le había vencido la sesión que pidiera permisos, que es el consejo
+opuesto al que necesitaba. El cliente borra el token guardado cuando ve un
+401, así que la sesión vencida vuelve sola al formulario.
 
 La sesión la maneja Supabase —flujo PKCE, no implícito, así que los
 tokens no quedan en el historial del navegador— y el panel sólo espeja el
@@ -294,26 +316,50 @@ puede recortar un módulo**.
 
 ---
 
-## 7. Lo que hay que cargar para que el ingreso con Google funcione
+## 7. Lo que hay que cargar para que el ingreso funcione
 
 Nada de esto lo puede hacer el código: son credenciales y configuración de
 consola. Van cargadas por quien administra las cuentas, **nunca pasan por
 un chat ni por el repositorio**.
+
+### 7.1. Para el link al correo (el camino principal)
+
+Se dijo una vez que este camino «no necesita configurar nada afuera». Es
+**falso** y costó el primer fallo real: el link llegaba y devolvía a
+`localhost:3000`.
+
+| Dónde                                         | Qué                            | Detalle                                                  |
+| --------------------------------------------- | ------------------------------ | -------------------------------------------------------- |
+| Supabase → Authentication → Sign In / Providers | **Confirm email** encendido  | Si auto-confirma, el servidor descarta el proveedor       |
+| Supabase → Authentication → URL Configuration | **Site URL**                   | La dirección del sitio publicado, no `localhost`          |
+| Supabase → Authentication → URL Configuration | **Redirect URLs**              | Tiene que incluir `<sitio>/agenda`                        |
+| Cloudflare (variables del Worker)             | `INTERNAL_AUTH_ALLOWED_EMAILS` | El mail de quien administra, para el arranque en frío     |
+
+Supabase valida a dónde puede volver el link contra las Redirect URLs **en
+el momento del clic, no en el del envío**: un link que salió bien puede
+igual terminar en la dirección equivocada si esa lista está mal.
+
+**Riesgo abierto:** el correo que manda Supabase por defecto está limitado
+a un par de envíos por hora. Alcanza para probar y **no** para que Sol lo
+use todos los días. Antes de eso hay que cargar un SMTP propio.
+
+### 7.2. Para Google (la alternativa)
 
 | Dónde                                         | Qué                                             | Detalle                                           |
 | --------------------------------------------- | ----------------------------------------------- | ------------------------------------------------- |
 | Google Cloud                                  | Un cliente OAuth 2.0 de tipo «Aplicación web»   | Da un Client ID y un Client Secret                |
 | Google Cloud                                  | URI de redirección autorizado                   | `https://<proyecto>.supabase.co/auth/v1/callback` |
 | Supabase → Authentication → Providers         | Habilitar Google y pegar ese Client ID y Secret |                                                   |
-| Supabase → Authentication → URL Configuration | Site URL y Redirect URLs                        | La dirección del panel: `<sitio>/agenda`          |
-| Cloudflare (variables del Worker)             | `INTERNAL_AUTH_ALLOWED_EMAILS`                  | El mail de Sol, para el arranque en frío          |
 
 `INTERNAL_AUTH_ALLOWED_PROVIDERS` no hace falta tocarlo: por defecto es
-`google`, y el arranque **falla** si alguien pone ahí un proveedor que no
-verifica el email.
+`google,email`, y el arranque **falla** si alguien pone ahí un proveedor
+que no verifica el email.
 
 **Cómo se comprueba que quedó bien**, sin necesidad de mirar logs: abrir
-el panel. Si el botón dice «Entrar con Google», el Worker está sirviendo
-la configuración. Si en cambio aparece el aviso de que Google todavía no
-está configurado y el campo de token, es que falta algo de la tabla de
-arriba —la pantalla lo dice en vez de mostrar un botón que no anda—.
+el panel. `panel-config` no devuelve la lista configurada a secas, sino su
+intersección con lo que Supabase tiene habilitado de verdad, así que la
+pantalla sólo ofrece lo que funciona. Si aparece el campo de correo, el
+link está disponible; si además aparece el botón de Google, Google quedó
+configurado; y si no aparece ninguno de los dos, la pantalla lo dice con
+todas las letras y deja el campo de token para que el sistema no quede sin
+nadie que pueda arreglarlo.
