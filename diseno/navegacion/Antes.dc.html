@@ -1,0 +1,233 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+  @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+  :root {
+    --fondo:      oklch(0.965 0.003 250);
+    --panel:      #ffffff;
+    --borde:      oklch(0.905 0.004 250);
+    --borde-suave:oklch(0.945 0.003 250);
+    --texto:      oklch(0.29 0.012 250);
+    --texto-2:    oklch(0.52 0.012 250);
+    --texto-3:    oklch(0.64 0.010 250);
+    --acento:     oklch(0.52 0.085 200);
+    --acento-2:   oklch(0.955 0.022 200);
+    --barra:      oklch(0.26 0.018 250);
+    --barra-txt:  oklch(0.93 0.005 250);
+    --ok:         oklch(0.52 0.10 152);
+    --alerta:     oklch(0.56 0.14 55);
+    --fila-hover: oklch(0.975 0.004 250);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--acento); text-decoration: none; }
+  a:hover { color: var(--texto); text-decoration: underline; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* --- armazón ------------------------------------------------------ */
+  .app { width: 1440px; height: 900px; display: flex; flex-direction: column; background: var(--fondo); overflow: hidden; }
+  .barra-sup {
+    height: 44px; flex-shrink: 0; background: var(--barra); color: var(--barra-txt);
+    display: flex; align-items: center; gap: 18px; padding: 0 14px;
+  }
+  .barra-marca { font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
+  .barra-modulo { font-size: 13px; opacity: 0.92; }
+  .barra-der { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 12px; opacity: 0.85; }
+
+  .barra-acc {
+    height: 46px; flex-shrink: 0; background: var(--panel); border-bottom: 1px solid var(--borde);
+    display: flex; align-items: center; gap: 12px; padding: 0 14px;
+  }
+  .miga { font-size: 13px; color: var(--texto-2); display: flex; align-items: center; gap: 7px; }
+  .miga strong { font-weight: 600; color: var(--texto); }
+
+  .btn {
+    height: 30px; padding: 0 13px; border-radius: 4px; border: 1px solid var(--borde);
+    background: var(--panel); color: var(--texto); font: inherit; font-size: 12.5px;
+    display: inline-flex; align-items: center; gap: 6px; cursor: default;
+  }
+  .btn-p { background: var(--acento); border-color: var(--acento); color: #fff; font-weight: 500; }
+
+  .buscador {
+    margin-left: auto; height: 30px; min-width: 300px; border: 1px solid var(--borde);
+    border-radius: 4px; background: var(--panel); display: flex; align-items: center;
+    gap: 8px; padding: 0 10px; color: var(--texto-3); font-size: 12.5px;
+  }
+  .pildora {
+    height: 22px; padding: 0 9px; border-radius: 3px; background: var(--acento-2);
+    color: var(--acento); font-size: 11.5px; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .lienzo { flex-grow: 1; padding: 14px; overflow: hidden; }
+  .hoja { background: var(--panel); border: 1px solid var(--borde); border-radius: 5px; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* --- tablas ------------------------------------------------------- */
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--texto-3); padding: 9px 12px;
+    border-bottom: 1px solid var(--borde); background: var(--panel);
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--borde-suave); font-size: 13px; }
+  .der { text-align: right; }
+  .paginador { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--texto-2); }
+  .rotulo { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-3); }
+
+  /* --- navegación nueva ---------------------------------------------
+     Lo que agrega este ejercicio sobre la hoja de `paneles/`: la barra
+     inferior del teléfono, la barra lateral del escritorio, y las
+     migas que permiten subir un nivel. Nada de esto existe hoy en el
+     código: el módulo activo vive en un `useState` y no hay jerarquía.
+  ------------------------------------------------------------------- */
+  .tel { width: 390px; height: 844px; display: flex; flex-direction: column; background: var(--fondo); overflow: hidden; }
+
+  /* Barra inferior: cuatro destinos y «Más». Siempre visible, siempre
+     con palabra debajo del dibujo. Un icono solo es ambiguo. */
+  .abajo {
+    flex-shrink: 0; border-top: 1px solid var(--borde); background: var(--panel);
+    display: flex; padding: 6px 4px 10px;
+  }
+  .abajo-item {
+    flex: 1 1 0; min-height: 52px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    color: var(--texto-3); font-size: 11px; border-radius: 4px;
+  }
+  .abajo-item.on { color: var(--acento); background: var(--acento-2); }
+  .abajo-item span { font-weight: 500; }
+
+  /* Pestañas de sección: el segundo nivel que §5.0 pide y que hoy es
+     texto muerto debajo del nombre del módulo. */
+  .secciones {
+    flex-shrink: 0; background: var(--panel); border-bottom: 1px solid var(--borde);
+    display: flex; gap: 7px; padding: 9px 14px; overflow: hidden;
+  }
+  .sec {
+    height: 36px; padding: 0 14px; border-radius: 4px; font-size: 13px;
+    display: inline-flex; align-items: center; flex-shrink: 0;
+    border: 1px solid var(--borde); color: var(--texto-2); background: var(--panel);
+  }
+  .sec.on { background: var(--acento-2); color: var(--acento); border-color: var(--acento-2); font-weight: 500; }
+
+  /* Barra lateral del escritorio: los nueve módulos, sin encabezados de
+     grupo. El orden sigue siendo el de la frecuencia; la etiqueta que la
+     nombraba se va. */
+  .lateral {
+    width: 214px; flex-shrink: 0; background: var(--barra); color: var(--barra-txt);
+    display: flex; flex-direction: column; padding: 10px 8px; gap: 1px; overflow: hidden;
+  }
+  .lat-item {
+    min-height: 34px; border-radius: 4px; padding: 0 10px; display: flex;
+    align-items: center; gap: 10px; font-size: 13px; color: var(--barra-txt); opacity: 0.72;
+  }
+  .lat-item.on { background: oklch(0.34 0.02 250); opacity: 1; font-weight: 500; }
+  .lat-item.no { opacity: 0.34; }
+  .lat-sep { height: 1px; background: oklch(0.34 0.02 250); margin: 7px 10px; }
+
+  .fila { display: flex; align-items: center; gap: 13px; min-height: 62px; padding: 11px 14px; border-bottom: 1px solid var(--borde-suave); background: var(--panel); }
+  .hora { font-size: 15px; font-weight: 600; width: 46px; flex-shrink: 0; }
+  .marca { flex-shrink: 0; font-size: 11.5px; border-radius: 4px; padding: 4px 8px; border: 1px solid var(--borde); color: var(--texto-2); background: var(--panel); }
+  .marca.ok { color: var(--ok); border-color: oklch(0.88 0.06 152); background: oklch(0.96 0.03 152); }
+  .marca.ale { color: var(--alerta); border-color: oklch(0.88 0.07 55); background: oklch(0.96 0.04 55); }
+  </style>
+</helmet>
+<div class="tel" style="background: var(--fondo);">
+
+  <div style="flex-grow: 1; overflow: hidden; padding: 16px 14px; display: flex; flex-direction: column; gap: 16px;">
+
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <span class="btn" style="height: 34px;">Configuración</span>
+      <span style="font-size: 11px; color: var(--texto-2); text-align: right;">diegojavierzimmermann · administradora &nbsp; Salir</span>
+    </div>
+
+    <!-- Reproducido de `ModuleNav.tsx`, no de memoria: los tres rótulos
+         son literales del código. -->
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span style="font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--texto-3);">Todos los días</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <span style="border: 1px solid var(--borde); border-radius: 16px; background: var(--panel); padding: 7px 11px; display: flex; flex-direction: column; gap: 1px;">
+          <span style="font-size: 13px;">Calendario</span>
+          <span style="font-size: 10.5px; color: var(--texto-2);">Hoy · Semana</span>
+        </span>
+        <span style="border: 1px dashed var(--borde); border-radius: 16px; padding: 7px 11px; display: flex; flex-direction: column; gap: 1px; opacity: 0.55;">
+          <span style="font-size: 13px;">Clientas</span>
+          <span style="font-size: 10.5px; color: var(--texto-2);">Todavía no</span>
+        </span>
+        <span style="border: 1px solid var(--acento); border-radius: 16px; background: var(--acento-2); padding: 7px 11px; display: flex; flex-direction: column; gap: 1px;">
+          <span style="font-size: 13px;">Finanzas</span>
+          <span style="font-size: 10.5px; color: var(--texto-2);">Caja del día · Facturación · Devoluciones</span>
+        </span>
+        <span style="border: 1px dashed var(--borde); border-radius: 16px; padding: 7px 11px; display: flex; flex-direction: column; gap: 1px; opacity: 0.55;">
+          <span style="font-size: 13px;">Inventario</span>
+          <span style="font-size: 10.5px; color: var(--texto-2);">Todavía no</span>
+        </span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span style="font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--texto-3);">Cada tanto</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <span style="border: 1px solid var(--borde); border-radius: 16px; background: var(--panel); padding: 7px 11px; display: flex; flex-direction: column; gap: 1px;">
+          <span style="font-size: 13px;">Servicios</span>
+          <span style="font-size: 10.5px; color: var(--texto-2);">Precios y tiempos · Puestos</span>
+        </span>
+        <span style="border: 1px dashed var(--borde); border-radius: 16px; padding: 7px 11px; display: flex; flex-direction: column; gap: 1px; opacity: 0.55;">
+          <span style="font-size: 13px;">Personal</span>
+          <span style="font-size: 10.5px; color: var(--texto-2);">Todavía no</span>
+        </span>
+        <span style="border: 1px dashed var(--borde); border-radius: 16px; padding: 7px 11px; display: flex; flex-direction: column; gap: 1px; opacity: 0.55;">
+          <span style="font-size: 13px;">Compras</span>
+          <span style="font-size: 10.5px; color: var(--texto-2);">Todavía no</span>
+        </span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span style="font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--texto-3);">Casi nunca, pero tiene que estar</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <span style="border: 1px solid var(--borde); border-radius: 16px; background: var(--panel); padding: 7px 11px; display: flex; flex-direction: column; gap: 1px;">
+          <span style="font-size: 13px;">Usuarios y roles</span>
+          <span style="font-size: 10.5px; color: var(--texto-2);">Personas · Roles · Registro de cambios</span>
+        </span>
+        <span style="border: 1px dashed var(--borde); border-radius: 16px; padding: 7px 11px; display: flex; flex-direction: column; gap: 1px; opacity: 0.55;">
+          <span style="font-size: 13px;">Configuración</span>
+          <span style="font-size: 10.5px; color: var(--texto-2);">Todavía no</span>
+        </span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 7px; margin-top: 4px;">
+      <span style="font-family: Georgia, serif; font-size: 19px;">Agenda</span>
+      <span style="font-size: 12.5px; color: var(--texto-2);">0 turnos</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 7px;">
+        <span style="border: 1px solid var(--acento); background: var(--acento-2); border-radius: 16px; padding: 6px 13px; font-size: 12.5px;">Hoy</span>
+        <span style="border: 1px solid var(--borde); background: var(--panel); border-radius: 16px; padding: 6px 13px; font-size: 12.5px;">Mañana</span>
+        <span style="border: 1px solid var(--borde); background: var(--panel); border-radius: 16px; padding: 6px 13px; font-size: 12.5px;">Semana</span>
+      </div>
+    </div>
+
+    <div style="border: 1px dashed var(--borde); border-radius: 8px; padding: 24px; text-align: center; display: flex; flex-direction: column; gap: 5px;">
+      <span style="font-size: 13px; color: var(--texto-2);">No hay turnos para hoy.</span>
+      <span style="font-size: 13px; color: var(--acento);">Tomar un turno</span>
+    </div>
+  </div>
+
+  <!-- No hay barra abajo. Para cambiar de módulo hay que subir hasta la
+       pared de chips y buscarlo entre nueve. -->
+</div>
+</x-dc>
+</body>
+</html>

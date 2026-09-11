@@ -1,0 +1,63 @@
+{
+  "artboards": [
+    { "file": "Antes.dc.html",      "x": 0,    "y": 0,    "w": 390,  "h": 844, "title": "Hoy · el teléfono" },
+    { "file": "Main.dc.html",       "x": 510,  "y": 0,    "w": 390,  "h": 844, "title": "Propuesto · Calendario › Hoy" },
+    { "file": "Mas.dc.html",        "x": 1020, "y": 0,    "w": 390,  "h": 844, "title": "Propuesto · Más" },
+    { "file": "Caja.dc.html",       "x": 1530, "y": 0,    "w": 390,  "h": 844, "title": "Propuesto · Finanzas › Caja del día" },
+    { "file": "Escritorio.dc.html", "x": 0,    "y": 1080, "w": 1440, "h": 900, "title": "Propuesto · la computadora" },
+    { "file": "Horarios.dc.html",   "x": 1560, "y": 1080, "w": 1440, "h": 900, "title": "Propuesto · Servicios › Horarios (hoy /operaciones)" },
+    { "file": "Rutas.dc.html",      "x": 0,    "y": 2200, "w": 1100, "h": 900, "title": "El árbol de direcciones" }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -400,
+      "w": 1100,
+      "text": "Navegación del panel interno · sólo la navegación\n\nAlcance acordado: se arregla cómo se llega a las cosas. Las pantallas de adentro quedan como están; rehacerlas es el bloque siguiente.\n\nLo que cambia:\n1. Se van los tres rótulos de grupo. La frecuencia sigue decidiendo el ORDEN —lo diario primero— pero deja de escribirse: describía al sistema en vez de ayudar a encontrar.\n2. Cada sección tiene su propia dirección. Hoy el módulo activo vive en un useState y las 29 secciones son texto gris que no se puede tocar.\n3. En el teléfono, cuatro destinos fijos abajo. Hoy no hay ninguno.\n4. /operaciones deja de ser una página suelta: es Servicios › Horarios, con migas para subir.\n\nLos nombres y los números son de relleno y no salen de la base."
+    },
+    {
+      "id": "nota-telefonos",
+      "x": 0,
+      "y": -150,
+      "w": 900,
+      "text": "El teléfono, antes y después.\n\nA la izquierda, lo que hay hoy: una pared de nueve chips con tres rótulos encima, y ninguna forma de cambiar de módulo sin volver a subir hasta ella.\n\nLas tres siguientes son la propuesta. La barra de abajo no se mueve nunca; lo único que cambia es cuál está encendido. Cada destino lleva dibujo Y palabra: un icono solo es ambiguo, y acá eso importa más que en otros productos."
+    },
+    {
+      "id": "nota-mas",
+      "x": 1020,
+      "y": -150,
+      "w": 700,
+      "text": "«Más» no es un menú escondido: es una pantalla completa, con el nombre de cada módulo y qué hay adentro.\n\nLos que todavía no existen se ven, apagados y dichos. Esconderlos haría parecer el sistema más chico de lo que va a ser.\n\nEl separador del medio marca el corte sin ponerle nombre: es lo que reemplaza a «Casi nunca, pero tiene que estar»."
+    },
+    {
+      "id": "nota-escritorio",
+      "x": 0,
+      "y": 930,
+      "w": 900,
+      "text": "En la computadora, los nueve módulos van a la izquierda y no se mueven. Las secciones del módulo abierto van arriba, al lado de su nombre.\n\nDos separadores, cero rótulos. El orden es el mismo de siempre: lo de todos los días primero.\n\nLas migas —Calendario › Hoy— son el arreglo del «volver»: cada paso es un lugar al que se puede subir."
+    },
+    {
+      "id": "nota-horarios",
+      "x": 1560,
+      "y": 930,
+      "w": 800,
+      "text": "Acá aterriza lo que hoy es /operaciones, la pantalla que te expulsaba al sitio público.\n\nSus dos paneles —tiempo entre turnos y días cerrados— no eran una página: eran dos secciones de Servicios que quedaron sueltas. Con las migas puestas, «volver» sube a Servicios en vez de echarte."
+    },
+    {
+      "id": "nota-rutas",
+      "x": 0,
+      "y": 2050,
+      "w": 1100,
+      "text": "Lo que hay debajo de todo lo anterior. Sin direcciones no hay jerarquía, y sin jerarquía «volver» no tiene a dónde ir: ese es el motivo técnico de que el botón te mandara al sitio público."
+    },
+    {
+      "id": "abierto",
+      "x": 1250,
+      "y": 2050,
+      "w": 620,
+      "text": "Tres cosas que decidís vos, no yo:\n\n1. Las etiquetas de abajo. Puse Hoy · Clientas · Caja, que son secciones, no módulos. Es lo más directo para quien no viene de sistemas; la alternativa sería Calendario · Clientas · Finanzas, más consistente con el árbol y menos amigable.\n\n2. El módulo se llama Calendario en el árbol pero la pantalla actual dice Agenda. Hay que elegir uno.\n\n3. Clientas todavía no existe. Si querés la barra con lo que YA funciona, serían Hoy · Caja · Más y Clientas entra cuando esté."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}
