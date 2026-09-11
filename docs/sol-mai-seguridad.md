@@ -316,6 +316,61 @@ puede recortar un módulo**.
 
 ---
 
+## 6 bis. Auditoría contra producción (2026-09-11)
+
+Primera vez que se pudo mirar el proyecto real y no sólo el repositorio.
+Todo lo de acá es lectura: `list_migrations`, `get_advisors` y consultas
+`select` sobre el catálogo.
+
+**El esquema coincide.** Treinta y siete migraciones en el repositorio,
+treinta y siete aplicadas, ninguna de más ni de menos en ninguna de las
+dos direcciones.
+
+### Lo que reportó el linter de Supabase, evaluado uno por uno
+
+| Aviso | Veredicto |
+| --- | --- |
+| RLS activo y sin políticas en 21 tablas (INFO) | **Correcto por diseño.** RLS encendido más cero políticas es «no entra nadie» por la API pública. Todo pasa por el Worker con la clave de servicio, y el clean-room ya prueba que `anon` no escribe |
+| `rls_auto_enable` ejecutable por `anon` y por `authenticated` (WARN ×2) | **Falso positivo, comprobado.** El permiso existe, pero la función devuelve `event_trigger` y PostgreSQL contesta `trigger functions can only be called as triggers`. No es invocable por RPC |
+| Seis funciones con `search_path` mutable (WARN) | **Real, gravedad baja.** Las seis son SECURITY INVOKER: corren con los permisos de quien llama, así que no hay privilegio que escalar. Vale arreglarlo igual, porque `CLAUDE.md` lo pide |
+| `btree_gist` instalado en `public` (WARN) | Higiene. Moverlo toca índices y el rédito es chico |
+| Protección de contraseñas filtradas apagada (WARN) | **Hoy no aplica**: al panel se entra por link al correo o por Google, no hay contraseñas. Encenderlo igual cuesta un clic y cubre el día que alguien habilite el alta con contraseña |
+
+### El hallazgo que el linter NO dio, y es el que importa
+
+En producción existen una función `rls_auto_enable()` y un event trigger
+`ensure_rls` que **no están en ninguna migración del repositorio**.
+
+Qué hacen: cada vez que se crea una tabla en `public`, le encienden RLS
+sola. Es una red de seguridad y es buena —cubre el caso de que alguien
+cree una tabla y se olvide—.
+
+El problema es de dónde viven. La fuente de verdad afirma que
+`supabase/migrations/` es el esquema canónico, y con esto deja de serlo
+del todo. Dos consecuencias concretas:
+
+1. **El clean-room de CI prueba una base MENOS protegida que producción.**
+   Se reconstruye desde las migraciones, así que esa red no existe ahí.
+2. **Si hubiera que recrear producción, se pierde**, y nadie se enteraría
+   hasta que apareciera una tabla sin RLS.
+
+Lo que corresponde es escribirla como migración, para que las dos bases
+vuelvan a ser la misma. No se hizo en esta pasada: es DDL sobre
+producción y entra en los cambios de alto riesgo de `CLAUDE.md`.
+
+### Una diferencia de entorno que conviene tener presente
+
+| Dónde | PostgreSQL |
+| --- | --- |
+| Producción | 17.6.1 |
+| Stack local (`scripts/local-stack.sh`) | 16 |
+
+Nada falló por esto, pero las pruebas locales corren contra una versión
+mayor distinta de la de producción. Vale saberlo antes de confiar en un
+verde local para algo que dependa del motor.
+
+---
+
 ## 7. Lo que hay que cargar para que el ingreso funcione
 
 Nada de esto lo puede hacer el código: son credenciales y configuración de
