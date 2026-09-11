@@ -113,10 +113,15 @@
      texto muerto debajo del nombre del módulo. */
   .secciones {
     flex-shrink: 0; background: var(--panel); border-bottom: 1px solid var(--borde);
-    display: flex; gap: 7px; padding: 9px 14px; overflow: hidden;
+    display: flex; gap: 7px; padding: 9px 14px;
+    /* Se desliza DE VERDAD. La primera versión decía «la fila se desliza»
+       en un comentario y tenía `overflow: hidden`: se cortaba y no había
+       forma de llegar a lo cortado. */
+    overflow-x: auto; scroll-snap-type: x proximity;
   }
+  .secciones::-webkit-scrollbar { height: 0; }
   .sec {
-    height: 36px; padding: 0 14px; border-radius: 4px; font-size: 13px;
+    height: 44px; padding: 0 14px; scroll-snap-align: start; border-radius: 4px; font-size: 13px;
     display: inline-flex; align-items: center; flex-shrink: 0;
     border: 1px solid var(--borde); color: var(--texto-2); background: var(--panel);
   }
@@ -150,7 +155,7 @@
 
     <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
       <span class="btn" style="height: 34px;">Configuración</span>
-      <span style="font-size: 11px; color: var(--texto-2); text-align: right;">diegojavierzimmermann · administradora &nbsp; Salir</span>
+      <span style="font-size: 11px; color: var(--texto-2); text-align: right;">sol · administradora &nbsp; Salir</span>
     </div>
 
     <!-- Reproducido de `ModuleNav.tsx`, no de memoria: los tres rótulos
