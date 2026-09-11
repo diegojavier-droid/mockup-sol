@@ -10,14 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PrivacidadRouteImport } from './routes/privacidad'
+import { Route as PanelRouteImport } from './routes/panel'
 import { Route as OperacionesRouteImport } from './routes/operaciones'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PanelIndexRouteImport } from './routes/panel/index'
 import { Route as ReservaTokenRouteImport } from './routes/reserva.$token'
+import { Route as PanelMasRouteImport } from './routes/panel/mas'
+import { Route as PanelModuloIndexRouteImport } from './routes/panel/$modulo/index'
+import { Route as PanelModuloSeccionRouteImport } from './routes/panel/$modulo/$seccion'
 
 const PrivacidadRoute = PrivacidadRouteImport.update({
   id: '/privacidad',
   path: '/privacidad',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PanelRoute = PanelRouteImport.update({
+  id: '/panel',
+  path: '/panel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OperacionesRoute = OperacionesRouteImport.update({
@@ -35,33 +45,67 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PanelIndexRoute = PanelIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PanelRoute,
+} as any)
 const ReservaTokenRoute = ReservaTokenRouteImport.update({
   id: '/reserva/$token',
   path: '/reserva/$token',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PanelMasRoute = PanelMasRouteImport.update({
+  id: '/mas',
+  path: '/mas',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelModuloIndexRoute = PanelModuloIndexRouteImport.update({
+  id: '/$modulo/',
+  path: '/$modulo/',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelModuloSeccionRoute = PanelModuloSeccionRouteImport.update({
+  id: '/$modulo/$seccion',
+  path: '/$modulo/$seccion',
+  getParentRoute: () => PanelRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/operaciones': typeof OperacionesRoute
+  '/panel': typeof PanelRouteWithChildren
   '/privacidad': typeof PrivacidadRoute
+  '/panel/mas': typeof PanelMasRoute
   '/reserva/$token': typeof ReservaTokenRoute
+  '/panel/': typeof PanelIndexRoute
+  '/panel/$modulo/$seccion': typeof PanelModuloSeccionRoute
+  '/panel/$modulo/': typeof PanelModuloIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/operaciones': typeof OperacionesRoute
   '/privacidad': typeof PrivacidadRoute
+  '/panel/mas': typeof PanelMasRoute
   '/reserva/$token': typeof ReservaTokenRoute
+  '/panel': typeof PanelIndexRoute
+  '/panel/$modulo/$seccion': typeof PanelModuloSeccionRoute
+  '/panel/$modulo': typeof PanelModuloIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/operaciones': typeof OperacionesRoute
+  '/panel': typeof PanelRouteWithChildren
   '/privacidad': typeof PrivacidadRoute
+  '/panel/mas': typeof PanelMasRoute
   '/reserva/$token': typeof ReservaTokenRoute
+  '/panel/': typeof PanelIndexRoute
+  '/panel/$modulo/$seccion': typeof PanelModuloSeccionRoute
+  '/panel/$modulo/': typeof PanelModuloIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -69,23 +113,43 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/operaciones'
+    | '/panel'
     | '/privacidad'
+    | '/panel/mas'
     | '/reserva/$token'
+    | '/panel/'
+    | '/panel/$modulo/$seccion'
+    | '/panel/$modulo/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/agenda' | '/operaciones' | '/privacidad' | '/reserva/$token'
+  to:
+    | '/'
+    | '/agenda'
+    | '/operaciones'
+    | '/privacidad'
+    | '/panel/mas'
+    | '/reserva/$token'
+    | '/panel'
+    | '/panel/$modulo/$seccion'
+    | '/panel/$modulo'
   id:
     | '__root__'
     | '/'
     | '/agenda'
     | '/operaciones'
+    | '/panel'
     | '/privacidad'
+    | '/panel/mas'
     | '/reserva/$token'
+    | '/panel/'
+    | '/panel/$modulo/$seccion'
+    | '/panel/$modulo/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgendaRoute: typeof AgendaRoute
   OperacionesRoute: typeof OperacionesRoute
+  PanelRoute: typeof PanelRouteWithChildren
   PrivacidadRoute: typeof PrivacidadRoute
   ReservaTokenRoute: typeof ReservaTokenRoute
 }
@@ -97,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/privacidad'
       fullPath: '/privacidad'
       preLoaderRoute: typeof PrivacidadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/panel': {
+      id: '/panel'
+      path: '/panel'
+      fullPath: '/panel'
+      preLoaderRoute: typeof PanelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operaciones': {
@@ -120,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/panel/': {
+      id: '/panel/'
+      path: '/'
+      fullPath: '/panel/'
+      preLoaderRoute: typeof PanelIndexRouteImport
+      parentRoute: typeof PanelRoute
+    }
     '/reserva/$token': {
       id: '/reserva/$token'
       path: '/reserva/$token'
@@ -127,13 +205,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReservaTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/panel/mas': {
+      id: '/panel/mas'
+      path: '/mas'
+      fullPath: '/panel/mas'
+      preLoaderRoute: typeof PanelMasRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/panel/$modulo/': {
+      id: '/panel/$modulo/'
+      path: '/$modulo'
+      fullPath: '/panel/$modulo/'
+      preLoaderRoute: typeof PanelModuloIndexRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/panel/$modulo/$seccion': {
+      id: '/panel/$modulo/$seccion'
+      path: '/$modulo/$seccion'
+      fullPath: '/panel/$modulo/$seccion'
+      preLoaderRoute: typeof PanelModuloSeccionRouteImport
+      parentRoute: typeof PanelRoute
+    }
   }
 }
+
+interface PanelRouteChildren {
+  PanelMasRoute: typeof PanelMasRoute
+  PanelIndexRoute: typeof PanelIndexRoute
+  PanelModuloSeccionRoute: typeof PanelModuloSeccionRoute
+  PanelModuloIndexRoute: typeof PanelModuloIndexRoute
+}
+
+const PanelRouteChildren: PanelRouteChildren = {
+  PanelMasRoute: PanelMasRoute,
+  PanelIndexRoute: PanelIndexRoute,
+  PanelModuloSeccionRoute: PanelModuloSeccionRoute,
+  PanelModuloIndexRoute: PanelModuloIndexRoute,
+}
+
+const PanelRouteWithChildren = PanelRoute._addFileChildren(PanelRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRoute,
   OperacionesRoute: OperacionesRoute,
+  PanelRoute: PanelRouteWithChildren,
   PrivacidadRoute: PrivacidadRoute,
   ReservaTokenRoute: ReservaTokenRoute,
 }

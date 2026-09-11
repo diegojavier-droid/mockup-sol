@@ -50,32 +50,77 @@ const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
  *   estudió esto aprende probando, y un sistema que castiga probar se
  *   evita.
  * - **Nada se borra.** Sacar de la lista es archivar.
+ *
+ * DÓNDE VIVEN AHORA ESTAS TRES COSAS
+ *
+ * Eran un solo `SalonScreen` que las apilaba en un scroll. Al darle
+ * dirección propia a cada sección del panel, cada una se monta sola:
+ * Precios y Puestos quedaron en Servicios, y Productos se fue a
+ * Inventario, que es donde §5.0 del árbol lo pone.
+ *
+ * El interior de las tres no se tocó: es el mismo componente, con el
+ * mismo aspecto. Lo único que cambió es quién las monta.
  */
-export function SalonScreen() {
+
+/**
+ * El cartel de «listo, y se puede deshacer».
+ *
+ * Vivía en `SalonScreen` y lo compartían las tres partes. Ahora que cada
+ * una es una pantalla, cada una trae el suyo: un aviso de Precios no
+ * tiene por qué aparecer arriba de Puestos.
+ */
+function useAviso() {
   const [aviso, setAviso] = useState<{ texto: string; deshacer?: () => void } | null>(null);
 
+  const barra = aviso ? (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-champagne-deep/30 bg-cream/60 px-4 py-3 text-sm text-foreground/85">
+      <span>{aviso.texto}</span>
+      {aviso.deshacer && (
+        <button
+          type="button"
+          onClick={() => {
+            aviso.deshacer?.();
+            setAviso(null);
+          }}
+          className="shrink-0 rounded-full border border-current/30 px-3 py-1 text-xs font-medium"
+        >
+          Deshacer
+        </button>
+      )}
+    </div>
+  ) : null;
+
+  return { setAviso, barra };
+}
+
+/** Servicios › Precios y tiempos. */
+export function PreciosYTiemposScreen() {
+  const { setAviso, barra } = useAviso();
   return (
     <div className="space-y-8">
-      {aviso && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-champagne-deep/30 bg-cream/60 px-4 py-3 text-sm text-foreground/85">
-          <span>{aviso.texto}</span>
-          {aviso.deshacer && (
-            <button
-              type="button"
-              onClick={() => {
-                aviso.deshacer?.();
-                setAviso(null);
-              }}
-              className="shrink-0 rounded-full border border-current/30 px-3 py-1 text-xs font-medium"
-            >
-              Deshacer
-            </button>
-          )}
-        </div>
-      )}
-
+      {barra}
       <Servicios onAviso={setAviso} />
+    </div>
+  );
+}
+
+/** Servicios › Puestos de trabajo. */
+export function PuestosScreen() {
+  const { setAviso, barra } = useAviso();
+  return (
+    <div className="space-y-8">
+      {barra}
       <Estaciones onAviso={setAviso} />
+    </div>
+  );
+}
+
+/** Inventario › Productos. */
+export function ProductosScreen() {
+  const { setAviso, barra } = useAviso();
+  return (
+    <div className="space-y-8">
+      {barra}
       <Productos onAviso={setAviso} />
     </div>
   );

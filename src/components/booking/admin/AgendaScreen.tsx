@@ -20,10 +20,8 @@ import {
 import { NewBookingDialog } from "./NewBookingDialog";
 import { CloseServiceDialog } from "./CloseServiceDialog";
 import { StationsDialog } from "./StationsDialog";
-import { PendingRefundsPanel } from "./PendingRefundsPanel";
-import { CashRegisterPanel } from "./CashRegisterPanel";
 
-type Range = "hoy" | "manana" | "semana";
+export type Range = "hoy" | "manana" | "semana";
 
 const RANGES: { id: Range; label: string; days: number; offset: number }[] = [
   { id: "hoy", label: "Hoy", days: 1, offset: 0 },
@@ -73,8 +71,7 @@ function statusTone(status: string): string {
   return "border-border bg-muted/40 text-muted-foreground";
 }
 
-export function AgendaScreen() {
-  const [range, setRange] = useState<Range>("hoy");
+export function AgendaScreen({ range }: { range: Range }) {
   // "¿Tenés algo para el 15?" es pregunta de todos los días: la agenda
   // tiene que poder ir a una fecha, no sólo a hoy y esta semana.
   const [pickedDate, setPickedDate] = useState<string>("");
@@ -105,7 +102,6 @@ export function AgendaScreen() {
     <div className="space-y-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-serif text-2xl leading-tight text-foreground">Agenda</h1>
           <p className="text-sm text-muted-foreground">
             {agenda.isLoading
               ? "Buscando turnos…"
@@ -130,25 +126,11 @@ export function AgendaScreen() {
         </div>
       </header>
 
-      <div className="flex flex-wrap gap-2">
-        {RANGES.map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => {
-              setRange(r.id);
-              setPickedDate("");
-            }}
-            aria-pressed={range === r.id && !pickedDate}
-            className={`rounded-full border px-4 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              range === r.id && !pickedDate
-                ? "border-champagne-deep bg-champagne/40 text-foreground"
-                : "border-border bg-card text-muted-foreground hover:border-champagne"
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
+      {/* Ir a una fecha puntual. Los chips de Hoy · Mañana · Semana que
+          estaban acá se fueron a la fila de secciones —son direcciones—,
+          pero esto no es un rango: es «¿tenés algo para el 15?», que es
+          pregunta de todos los días. */}
+      <div className="flex flex-wrap items-center gap-2">
         <label className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           <span className="sr-only sm:not-sr-only">Otra fecha</span>
           <input
@@ -177,12 +159,6 @@ export function AgendaScreen() {
           {feedback}
         </p>
       )}
-
-      {/* Sólo aparece si hay plata esperando que la devuelvan. */}
-      <PendingRefundsPanel onFeedback={setFeedback} />
-
-      {/* La caja del día, sólo para Sol y sólo si hubo movimientos. */}
-      <CashRegisterPanel />
 
       {agenda.isError && (
         <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">

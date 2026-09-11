@@ -207,10 +207,11 @@ exactamente el retroceso que §1 quiere evitar. La salida no es recortar
 módulos: es **ordenarlos por cada cuánto se tocan**, que es como los
 ordena en la cabeza quien los usa.
 
-### 5.0. El árbol: nueve módulos, veintinueve secciones
+### 5.0. El árbol: nueve módulos, treinta y tres secciones
 
-**Confirmado por dirección el 2026-09-10.** Esta tabla es la estructura
-del sistema: lo que no está acá, no existe como pantalla.
+**Confirmado por dirección el 2026-09-10**, con dos correcciones del
+2026-09-11 anotadas debajo de la tabla. Esta tabla es la estructura del
+sistema: lo que no está acá, no existe como pantalla.
 
 Un módulo **no es una pantalla**: es una categoría con secciones adentro.
 Ese segundo nivel es lo que evita que nueve módulos se conviertan en
@@ -220,7 +221,7 @@ superior; en el teléfono bajan a pestañas.
 
 | Se toca                              | Módulo               | Secciones                                                             |
 | ------------------------------------ | -------------------- | --------------------------------------------------------------------- |
-| **Todos los días**                   | **Calendario**       | Hoy · Semana · Mes · Año                                              |
+| **Todos los días**                   | **Agenda**           | Hoy · Mañana · Semana · Mes · Año                                     |
 |                                      | **Clientas**         | Fichas · Sin venir hace tiempo · Consentimientos                      |
 |                                      | **Finanzas**         | Caja del día · Cobros · Devoluciones · Facturación · Gastos · Resumen |
 |                                      | **Inventario**       | Productos · Stock · Movimientos                                       |
@@ -229,6 +230,33 @@ superior; en el teléfono bajan a pestañas.
 |                                      | **Compras**          | Proveedores · Pedidos                                                 |
 | **Casi nunca, pero tiene que estar** | **Usuarios y roles** | Personas · Roles · Accesos · Registro de cambios                      |
 |                                      | **Configuración**    | Datos del negocio · Términos y privacidad · Integraciones             |
+
+#### Las dos correcciones del 2026-09-11
+
+Salieron de implementar la navegación, que obligó a escribir el árbol
+como código (`src/lib/panel-nav.ts`) y a contarlo.
+
+1. **El módulo se llama «Agenda», no «Calendario».** El sistema decía
+   las dos cosas: esta tabla decía una y la pantalla decía la otra, con
+   el chip y el título a treinta píxeles de distancia contradiciéndose.
+   Dirección eligió Agenda, que es la palabra que ya estaba en la
+   pantalla y en el salón.
+
+   **El permiso sigue llamándose `calendario`.** Es el nombre que usan
+   la matriz de la base y `/me`, y renombrarlo es una migración de
+   datos, no de navegación. `src/lib/panel-nav.ts` separa las dos cosas
+   a propósito —`slug` y `label` para lo que se ve, `permiso` para lo
+   que exige el servidor— y una prueba lo fija. Queda como deuda: el
+   día que se migre, se cambian los dos juntos.
+
+2. **Son treinta y tres secciones, no veintinueve.** El número estaba
+   escrito cuatro veces en este documento y ninguna coincidía con la
+   tabla de arriba. Contadas: 5 + 3 + 6 + 3 + 4 + 3 + 2 + 4 + 3 = 33. La
+   cuenta la verifica `src/lib/panel-nav.test.ts`, así que si el árbol
+   cambia y este número no, el test falla.
+
+   «Mañana» entró en la cuenta: existe en el código desde antes, se usa
+   todos los días, y no estaba en esta tabla. Sin él serían 32.
 
 #### Los cinco cambios respecto de la versión anterior
 
@@ -258,7 +286,7 @@ superior; en el teléfono bajan a pestañas.
 
 #### Una sección no es una pantalla nueva
 
-Las veintinueve secciones se arman con **tres formatos y nada más**,
+Las treinta y tres secciones se arman con **tres formatos y nada más**,
 definidos en `diseno/paneles/`:
 
 | Formato            | Qué es                                              | Dónde se repite                                                  |
@@ -267,7 +295,7 @@ definidos en `diseno/paneles/`:
 | **Ficha**          | Una cosa abierta, con su historial en pestañas      | Una clienta · Un producto · Un proveedor · Una persona           |
 | **Lista editable** | El valor es el campo; no hay formulario que se abra | Precios y tiempos · Stock · Roles                                |
 
-Aprender tres formatos y no veintinueve pantallas es el argumento de
+Aprender tres formatos y no treinta y tres pantallas es el argumento de
 adopción entero. Una sección que no entra en ninguno de los tres es una
 señal de que hay que discutirla, no de que haga falta un cuarto formato.
 
@@ -275,7 +303,7 @@ señal de que hay que discutirla, no de que haga falta un cuarto formato.
 
 ### 5.0.1. Módulo por módulo
 
-### 5.1. Calendario
+### 5.1. Agenda
 
 **Es dueño de:** `bookings`, `booking_items`, `business_hours`,
 `schedule_exceptions`, `resources`, `resource_blocks`.
@@ -959,7 +987,7 @@ cuando haya varias pantallas que proteger y alguien que necesite
 administrarlas», y que ese día no había llegado: «hoy hay dos personas y
 una pantalla».
 
-**Llegó.** Con el árbol de §5.0 hay nueve módulos y veintinueve
+**Llegó.** Con el árbol de §5.0 hay nueve módulos y treinta y tres
 secciones, y el argumento se dio vuelta solo. Por eso Personas sube al
 puesto 3.
 
