@@ -102,6 +102,9 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - El horario pedido se valida contra la misma grilla que publica `/availability`: el canal público no puede reservar fuera de horario, fuera de grilla ni más allá de la anticipación máxima. El canal `manual` del salón sí puede, porque es su agenda.
 - Reservar no autoriza a editar la ficha de otra clienta: desde el canal público los datos ya cargados no se pisan, sólo se completan los que faltan.
 - Existe panel interno con agenda, ficha de clienta y configuración de precios, tiempos y horarios, protegido por Supabase Auth + lista de acceso + `staff_members` con rol.
+- Al panel se entra con un **link de un solo uso al correo**; Google es una alternativa y aparece sólo si está configurado de verdad. El proveedor `email` se acepta en producción **únicamente** si Supabase exige confirmar el correo: si auto-confirma —o si no se pudo averiguar— el servidor lo descarta, porque con auto-confirmación cualquiera se registra con el correo de Sol. Esto exige configuración fuera del repositorio (Site URL, Redirect URLs y «Confirm email» en Supabase): ver §7 de `docs/sol-mai-seguridad.md`.
+- El correo que manda Supabase por defecto está limitado a un par de envíos por hora: alcanza para probar y no para uso diario. Falta cargar un SMTP propio antes de que Sol dependa de esto.
+- Un token vencido o falso devuelve **401** y una identidad válida sin fila en `staff_members` devuelve **403**. La distinción es de producto, no de estilo: a la sesión vencida hay que ofrecerle volver a entrar, y a la cuenta sin permiso decirle que pida acceso.
 - El teléfono NO es autenticación. Una coincidencia sólo por teléfono no habilita ver el historial: el sistema saluda sin nombre y no muestra atenciones anteriores hasta que la identidad esté probada por un proveedor de identidad.
 - Los números del salón (`/admin/dashboard` y `/admin/reconciliation`) exigen rol `owner`: quien atiende no necesita ver la facturación total ni el margen para trabajar.
 - La clienta recibe al confirmar el enlace a su propia reserva (`/reserva/:token`), desde donde ve el estado, paga la seña y cancela. La regla de 24 h se le explica antes de decidir, no después.
@@ -172,7 +175,7 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - Cargar las credenciales de Mercado Pago para que el cobro de la seña deje de ser coordinación manual.
 - Implementar el envío real de confirmaciones y recordatorios por email y WhatsApp (falta el proveedor y su credencial).
 - Cargar los costos estándar por servicio para que el margen deje de ser NO DISPONIBLE. Es el único insumo que le falta al dashboard, y no debe inventarse.
-- Cargar las credenciales de Google OAuth para que el ingreso al panel y la identidad de la clienta dejen de depender del token de Supabase.
+- Cargar las credenciales de Google OAuth para que la identidad de la clienta deje de depender del token de Supabase. Para el panel ya no es bloqueante: se entra con el link al correo.
 - Definir con Sol los horarios por profesional (`staff_schedules`): vacío significa "sigue el horario del salón", y no se inventa una jornada que Sol no definió.
 - Crear estrategia para futuras categorías sin sobrecargar el catálogo público.
 - Separar formalmente catálogo público, configuración comercial-operativa e historial técnico de clienta.

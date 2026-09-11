@@ -105,6 +105,16 @@ echo "Sin token, o con uno que no es de nadie"
 espera "sin token no se entra"              401 ""           GET "/agenda?date=2026-09-15"
 espera "un email desconocido no entra"      403 "$(bash scripts/local-stack.sh token nadie@ejemplo.com)" GET "/agenda?date=2026-09-15"
 
+# LOS DOS FINALES MALOS NO SON EL MISMO, Y LA PANTALLA LOS TRATA DISTINTO.
+#
+# 401 es «no sé quién sos»: el token venció o es falso, y lo que
+# corresponde es volver a entrar. 403 es «sé quién sos y no te alcanza»,
+# donde volver a entrar no cambia nada. Mientras los dos salían por 403,
+# a quien se le vencía la sesión la pantalla le decía que pidiera
+# permisos, que es el consejo opuesto al que necesitaba.
+espera "un token inválido pide entrar, no permisos" 401 "no-es-un-token" GET "/agenda?date=2026-09-15"
+espera "y uno bien formado pero falso, igual"       401 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmYWxzbyJ9.firma-que-no-es" GET "/agenda?date=2026-09-15"
+
 # --- el permiso se le saca en caliente ------------------------------------
 echo ""
 echo "Sol le da Finanzas a Ana y se lo saca"

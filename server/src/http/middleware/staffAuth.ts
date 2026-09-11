@@ -56,13 +56,39 @@ export interface StaffIdentity {
 
 export type StaffVars = { staff: StaffIdentity };
 
-async function resolveIdentity(env: ServerEnv, token: string): Promise<StaffIdentity | null> {
+/**
+ * Cómo terminó el intento, y POR QUÉ importa la diferencia.
+ *
+ * Antes los dos finales malos salían por la misma puerta —403— y eso
+ * resultó ser un error con consecuencias en pantalla: la sesión vencida y
+ * la cuenta sin permiso son problemas opuestos. A la primera hay que
+ * ofrecerle volver a entrar; a la segunda, decirle que pida acceso. Con
+ * un solo código la pantalla no podía distinguirlos, y a quien se le
+ * venció la sesión le decía que hablara con quien administra el panel,
+ * cuando lo único que necesitaba era iniciar sesión de nuevo.
+ *
+ * `sin-identidad` → 401: el token no prueba quién sos. Entra acá el token
+ * vencido, el falso, y el emitido por un proveedor que no aceptamos. El
+ * cliente ya borra el token guardado cuando ve un 401, así que la pantalla
+ * vuelve sola al formulario.
+ *
+ * `sin-acceso` → 403: sabemos quién sos y no te alcanza. Ese es el único
+ * caso donde ofrecer otro link no sirve de nada.
+ */
+type Resolucion =
+  | { estado: "adentro"; identidad: StaffIdentity }
+  | { estado: "sin-identidad"; mensaje: string }
+  | { estado: "sin-acceso" };
+
+async function resolveIdentity(env: ServerEnv, token: string): Promise<Resolucion> {
   const auth = createClient(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
 
   const { data, error } = await auth.auth.getUser(token);
-  if (error || !data?.user) return null;
+  if (error || !data?.user) {
+    return { estado: "sin-identidad", mensaje: "Tu sesión venció. Volvé a entrar." };
+  }
 
   // Mismo criterio que la identidad de la clienta: el token prueba que
   // lo emitió este proyecto, no con qué proveedor ni que el email sea
@@ -73,7 +99,10 @@ async function resolveIdentity(env: ServerEnv, token: string): Promise<StaffIden
   const check = verifyIdentity(data.user, await proveedoresAdmitidos(env));
   if (!check.ok) {
     console.warn("[sol-mai-api] acceso al panel rechazado:", check.reason);
-    throw new HTTPException(403, { message: rejectionMessage(check.reason) });
+    // `sin-identidad` y no `sin-acceso`: el token existe pero no lo
+    // aceptamos como prueba de quién es. Lo que corresponde ofrecer es
+    // entrar de nuevo por un camino que sí aceptamos, no pedir permisos.
+    return { estado: "sin-identidad", mensaje: rejectionMessage(check.reason) };
   }
   const email = check.identity.email;
 
@@ -124,7 +153,7 @@ async function resolveIdentity(env: ServerEnv, token: string): Promise<StaffIden
     const habilitadaParaArrancar = env.INTERNAL_AUTH_ALLOWED_EMAILS.some(
       (e) => e.toLowerCase() === email.toLowerCase(),
     );
-    if (!habilitadaParaArrancar) return null;
+    if (!habilitadaParaArrancar) return { estado: "sin-acceso" };
 
     const { error: provisionError } = await admin.rpc("provision_initial_owner", {
       p_email: email,
@@ -139,15 +168,18 @@ async function resolveIdentity(env: ServerEnv, token: string): Promise<StaffIden
     row = await sesion();
   }
 
-  if (!row) return null;
+  if (!row) return { estado: "sin-acceso" };
 
   return {
-    email,
-    staffId: row.staff_id,
-    displayName: row.display_name,
-    role: row.role,
-    roleName: row.role_name,
-    permisos: row.permisos ?? {},
+    estado: "adentro",
+    identidad: {
+      email,
+      staffId: row.staff_id,
+      displayName: row.display_name,
+      role: row.role,
+      roleName: row.role_name,
+      permisos: row.permisos ?? {},
+    },
   };
 }
 
@@ -159,12 +191,15 @@ export function staffAuth(env: ServerEnv) {
       throw new HTTPException(401, { message: "Iniciá sesión para entrar al panel." });
     }
 
-    const identity = await resolveIdentity(env, token);
-    if (!identity) {
+    const resuelto = await resolveIdentity(env, token);
+    if (resuelto.estado === "sin-identidad") {
+      throw new HTTPException(401, { message: resuelto.mensaje });
+    }
+    if (resuelto.estado === "sin-acceso") {
       throw new HTTPException(403, { message: "Tu cuenta no tiene acceso al panel." });
     }
 
-    c.set("staff", identity);
+    c.set("staff", resuelto.identidad);
     await next();
   });
 }
