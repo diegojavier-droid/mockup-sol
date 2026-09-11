@@ -330,6 +330,69 @@ console.log("\n── La puerta del panel");
   ok("sin ofrecer un botón que no hace nada", !/entrar con google/i.test(t2));
   ok("ni un campo de correo que no sirve", (await sinGoogle.locator("#staff-mail").count()) === 0);
   await sinGoogle.close();
+
+  // VOLVER DEL MAIL Y NO ENTRAR
+  //
+  // Este es el bloque que existe por un fallo real: el link llegaba, se
+  // hacía clic, y la pantalla volvía a pedir el correo sin decir nada.
+  // Tres causas distintas —link vencido, canje roto, configuración mal—
+  // producían la misma pantalla muda, y eso volvió el problema imposible
+  // de diagnosticar desde afuera.
+  //
+  // Se entra con los parámetros que pone Supabase cuando rechaza el link.
+  // No hace falta red: el motivo viene en la URL.
+  const vuelta = await browser.newPage({ viewport: { width: 420, height: 950 } });
+  await vuelta.route("**/*", (r) => {
+    const u = r.request().url();
+    return u.includes("127.0.0.1") || u.includes("localhost") ? r.continue() : r.abort();
+  });
+  await vuelta.goto(`${BASE}/agenda?error=access_denied&error_code=otp_expired`, {
+    waitUntil: "domcontentloaded",
+  });
+  await vuelta.waitForTimeout(3000);
+  const tv = await vuelta.locator("body").innerText();
+
+  ok("un link vencido deja de fallar en silencio", /venció|se usó/i.test(tv), tv.slice(0, 300));
+  ok("y dice qué hacer ahora", /pedite uno nuevo/i.test(tv), tv.slice(0, 300));
+  // Que se explique no puede costar la forma de arreglarlo.
+  ok("sin sacar el formulario para pedir otro", (await vuelta.locator("#staff-mail").count()) > 0);
+  // Si el error quedara pegado en la URL, recargar repetiría el cartel
+  // para siempre y pedir otro link parecería no hacer nada.
+  ok(
+    "y la URL queda limpia, así recargar no repite el cartel",
+    !/error_code/.test(vuelta.url()),
+    vuelta.url(),
+  );
+  await vuelta.close();
+
+  // IDENTIFICADA PERO SIN ACCESO
+  //
+  // El otro final, y el que desconcierta más: el link anduvo, hay sesión,
+  // y el servidor igual dice que no. Volver a pedir el correo ahí manda a
+  // pedir otro link que no arregla nada y que además gasta el cupo de
+  // correos por hora. Se simula con un token que el servidor rechaza.
+  const sinAcceso = await browser.newPage({ viewport: { width: 420, height: 950 } });
+  await sinAcceso.route("**/*", (r) => {
+    const u = r.request().url();
+    return u.includes("127.0.0.1") || u.includes("localhost") ? r.continue() : r.abort();
+  });
+  await sinAcceso.goto(`${BASE}/agenda`, { waitUntil: "domcontentloaded" });
+  await sinAcceso.evaluate(() =>
+    window.sessionStorage.setItem("sol-mai-staff-token", "token-que-el-servidor-rechaza"),
+  );
+  await sinAcceso.reload({ waitUntil: "domcontentloaded" });
+  const ta = await esperarTexto(sinAcceso, /no tiene acceso|falta es el acceso/i);
+
+  ok("dice que el problema no es el link", /el link anduvo/i.test(ta), ta.slice(0, 300));
+  ok("y que lo que falta lo da quien administra", /quien lo administra/i.test(ta));
+  // Lo que el usuario reportó textualmente: «me lleva a la pantalla del
+  // panel pidiéndome nuevamente mi correo».
+  ok(
+    "y NO vuelve a pedir el correo, que no arregla nada",
+    (await sinAcceso.locator("#staff-mail").count()) === 0,
+  );
+  ok("deja probar con otra cuenta", /probar con otro correo/i.test(ta));
+  await sinAcceso.close();
 }
 
 console.log("\n── Finanzas · Facturación");

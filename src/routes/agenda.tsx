@@ -19,7 +19,9 @@ import { InvoicingScreen } from "@/components/booking/admin/InvoicingScreen";
 import { ModuleNav, type ModuleKey } from "@/components/booking/admin/ModuleNav";
 import { useStaffIdentity } from "@/lib/api/admin-hooks";
 import { puede, readStaffToken, writeStaffToken } from "@/lib/staff-session";
+import { ApiError } from "@/lib/api/client";
 import {
+  correoDeLaSesion,
   entrarConGoogle,
   leerConfig,
   pedirLinkPorMail,
@@ -35,17 +37,24 @@ export const Route = createFileRoute("/agenda")({
 function AgendaRoute() {
   const [hasToken, setHasToken] = useState(() => Boolean(readStaffToken()));
   const [tab, setTab] = useState<ModuleKey>("calendario");
+  // Por qué quedó afuera quien volvió del mail. Antes esto se descartaba
+  // y el resultado era el peor de los mundos: el formulario de nuevo, sin
+  // decir nada, pidiendo el correo que la persona acababa de escribir.
+  const [problemaAlVolver, setProblemaAlVolver] = useState<string | null>(null);
   const identity = useStaffIdentity();
   const qc = useQueryClient();
 
-  // Al volver de Google, Supabase deja la sesión guardada y `recuperarSesion`
-  // la espeja en el token que usa el cliente del panel. También cubre el
-  // caso de recargar la página con una sesión que ya existía.
+  // Al volver del link del mail —o de Google— Supabase canjea el código,
+  // deja la sesión guardada y `recuperarSesion` la espeja en el token que
+  // usa el cliente del panel. También cubre el caso de recargar la página
+  // con una sesión que ya existía.
   useEffect(() => {
     if (hasToken) return;
     let vivo = true;
-    void recuperarSesion().then((hay) => {
-      if (!vivo || !hay) return;
+    void recuperarSesion().then(({ adentro, problema }) => {
+      if (!vivo) return;
+      setProblemaAlVolver(problema);
+      if (!adentro) return;
       qc.removeQueries({ queryKey: ["admin", "me"] });
       setHasToken(true);
     });
@@ -66,6 +75,7 @@ function AgendaRoute() {
           setHasToken(true);
         }}
         error={hasToken ? ((identity.error as Error | null) ?? null) : null}
+        aviso={problemaAlVolver}
       />
     );
   }
@@ -158,7 +168,16 @@ function AgendaRoute() {
  * y tener acceso son cosas distintas. Quien no lo sabe interpreta que
  * cualquiera con una cuenta entra al panel.
  */
-function SignIn({ onToken, error }: { onToken: () => void; error: Error | null }) {
+function SignIn({
+  onToken,
+  error,
+  aviso,
+}: {
+  onToken: () => void;
+  error: Error | null;
+  /** Por qué falló el intento anterior, si volvió de uno. */
+  aviso: string | null;
+}) {
   const [token, setToken] = useState("");
   const [mail, setMail] = useState("");
   const [config, setConfig] = useState<Awaited<ReturnType<typeof leerConfig>> | undefined>(
@@ -167,6 +186,20 @@ function SignIn({ onToken, error }: { onToken: () => void; error: Error | null }
   const [yendo, setYendo] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [falla, setFalla] = useState<string | null>(null);
+  const [correo, setCorreo] = useState<string | null>(null);
+
+  // IDENTIFICADA PERO SIN ACCESO
+  //
+  // Es el otro final de esta pantalla y el que más desconcierta: el link
+  // anduvo, Supabase dio la sesión, y el servidor igual dijo que no. Ahí
+  // volver a pedir el correo es peor que no decir nada —manda a pedir otro
+  // link, que no arregla nada y consume el cupo de correos por hora—, así
+  // que el formulario se guarda y se explica qué falta de verdad.
+  //
+  // Sólo cuenta si el servidor RECHAZÓ. Un 0 —quedarse sin conexión— o un
+  // 500 no prueban nada sobre el acceso, y tratarlos igual le diría a
+  // alguien que no tiene permisos cuando lo que tiene es mal el wifi.
+  const rechazado = error instanceof ApiError && (error.status === 401 || error.status === 403);
 
   useEffect(() => {
     let vivo = true;
@@ -176,9 +209,18 @@ function SignIn({ onToken, error }: { onToken: () => void; error: Error | null }
     };
   }, []);
 
-  const conGoogle = config?.proveedores?.includes("google") ?? false;
-  const conMail = config?.proveedores?.includes("email") ?? false;
-  const sinPuerta = config !== undefined && !conGoogle && !conMail;
+  useEffect(() => {
+    if (!rechazado) return;
+    let vivo = true;
+    void correoDeLaSesion().then((c) => vivo && setCorreo(c));
+    return () => {
+      vivo = false;
+    };
+  }, [rechazado]);
+
+  const conGoogle = (config?.proveedores?.includes("google") ?? false) && !rechazado;
+  const conMail = (config?.proveedores?.includes("email") ?? false) && !rechazado;
+  const sinPuerta = config !== undefined && !rechazado && !conGoogle && !conMail;
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
@@ -186,13 +228,43 @@ function SignIn({ onToken, error }: { onToken: () => void; error: Error | null }
         <h1 className="font-serif text-xl text-foreground">Panel del salón</h1>
         <p className="mt-1 text-sm text-muted-foreground">La agenda, las clientas y la caja.</p>
 
-        {(error || falla) && (
+        {/* Un solo cartel, y gana el más reciente: lo que acaba de pasar
+            en esta pantalla antes que el motivo con el que se llegó. */}
+        {(falla || aviso || error) && (
           <p className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {falla ?? error?.message}
+            {falla ?? aviso ?? error?.message}
           </p>
         )}
 
-        {config === undefined && <p className="mt-5 text-sm text-muted-foreground">Un segundo…</p>}
+        {rechazado && (
+          <>
+            <p className="mt-4 text-sm leading-relaxed text-foreground/85">
+              {correo ? (
+                <>
+                  Te identificaste como <span className="font-medium">{correo}</span>, así que el
+                  link anduvo.
+                </>
+              ) : (
+                <>Te identificaste bien, así que el link anduvo.</>
+              )}{" "}
+              Lo que falta es el acceso al panel, y eso lo da quien lo administra: pedir otro link
+              no lo cambia.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void salir().then(() => window.location.assign("/agenda"));
+              }}
+              className="mt-4 w-full rounded-full border border-border bg-card py-3 text-sm text-foreground transition-colors hover:border-champagne"
+            >
+              Probar con otro correo
+            </button>
+          </>
+        )}
+
+        {config === undefined && !rechazado && (
+          <p className="mt-5 text-sm text-muted-foreground">Un segundo…</p>
+        )}
 
         {/* El link ya salió. No se vuelve a mostrar el formulario: quien
             está esperando un mail no necesita otro campo, necesita saber

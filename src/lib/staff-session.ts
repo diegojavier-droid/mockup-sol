@@ -5,8 +5,12 @@
  * backend contra `staff_members` y la lista de acceso. Guardar el token
  * acá no da permisos: sin fila de staff, el API responde 403 igual.
  *
- * Se usa `sessionStorage` a propósito: en un mostrador compartido, la
- * sesión no debería sobrevivir a cerrar el navegador.
+ * Esto es una COPIA de lectura del `access_token` vigente, no la sesión.
+ * La sesión la guarda Supabase —en `localStorage`, porque PKCE necesita
+ * su clave temporal disponible en la pestaña que abre el link del mail—
+ * y `recuperarSesion()` vuelve a escribir acá el token en cada arranque.
+ * Por eso la copia puede vivir en `sessionStorage` sin dejar a nadie
+ * afuera: si falta, se rehace. Cerrar la sesión de verdad es «Salir».
  */
 
 const TOKEN_KEY = "sol-mai-staff-token";
