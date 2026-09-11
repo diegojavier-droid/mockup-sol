@@ -9,10 +9,17 @@ roles» es sólo la parte visible.
 
 ## 1. Qué protege este sistema, y de quién
 
-No es un sitio de folletos. Adentro hay:
+**Hoy la base no tiene datos reales cargados.** Se está construyendo el
+armazón; las clientas se cargan después. Eso cambia el riesgo de HOY
+—equivocarse ahora rompe un esqueleto que se reconstruye desde las
+migraciones— pero no cambia nada de lo que sigue: las barreras se
+construyen antes de que entren los datos, porque después ya es tarde.
 
-- **Los datos de 150 clientas reales**: nombre, teléfono, email, y qué
-  se hicieron en la cabeza los últimos años.
+Lo que va a haber adentro:
+
+- **Los datos de las clientas del salón** —unas 150, que es la escala
+  real del negocio—: nombre, teléfono, email, y qué se hicieron en la
+  cabeza los últimos años.
 - **Un dato de salud.** La web pregunta por alergias en peluquería,
   maquillaje y depilación. Para la Ley 25.326 eso es **dato sensible**,
   con más obligaciones que un teléfono. Es también el dato que más
