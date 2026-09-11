@@ -1,29 +1,19 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ClosedDaysBlocksPanel } from "@/components/booking/admin/ClosedDaysBlocksPanel";
-import { OperationalBufferPanel } from "@/components/booking/admin/OperationalBufferPanel";
+/**
+ * `/operaciones` dejó de existir.
+ *
+ * Nunca fue una página: eran dos secciones de Servicios que quedaron
+ * sueltas —tiempo entre turnos y días cerrados— en una pantalla cuyo
+ * único botón de volver decía «← Volver al sitio público» y echaba del
+ * panel a quien lo tocaba. Ahora son Servicios › Horarios, con migas
+ * para subir.
+ */
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/operaciones")({
-  head: () => ({
-    meta: [{ title: "Sol Mai · Operaciones" }],
-  }),
-  component: Operations,
+  beforeLoad: () => {
+    throw redirect({
+      to: "/panel/$modulo/$seccion",
+      params: { modulo: "servicios", seccion: "horarios" },
+    });
+  },
 });
-
-function Operations() {
-  return (
-    <main className="min-h-svh bg-background px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <Link
-          to="/"
-          className="mb-5 inline-flex rounded-full border border-border bg-card px-4 py-2 text-sm text-foreground transition-colors hover:border-champagne focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          ← Volver al sitio público
-        </Link>
-        <div className="space-y-6">
-          <OperationalBufferPanel />
-          <ClosedDaysBlocksPanel />
-        </div>
-      </div>
-    </main>
-  );
-}
