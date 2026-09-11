@@ -204,7 +204,31 @@ abierto: hoy hay señas que habría que devolver y nadie las devuelve.
    §2.1. Hasta entonces no se escribe la promesa.
 2. **Cuánto se espera antes de marcar una ausencia.** Sugerido: el cierre
    del día. Lo decide Sol.
-3. **El segundo número de WhatsApp.** Si Sol lo consigue, y cuál.
+3. ~~**El segundo número de WhatsApp.** Si Sol lo consigue, y cuál.~~
+   **RESUELTO a medias (2026-09-11).** El segundo número existe y lo tiene
+   Diego, para traspasarlo a Sol. El número **no se escribe acá**: hoy es
+   un dato personal suyo y no del salón, y la historia de git no se borra.
+   Cuando se dé de alta va como variable de configuración —y además va a
+   ser público, porque es el número que ven las clientas—.
+
+   Lo que falta antes de dar de alta:
+
+   - **Confirmar si es móvil o fijo.** Cambia el formato: los móviles
+     argentinos llevan un `9` entre el código de país y el área, y se les
+     saca el `15`. El de Sol ya está así en `src/lib/sol-mai-contact.ts`
+     (`5493425156726`, trece dígitos). Un número cargado sin el `9` falla
+     al registrarse.
+   - **Confirmar que ese número NO tenga WhatsApp en uso.** Darlo de alta
+     en la API lo saca de la aplicación para siempre (§2.2). Si Diego lo
+     está usando hoy, lo pierde.
+   - **Abrir la cuenta de Meta Business a nombre del salón, no de Diego.**
+     La verificación de negocio se hace una vez y con datos fiscales; si
+     se verifica con los de Diego, después hay que traspasar la cuenta
+     entera, no sólo el número. Hacerlo bien de entrada cuesta lo mismo.
+
+   El número de Sol que ya está en el sistema —el del botón de WhatsApp
+   para novias y eventos— **no se toca**. Ese es el que ella usa para
+   conversar, y es justamente el que §2.2 dice que no hay que migrar.
 4. **Si Sol quiere revisar las ausencias antes de que se avise**, o
    confía en que la clienta corrija. Cambia el diseño de §3.3.
 
