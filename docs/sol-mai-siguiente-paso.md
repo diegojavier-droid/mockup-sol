@@ -94,9 +94,15 @@ con el mismo aspecto; lo único que cambió es dónde se montan.
 - `wrangler dev` se cae en el contenedor cada N pedidos y el pedido que
   cae encima devuelve 500. No es el código: se comprobó con tres pedidos
   idénticos seguidos (403, 403, 500).
-- Para probar el panel en el navegador sin backend hace falta simular el
-  proyecto de Supabase: sembrar `sb-<ref>-auth-token` en `localStorage`,
-  responder `/api/v1/auth/panel-config` y `/api/v1/admin/me`, y **cortar
-  todo pedido a un host externo** —las fuentes de Google cuelgan a
-  Chromium en este contenedor—. Playwright anda con
-  `executablePath: /opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
+- **`scripts/panel-nav-e2e.mjs`** prueba la navegación en un navegador
+  real sin backend ni tokens: simula el proyecto de Supabase y responde
+  el API. Corre con `bun run dev` levantado y nada más. 28 comprobaciones.
+  Es el complemento de `scripts/panel-e2e.mjs`, que sí necesita base,
+  servidor y tokens de verdad y por eso no puede correrse en cualquier
+  sesión.
+- **`playwright` no está en `package.json`** y los dos scripts de arriba
+  lo importan: `bun install` no lo trae. Viene de antes de este bloque.
+  Hay que instalarlo aparte, y el Chromium del contenedor está en
+  `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
+- Al probar en el navegador hay que **cortar todo pedido a un host
+  externo**: las fuentes de Google cuelgan a Chromium en este contenedor.

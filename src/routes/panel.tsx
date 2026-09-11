@@ -26,13 +26,30 @@ export const Route = createFileRoute("/panel")({
 });
 
 function PanelLayout() {
-  const [hasToken, setHasToken] = useState(() => Boolean(readStaffToken()));
+  // Arranca en `false` a propósito, aunque el token ya esté guardado.
+  //
+  // El servidor no tiene `sessionStorage`, así que dibuja la pantalla de
+  // ingreso; si el cliente arrancara en `true` diría otra cosa en su
+  // primer dibujo y React tiraría todo el HTML del servidor para
+  // rehacerlo («hydration failed»). Se leía el token acá desde antes de
+  // este bloque y el desajuste venía de entonces; se vio al medirlo.
+  //
+  // El efecto de abajo lo pone en `true` apenas monta, que es cuando
+  // `sessionStorage` existe de verdad.
+  const [hasToken, setHasToken] = useState(false);
   // Por qué quedó afuera quien volvió del mail. Antes esto se descartaba
   // y el resultado era el peor de los mundos: el formulario de nuevo, sin
   // decir nada, pidiendo el correo que la persona acababa de escribir.
   const [problemaAlVolver, setProblemaAlVolver] = useState<string | null>(null);
   const identity = useStaffIdentity();
   const qc = useQueryClient();
+
+  // Un token ya guardado —el de una pestaña que sigue abierta, o el que
+  // inyecta la prueba de punta a punta— alcanza para entrar sin volver a
+  // preguntarle nada a Supabase.
+  useEffect(() => {
+    if (readStaffToken()) setHasToken(true);
+  }, []);
 
   // Al volver del link del mail —o de Google— Supabase canjea el código,
   // deja la sesión guardada y `recuperarSesion` la espeja en el token que

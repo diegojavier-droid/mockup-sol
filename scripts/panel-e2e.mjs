@@ -72,33 +72,73 @@ async function abrirPanel(token, { sinAsistente = false } = {}) {
       }),
     );
   }
-  await page.goto(`${BASE}/agenda`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE}/panel`, { waitUntil: "domcontentloaded" });
   await page.evaluate((t) => window.sessionStorage.setItem("sol-mai-staff-token", t), token);
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForTimeout(3000);
   return page;
 }
 
+/**
+ * Ir a una sección por su dirección.
+ *
+ * Antes había que buscar el botón del módulo y hacerle clic, porque el
+ * módulo abierto vivía en un `useState` y no había otra forma de llegar.
+ * Ahora cada sección es un lugar, así que la prueba va directo: es más
+ * corto y, sobre todo, no se rompe cuando cambia el dibujo del botón.
+ */
+async function irA(page, ruta, espera = 2500) {
+  await page.goto(`${BASE}/panel/${ruta}`, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(espera);
+  return page.locator("body").innerText();
+}
+
 console.log("── Sol (dueña)");
 const sol = await abrirPanel(TOKEN_SOL);
 let t = await sol.locator("body").innerText();
+ok("entra directo a Agenda › Hoy", sol.url().endsWith("/panel/agenda/hoy"), sol.url());
+// La barra de abajo del teléfono: cuatro destinos fijos que no se mueven.
 ok(
-  "ve el mapa de módulos agrupado por frecuencia",
-  /todos los d[íi]as/i.test(t) && /cada tanto/i.test(t),
+  "tiene la barra de abajo, con Clientas apagada a la vista",
+  t.includes("Agenda") && t.includes("Clientas") && t.includes("Finanzas") && t.includes("Más"),
 );
-ok(
-  "ve los módulos con sus nombres nuevos",
-  t.includes("Calendario") && t.includes("Finanzas") && t.includes("Servicios"),
-);
-ok("ve «Usuarios y roles»", t.includes("Usuarios y roles"));
-ok("ve lo que todavía no está, apagado", t.includes("Todavía no"));
 
-await sol.locator("button").filter({ hasText: "Servicios" }).first().click();
-await sol.waitForTimeout(2500);
-t = await sol.locator("body").innerText();
-ok("Servicios abre con precios y tiempos", t.includes("Precios y tiempos"));
-ok("y con puestos de trabajo", t.includes("Puestos de trabajo"));
-ok("y con productos", t.includes("Productos que vendés"));
+// El mapa de los nueve módulos. Esta prueba corre en un teléfono, y ahí
+// la barra lateral está escondida a propósito: los nueve viven en «Más»,
+// que no es un menú colapsado sino una pantalla entera.
+{
+  const tm = await irA(sol, "mas");
+  // Los tres rótulos de grupo se fueron: el orden sigue siendo el de la
+  // frecuencia de uso, pero la etiqueta que lo nombraba describía al
+  // sistema en vez de ayudar a encontrar.
+  ok(
+    "NO ve rótulos de grupo",
+    !/todos los d[íi]as/i.test(tm) && !/cada tanto/i.test(tm) && !/casi nunca/i.test(tm),
+  );
+  ok(
+    "ve los nueve módulos con sus nombres",
+    tm.includes("Agenda") && tm.includes("Finanzas") && tm.includes("Servicios"),
+  );
+  // El módulo de los turnos se llama Agenda y no Calendario (2026-09-11).
+  // El sistema decía las dos cosas a treinta píxeles de distancia.
+  ok("y el de los turnos se llama Agenda, no Calendario", !tm.includes("Calendario"));
+  ok("ve «Usuarios y roles»", tm.includes("Usuarios y roles"));
+  ok("ve lo que todavía no está, apagado", tm.includes("Todavía no"));
+}
+
+t = await irA(sol, "servicios/precios");
+ok("Servicios › Precios y tiempos abre donde dice", t.includes("Precios y tiempos"));
+
+// Las tres partes que antes se apilaban en un scroll ahora son tres
+// direcciones, y Productos se fue a Inventario, que es su módulo.
+{
+  const tp = await irA(sol, "servicios/puestos");
+  ok("Servicios › Puestos de trabajo tiene su propia dirección", tp.includes("Puestos de trabajo"));
+  const ti = await irA(sol, "inventario/productos");
+  ok("Productos vive en Inventario", ti.includes("Productos que vendés"));
+}
+
+t = await irA(sol, "servicios/precios");
 ok(
   "avisa que las preguntas del turno no se tocan desde acá",
   t.includes("no se cambian desde acá"),
@@ -161,9 +201,7 @@ console.log("\n── El asistente de precios");
 // Sin clave, el campo no existe.
 {
   const sinIA = await abrirPanel(TOKEN_SOL, { sinAsistente: true });
-  await sinIA.locator("button").filter({ hasText: "Servicios" }).first().click();
-  await sinIA.waitForTimeout(2500);
-  const t5 = await sinIA.locator("body").innerText();
+  const t5 = await irA(sinIA, "servicios/precios");
   ok("sin asistente configurado, el campo no aparece", !t5.includes("Cambiar varios"));
   ok("y los precios se siguen editando a mano", t5.includes("Precios y tiempos"));
   await sinIA.close();
@@ -175,9 +213,7 @@ console.log("\n── El asistente de precios");
 // bloque.
 console.log("\n── Usuarios y roles · Personas");
 {
-  await sol.locator("button").filter({ hasText: "Usuarios y roles" }).first().click();
-  await sol.waitForTimeout(2500);
-  let tp = await sol.locator("body").innerText();
+  let tp = await irA(sol, "usuarios/personas");
   ok("abre con quién puede entrar", tp.includes("Quién puede entrar"));
   ok(
     "dice que se entra con Google y que no se guardan contraseñas",
@@ -197,7 +233,10 @@ console.log("\n── Usuarios y roles · Personas");
     // que nadie le quiso dar.
     ok(
       "no deja sumar a nadie sin elegir el rol",
-      await sol.locator("button", { hasText: /^Sumar$/ }).first().isDisabled(),
+      await sol
+        .locator("button", { hasText: /^Sumar$/ })
+        .first()
+        .isDisabled(),
     );
     ok("y dice qué falta", /elegí con qué rol entra/i.test(await sol.locator("body").innerText()));
 
@@ -237,7 +276,8 @@ console.log("\n── Usuarios y roles · Personas");
   }
 }
 
-// El registro de cambios vive debajo de Personas, en el mismo módulo.
+// El registro de cambios es una sección propia del mismo módulo:
+// `/panel/usuarios/cambios`. Antes venía apilado debajo de Personas.
 // Lo que se prueba: que traduzca los códigos a castellano —nadie tiene
 // por qué saber qué es `staff_invited`— y que no ofrezca borrar nada.
 console.log("\n── Usuarios y roles · Registro de cambios");
@@ -246,8 +286,13 @@ console.log("\n── Usuarios y roles · Registro de cambios");
   // reconstruida esta consulta llega tarde y la prueba daba rojo con la
   // pantalla correcta. Se comprobó: sobre la misma base ya tibia pasa. Lo
   // que se agranda es la espera, no lo que se exige.
+  await irA(sol, "usuarios/cambios", 1000);
   const t = await esperarTexto(sol, /le dio acceso al panel/i, 25000);
-  ok("el registro está en la misma pantalla", /no se puede editar ni borrar/i.test(t));
+  ok(
+    "el registro tiene su propia dirección",
+    sol.url().endsWith("/panel/usuarios/cambios"),
+    sol.url(),
+  );
   ok(
     "traduce las acciones a castellano en vez de mostrar el código",
     /le dio acceso al panel/i.test(t) && !t.includes("staff_invited"),
@@ -262,7 +307,9 @@ console.log("\n── Usuarios y roles · Registro de cambios");
   // JSON crudo al lado.
   ok(
     "no muestra el código de las acciones nuevas",
-    !/role_permission_changed|role_created|role_deleted|booking_invoiced|booking_invoice_undone/.test(t),
+    !/role_permission_changed|role_created|role_deleted|booking_invoiced|booking_invoice_undone/.test(
+      t,
+    ),
     t.slice(-400),
   );
 
@@ -289,7 +336,7 @@ console.log("\n── La puerta del panel");
   const t = await puerta.locator("body").innerText();
 
   ok("ofrece el link al mail", /mandarme un link/i.test(t));
-  ok("hay dónde escribir el correo", (await puerta.locator('#staff-mail').count()) > 0);
+  ok("hay dónde escribir el correo", (await puerta.locator("#staff-mail").count()) > 0);
   ok("y NO pide pegar un token a mano", !/token de acceso/i.test(t));
 
   // Lo que de verdad confunde: identificarse no es tener acceso.
@@ -407,10 +454,7 @@ console.log("\n── La puerta del panel");
     !/falta es el acceso/i.test(tv2) && !/el link anduvo/i.test(tv2),
     tv2.slice(0, 300),
   );
-  ok(
-    "sin ofrecerle salir de una sesión que ya no existe",
-    !/probar con otro correo/i.test(tv2),
-  );
+  ok("sin ofrecerle salir de una sesión que ya no existe", !/probar con otro correo/i.test(tv2));
   await vencida.close();
 
   // (b) Identidad buena, sin fila en `staff_members`. Acá sí: pedir otro
@@ -436,9 +480,7 @@ console.log("\n── La puerta del panel");
 
 console.log("\n── Finanzas · Facturación");
 {
-  await sol.locator('button:has-text("Finanzas")').first().click();
-  await sol.waitForTimeout(2500);
-  const t = await sol.locator("body").innerText();
+  const t = await irA(sol, "finanzas/facturacion");
 
   ok("la facturación está en Finanzas", /facturación/i.test(t));
   // Lo primero que tiene que quedar claro es que el sistema no factura:
@@ -457,7 +499,10 @@ console.log("\n── Finanzas · Facturación");
     await marcar.click();
     await sol.waitForTimeout(500);
     const importe = sol.locator('input[aria-label^="Importe facturado"]').first();
-    ok("el importe viene cargado con el precio de la atención", (await importe.inputValue()) === "25000");
+    ok(
+      "el importe viene cargado con el precio de la atención",
+      (await importe.inputValue()) === "25000",
+    );
 
     // El saldo impago se muestra: si no, Sol facturaría sobre plata que
     // todavía no entró. Esta atención se cerró en $25.000 sin ningún pago.
@@ -492,20 +537,22 @@ console.log("\n── Finanzas · Facturación");
 
 console.log("\n── Roles y permisos");
 {
-  await sol.locator('button:has-text("Usuarios y roles")').first().click();
-  await sol.waitForTimeout(2500);
-  const t = await sol.locator("body").innerText();
+  const t = await irA(sol, "usuarios/roles");
 
   ok("Sol ve la matriz de permisos", /qué ve cada rol/i.test(t));
-  ok("están los nueve módulos", /Inventario/i.test(t) && /Compras/i.test(t) && /Configuración/i.test(t));
+  ok(
+    "están los nueve módulos",
+    /Inventario/i.test(t) && /Compras/i.test(t) && /Configuración/i.test(t),
+  );
   ok("dice qué es cada módulo, no sólo su nombre", /la caja, lo que entró/i.test(t));
 
   // A la administradora no se le puede recortar nada: si esto se
   // pudiera, el salón se queda sin nadie que lo arregle.
   const selDuena = sol.locator('select[aria-label="Finanzas para Administradora"]');
-  ok("el rol de la administradora no se edita", (await selDuena.count()) > 0
-    ? await selDuena.first().isDisabled()
-    : false);
+  ok(
+    "el rol de la administradora no se edita",
+    (await selDuena.count()) > 0 ? await selDuena.first().isDisabled() : false,
+  );
   ok("y la pantalla explica por qué", /entra a todo, siempre/i.test(t));
 
   // Un rol nuevo nace sin ver nada. Se crea, se comprueba, y se borra
@@ -546,7 +593,9 @@ console.log("\n── Roles y permisos");
 
 console.log("\n── Quien atiende");
 const staff = await abrirPanel(TOKEN_STAFF);
-const ts = await staff.locator("body").innerText();
+ok("entra al día, que es lo suyo", staff.url().endsWith("/panel/agenda/hoy"), staff.url());
+// En «Más» se ve el mapa entero, armado con lo que el permiso deja pasar.
+const ts = await irA(staff, "mas");
 ok("puede trabajar el día", ts.includes("Agenda"));
 ok("NO ve Servicios", !ts.includes("Servicios"));
 ok("NO ve Finanzas", !ts.includes("Finanzas"));
