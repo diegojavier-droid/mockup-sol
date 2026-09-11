@@ -130,6 +130,49 @@ export async function recuperarSesion(): Promise<boolean> {
   return false;
 }
 
+/**
+ * Pide un link de un solo uso al correo.
+ *
+ * POR QUÉ ESTE ES EL CAMINO PRINCIPAL Y NO GOOGLE
+ *
+ * No hace falta configurar nada afuera: ni cliente de OAuth en Google
+ * Cloud, ni que la persona tenga cuenta de Google. Y prueba lo mismo que
+ * probaría Google —que la casilla es suya—, porque para entrar hay que
+ * abrirla.
+ *
+ * SÍ crea la cuenta de Supabase si no existe, y tiene que ser así: la
+ * primera vez que entra la administradora todavía no tiene ninguna. Eso
+ * no regala nada. Tener cuenta de Supabase no abre el panel: el servidor
+ * exige además una fila activa en `staff_members`, que se administra
+ * desde adentro. Cualquiera puede pedirse un link y confirmar que el
+ * mail es suyo; entrar es otra cosa.
+ */
+export async function pedirLinkPorMail(email: string): Promise<{ ok: boolean; mensaje?: string }> {
+  const supabase = await cliente();
+  if (!supabase) {
+    return { ok: false, mensaje: "Todavía no está configurado el ingreso al panel." };
+  }
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email: email.trim(),
+    options: { emailRedirectTo: `${window.location.origin}/agenda` },
+  });
+
+  if (error) {
+    // Supabase limita cuántos correos manda por hora. Vale la pena
+    // distinguirlo: «probá de nuevo» a secas haría que alguien reintente
+    // diez veces y empeore el bloqueo.
+    const demasiados = error.status === 429 || /rate limit/i.test(error.message ?? "");
+    return {
+      ok: false,
+      mensaje: demasiados
+        ? "Se pidieron muchos links seguidos. Esperá unos minutos y volvé a intentar."
+        : "No pudimos mandar el link. Avisale a quien administra el sistema.",
+    };
+  }
+  return { ok: true };
+}
+
 export async function entrarConGoogle(): Promise<{ ok: boolean; mensaje?: string }> {
   const supabase = await cliente();
   if (!supabase) {

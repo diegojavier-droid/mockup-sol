@@ -27,7 +27,18 @@ const nonEmpty = z.string().min(1, "must not be empty");
  * esos tokens; por eso el guard mira `APP_ENV` en vez de prohibirlo
  * siempre.
  */
-const TRUSTED_PRODUCTION_PROVIDERS = ["google"] as const;
+/**
+ * `email` entra en la lista, pero NO alcanza con ponerlo acá: en
+ * producción se acepta sólo si Supabase exige confirmar el correo, cosa
+ * que se le pregunta a Supabase en cada arranque de instancia
+ * (`lib/identity/supabase-settings.ts`). Si auto-confirma, o si no se
+ * pudo averiguar, el proveedor se descarta igual.
+ *
+ * El motivo de tenerlo: entrar con un link al mail no exige credenciales
+ * de Google Cloud ni que la persona tenga cuenta de Google, y el link
+ * prueba que la casilla es suya igual que lo probaría Google.
+ */
+const TRUSTED_PRODUCTION_PROVIDERS = ["google", "email"] as const;
 
 const csvEmails = z
   .string()
@@ -73,7 +84,7 @@ const serverEnvSchema = z.object({
    */
   INTERNAL_AUTH_ALLOWED_PROVIDERS: z
     .string()
-    .default("google")
+    .default("google,email")
     .transform((raw) =>
       raw
         .split(",")

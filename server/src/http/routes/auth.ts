@@ -28,14 +28,25 @@
 
 import { Hono } from "hono";
 import type { ServerEnv } from "../../config/env";
+import { leerAuthSettings, proveedoresAdmitidos } from "../../lib/identity/supabase-settings";
 
 export interface PanelAuthConfig {
   supabaseUrl: string;
   publishableKey: string;
   /**
-   * Con qué se puede entrar. Sale de `INTERNAL_AUTH_ALLOWED_PROVIDERS`,
-   * que es lo mismo que el servidor va a exigir después: la pantalla no
-   * puede ofrecer un botón que el backend vaya a rechazar.
+   * CON QUÉ SE PUEDE ENTRAR DE VERDAD
+   *
+   * No es la lista de `INTERNAL_AUTH_ALLOWED_PROVIDERS` a secas: es la
+   * intersección de lo que este servidor admite con lo que el proyecto de
+   * Supabase tiene efectivamente habilitado.
+   *
+   * La diferencia se pagó cara. La primera versión ofrecía «Entrar con
+   * Google» porque el servidor lo admitía, sin que Google estuviera
+   * configurado en Supabase: un botón que llevaba a un error y dejaba a
+   * quien construye el sistema sin forma de entrar a su propio panel.
+   * Una pantalla que ofrece lo que no funciona es peor que una que no
+   * ofrece nada, porque hace perder el tiempo buscando el error del lado
+   * equivocado.
    */
   proveedores: string[];
 }
@@ -45,15 +56,24 @@ export function createAuthRoute(env: ServerEnv) {
 
   // GET /api/v1/auth/panel-config
   // Público a propósito: se consulta ANTES de tener sesión.
-  route.get("/panel-config", (c) =>
-    c.json({
+  route.get("/panel-config", async (c) => {
+    const admitidos = await proveedoresAdmitidos(env);
+    const settings = await leerAuthSettings(env);
+
+    // Si no se pudo preguntarle a Supabase, se ofrece lo que el servidor
+    // admite y que el intento falle con su mensaje, en vez de dejar la
+    // pantalla sin ninguna puerta por un problema de red.
+    const habilitado = (p: string) =>
+      settings === null ? true : p === "google" ? settings.google : settings.email;
+
+    return c.json({
       data: {
         supabaseUrl: env.SUPABASE_URL,
         publishableKey: env.SUPABASE_PUBLISHABLE_KEY,
-        proveedores: env.INTERNAL_AUTH_ALLOWED_PROVIDERS,
+        proveedores: admitidos.filter(habilitado),
       } satisfies PanelAuthConfig,
-    }),
-  );
+    });
+  });
 
   return route;
 }

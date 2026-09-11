@@ -19,7 +19,13 @@ import { InvoicingScreen } from "@/components/booking/admin/InvoicingScreen";
 import { ModuleNav, type ModuleKey } from "@/components/booking/admin/ModuleNav";
 import { useStaffIdentity } from "@/lib/api/admin-hooks";
 import { puede, readStaffToken, writeStaffToken } from "@/lib/staff-session";
-import { entrarConGoogle, leerConfig, recuperarSesion, salir } from "@/lib/staff-auth";
+import {
+  entrarConGoogle,
+  leerConfig,
+  pedirLinkPorMail,
+  recuperarSesion,
+  salir,
+} from "@/lib/staff-auth";
 
 export const Route = createFileRoute("/agenda")({
   head: () => ({ meta: [{ title: "Sol Mai · Agenda" }] }),
@@ -133,22 +139,33 @@ function AgendaRoute() {
 /**
  * La puerta del panel.
  *
- * Hasta este bloque pedía que alguien pegara a mano un token de sesión de
- * Supabase. Andaba para probar, pero significaba que Sol no podía entrar
- * sola: todo lo construido quedaba detrás de un campo que sólo sabe
- * llenar quien tiene la consola abierta.
+ * EL CAMINO PRINCIPAL ES EL LINK AL MAIL
  *
- * El campo del token sigue existiendo, pero SÓLO si Google no está
- * configurado. Es un guard que falla del lado seguro: si el día de mañana
- * alguien despliega sin las credenciales cargadas, la pantalla lo dice y
- * deja una forma de entrar, en vez de mostrar un botón que no hace nada.
+ * Google exige un cliente de OAuth en Google Cloud y credenciales
+ * cargadas en Supabase: dos consolas ajenas antes de que nadie pueda
+ * abrir el panel. El link al correo no necesita nada de eso y prueba lo
+ * mismo —que la casilla es tuya—, así que es lo que se ofrece primero.
+ * Google queda como opción y aparece sólo si está configurado de verdad.
+ *
+ * QUÉ SE DICE Y QUÉ NO
+ *
+ * La versión anterior decía «Entrá con la cuenta que Sol autorizó», que
+ * le habla a una tercera persona que no existe —cuando lo abre Sol, le
+ * está diciendo que entre con la cuenta que ella misma autorizó—, y
+ * tranquilizaba sobre la contraseña, un miedo que nadie tenía.
+ *
+ * En su lugar se explica lo único que confunde de verdad: identificarse
+ * y tener acceso son cosas distintas. Quien no lo sabe interpreta que
+ * cualquiera con una cuenta entra al panel.
  */
 function SignIn({ onToken, error }: { onToken: () => void; error: Error | null }) {
   const [token, setToken] = useState("");
+  const [mail, setMail] = useState("");
   const [config, setConfig] = useState<Awaited<ReturnType<typeof leerConfig>> | undefined>(
     undefined,
   );
   const [yendo, setYendo] = useState(false);
+  const [enviado, setEnviado] = useState(false);
   const [falla, setFalla] = useState<string | null>(null);
 
   useEffect(() => {
@@ -160,12 +177,14 @@ function SignIn({ onToken, error }: { onToken: () => void; error: Error | null }
   }, []);
 
   const conGoogle = config?.proveedores?.includes("google") ?? false;
+  const conMail = config?.proveedores?.includes("email") ?? false;
+  const sinPuerta = config !== undefined && !conGoogle && !conMail;
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background px-4">
+    <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-sm rounded-3xl border border-champagne-deep/20 bg-card p-6 shadow-sm">
         <h1 className="font-serif text-xl text-foreground">Panel del salón</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Entrá con la cuenta que Sol autorizó.</p>
+        <p className="mt-1 text-sm text-muted-foreground">La agenda, las clientas y la caja.</p>
 
         {(error || falla) && (
           <p className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -173,44 +192,105 @@ function SignIn({ onToken, error }: { onToken: () => void; error: Error | null }
           </p>
         )}
 
-        {config === undefined && (
-          <p className="mt-5 text-sm text-muted-foreground">Un segundo…</p>
-        )}
+        {config === undefined && <p className="mt-5 text-sm text-muted-foreground">Un segundo…</p>}
 
-        {config !== undefined && conGoogle && (
-          <>
+        {/* El link ya salió. No se vuelve a mostrar el formulario: quien
+            está esperando un mail no necesita otro campo, necesita saber
+            que tiene que ir a mirar la casilla. */}
+        {enviado && (
+          <div className="mt-5 rounded-2xl border border-champagne-deep/30 bg-cream/60 px-4 py-4">
+            <p className="text-sm text-foreground/85">
+              Te mandamos un link a <span className="font-medium">{mail.trim()}</span>. Abrilo desde
+              este mismo dispositivo y entrás.
+            </p>
             <button
               type="button"
-              disabled={yendo}
+              onClick={() => {
+                setEnviado(false);
+                setFalla(null);
+              }}
+              className="mt-3 text-xs text-muted-foreground underline underline-offset-4"
+            >
+              Usar otro correo
+            </button>
+          </div>
+        )}
+
+        {conMail && !enviado && (
+          <>
+            <label
+              htmlFor="staff-mail"
+              className="mt-5 block text-[11px] uppercase tracking-wider text-muted-foreground"
+            >
+              Tu correo
+            </label>
+            <input
+              id="staff-mail"
+              type="email"
+              autoComplete="email"
+              value={mail}
+              onChange={(e) => setMail(e.target.value)}
+              placeholder="vos@ejemplo.com"
+              className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <button
+              type="button"
+              disabled={yendo || mail.trim() === ""}
               onClick={() => {
                 setFalla(null);
                 setYendo(true);
-                void entrarConGoogle().then((r) => {
-                  if (!r.ok) {
-                    setFalla(r.mensaje ?? "No pudimos abrir el ingreso con Google.");
-                    setYendo(false);
-                  }
-                  // Si salió bien, el navegador ya se está yendo a Google:
-                  // no se apaga el «Entrando…» para que no parpadee.
+                void pedirLinkPorMail(mail).then((r) => {
+                  setYendo(false);
+                  if (r.ok) setEnviado(true);
+                  else setFalla(r.mensaje ?? "No pudimos mandar el link.");
                 });
               }}
-              className="mt-5 w-full rounded-full bg-primary py-3 font-serif text-base text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+              className="mt-3 w-full rounded-full bg-primary py-3 font-serif text-base text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             >
-              {yendo ? "Entrando…" : "Entrar con Google"}
+              {yendo ? "Mandando…" : "Mandarme un link"}
             </button>
-
-            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-              Entrás con tu cuenta de Google. No guardamos tu contraseña: no la vemos nunca.
-            </p>
           </>
         )}
 
-        {config !== undefined && !conGoogle && (
+        {conGoogle && !enviado && (
+          <button
+            type="button"
+            disabled={yendo}
+            onClick={() => {
+              setFalla(null);
+              setYendo(true);
+              void entrarConGoogle().then((r) => {
+                if (!r.ok) {
+                  setFalla(r.mensaje ?? "No pudimos abrir el ingreso con Google.");
+                  setYendo(false);
+                }
+              });
+            }}
+            className={
+              conMail
+                ? "mt-3 w-full rounded-full border border-border bg-card py-3 text-sm text-foreground transition-colors hover:border-champagne disabled:opacity-60"
+                : "mt-5 w-full rounded-full bg-primary py-3 font-serif text-base text-primary-foreground transition-all hover:translate-y-[-1px] disabled:opacity-60"
+            }
+          >
+            Entrar con Google
+          </button>
+        )}
+
+        {/* Lo que de verdad confunde: identificarse no es tener acceso. */}
+        {(conMail || conGoogle) && (
+          <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+            Entrar sólo dice quién sos. El acceso al panel lo da quien lo administra.
+          </p>
+        )}
+
+        {sinPuerta && (
           <>
-            {/* Sin Google configurado. Se dice con todas las letras en vez
-                de mostrar una pantalla que parece rota. */}
+            {/* Ni link ni Google: el proyecto de Supabase no tiene
+                habilitado ninguno de los dos. Se dice con todas las
+                letras y se deja una forma de entrar, porque si no el
+                sistema queda sin nadie que pueda arreglarlo. */}
             <p className="mt-5 rounded-2xl border border-champagne-deep/30 bg-cream/60 px-4 py-3 text-sm text-foreground/85">
-              El ingreso con Google todavía no está configurado en este servidor. Mientras tanto se
+              Este servidor todavía no tiene habilitado ningún modo de ingreso. Mientras tanto se
               entra con el token de la sesión de Supabase.
             </p>
 
