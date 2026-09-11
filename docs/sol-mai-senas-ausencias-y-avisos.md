@@ -48,18 +48,41 @@ así que el número sale de ahí y no de una suposición.
 **Hasta tener ese número, el sistema no debe prometer «te devolvemos el
 100%» ni «menos la comisión».** Ver §4.
 
-### 2.2. El número de WhatsApp de Sol no puede usarse para automatizar
+### 2.2. El número de WhatsApp: hay dos caminos, y cambian todo
 
-Para mandar mensajes automáticos hace falta la API de WhatsApp Business.
-Y un número que entra a la API **deja de funcionar en la aplicación de
-WhatsApp y en WhatsApp Web**. Es un camino de ida.
+**Revisado el 2026-09-11.** Lo que decía antes esta sección —que migrar un
+número es siempre un camino de ida— era cierto para el único camino que
+existía cuando se escribió. Ahora hay dos, y conviene verificar cuál
+aplica antes de gastar un trámite.
 
-O sea: si se migra el número que Sol usa todos los días, **Sol pierde
-WhatsApp en su teléfono para ese número**. Para una peluquería donde el
-vínculo por chat es el negocio, es inaceptable.
+**Camino 1 — migración directa.** El número entra a la API y **deja de
+funcionar en la aplicación de WhatsApp y en WhatsApp Web**, para siempre.
+El historial de chats de ese número **se pierde** y no se puede restaurar.
+Esto está en la documentación de Meta y no está en duda.
 
-**Hace falta un segundo número, dedicado a los avisos automáticos.** El de
-Sol queda como está, para conversar.
+**Camino 2 — coexistencia.** El mismo número funciona a la vez en la
+aplicación y en la API: los chats y los contactos se conservan, y Sol
+sigue conversando desde su teléfono mientras el sistema manda los avisos.
+Se hace a través de un proveedor que soporte el alta de un número de la
+Business App, no por el flujo directo de la Cloud API.
+
+**Lo que NO está verificado** y hay que confirmar antes de decidir:
+
+- Si la coexistencia está disponible en Argentina hoy. Varias fuentes de
+  proveedores dicen que desde mayo de 2026 está en todos los países; no se
+  pudo abrir la documentación de Meta desde este entorno para confirmarlo.
+- Si exige que el número esté en **WhatsApp Business App** y no en
+  WhatsApp común. El nombre del flujo —«business app number onboarding»—
+  sugiere que sí.
+- Qué proveedores lo soportan para Argentina, y a qué precio.
+
+**Por qué importa tanto.** Si la coexistencia funciona, lo mejor NO es un
+segundo número: es que los avisos salgan **del número que las clientas ya
+tienen agendado**. Un recordatorio que llega de un número desconocido se
+lee como spam; uno que llega del número de Sol, no.
+
+Si no funciona, vale lo de antes: **hace falta un segundo número dedicado**
+y el de Sol queda intacto para conversar.
 
 ---
 
@@ -218,9 +241,11 @@ abierto: hoy hay señas que habría que devolver y nadie las devuelve.
      saca el `15`. El de Sol ya está así en `src/lib/sol-mai-contact.ts`
      (`5493425156726`, trece dígitos). Un número cargado sin el `9` falla
      al registrarse.
-   - **Confirmar que ese número NO tenga WhatsApp en uso.** Darlo de alta
-     en la API lo saca de la aplicación para siempre (§2.2). Si Diego lo
-     está usando hoy, lo pierde.
+   - **El número TIENE WhatsApp en uso** (confirmado 2026-09-11). Por el
+     camino directo se pierde la aplicación y el historial; por
+     coexistencia, no. Cuál aplica es lo primero a verificar (§2.2).
+     Mientras eso no esté confirmado, un chip nuevo sin WhatsApp es la
+     opción que no depende de nada.
    - **Abrir la cuenta de Meta Business a nombre del salón, no de Diego.**
      La verificación de negocio se hace una vez y con datos fiscales; si
      se verifica con los de Diego, después hay que traspasar la cuenta
