@@ -281,9 +281,27 @@ console.log("\n── La puerta del panel");
   await puerta.waitForTimeout(2500);
   const t = await puerta.locator("body").innerText();
 
-  ok("con Google configurado ofrece entrar con Google", /entrar con google/i.test(t));
+  ok("ofrece el link al mail", /mandarme un link/i.test(t));
+  ok("hay dónde escribir el correo", (await puerta.locator('#staff-mail').count()) > 0);
   ok("y NO pide pegar un token a mano", !/token de acceso/i.test(t));
-  ok("dice que no guardamos la contraseña", /no guardamos tu contraseña/i.test(t));
+
+  // Lo que de verdad confunde: identificarse no es tener acceso.
+  ok("explica que entrar no es tener acceso", /sólo dice quién sos/i.test(t));
+  ok("no le habla a una tercera persona que no existe", !/la cuenta que Sol autorizó/i.test(t));
+  ok("no tranquiliza sobre un miedo que nadie tiene", !/no guardamos tu contraseña/i.test(t));
+
+  // Pedir el link: el formulario desaparece y queda el aviso de ir a mirar
+  // la casilla. Con el shim local el envío falla, así que se comprueba que
+  // el error se diga y no que el mail llegue.
+  await puerta.locator("#staff-mail").fill("prueba@solmai.test");
+  await puerta.locator('button:has-text("Mandarme un link")').click();
+  await puerta.waitForTimeout(3000);
+  const t3 = await puerta.locator("body").innerText();
+  ok(
+    "pedir el link deja un mensaje claro, ande o no ande",
+    /te mandamos un link|no pudimos mandar el link|muchos links/i.test(t3),
+    t3.slice(0, 300),
+  );
   await puerta.close();
 
   // Y si el servidor NO ofrece Google, la pantalla lo dice y deja entrar
@@ -307,9 +325,10 @@ console.log("\n── La puerta del panel");
   await sinGoogle.waitForTimeout(2500);
   const t2 = await sinGoogle.locator("body").innerText();
 
-  ok("sin Google configurado lo dice con todas las letras", /todavía no está configurado/i.test(t2));
+  ok("sin ningún modo habilitado lo dice con todas las letras", /ningún modo de ingreso/i.test(t2));
   ok("y deja la forma vieja de entrar", /token de acceso/i.test(t2));
   ok("sin ofrecer un botón que no hace nada", !/entrar con google/i.test(t2));
+  ok("ni un campo de correo que no sirve", (await sinGoogle.locator("#staff-mail").count()) === 0);
   await sinGoogle.close();
 }
 

@@ -15,22 +15,46 @@ const BASE = {
 
 afterEach(() => __resetServerEnvCache());
 
+/**
+ * QUÉ CAMBIÓ, Y QUÉ NO
+ *
+ * Antes producción NO arrancaba si aparecía `email`. Ese guard existía
+ * porque con el alta por mail y clave cualquiera se registra con el
+ * correo de otro; pero también dejaba el panel detrás de Google Cloud, y
+ * mientras esas credenciales no estuvieran cargadas NADIE podía entrar,
+ * ni siquiera quien construye el sistema.
+ *
+ * Ahora `email` está admitido en la variable, pero eso NO alcanza para
+ * que se acepte: en producción el servidor le pregunta a Supabase si
+ * exige confirmar el correo, y si auto-confirma —o si no se pudo
+ * averiguar— descarta el proveedor igual. Esa parte se prueba en
+ * `lib/identity/supabase-settings.test.ts`.
+ *
+ * O sea: el arranque dejó de ser el lugar donde se decide, pero la
+ * decisión sigue existiendo y sigue fallando del lado seguro. Lo que un
+ * proveedor que no verifica el email NUNCA puede hacer es entrar por
+ * ninguno de los dos caminos, y eso se prueba más abajo.
+ */
 describe("política de proveedores de identidad", () => {
-  test("sin la variable, producción queda en google", () => {
+  test("sin la variable, quedan los dos que verifican el correo", () => {
     const env = loadServerEnv(BASE);
-    expect(env.INTERNAL_AUTH_ALLOWED_PROVIDERS).toEqual(["google"]);
+    expect(env.INTERNAL_AUTH_ALLOWED_PROVIDERS).toEqual(["google", "email"]);
   });
 
-  test("producción NO arranca con email: es el proveedor del ataque", () => {
-    expect(() => loadServerEnv({ ...BASE, INTERNAL_AUTH_ALLOWED_PROVIDERS: "email" })).toThrow(
-      /no verifica el email/,
-    );
+  test("producción arranca con email, porque el link prueba la casilla", () => {
+    const env = loadServerEnv({ ...BASE, INTERNAL_AUTH_ALLOWED_PROVIDERS: "email" });
+    expect(env.INTERNAL_AUTH_ALLOWED_PROVIDERS).toEqual(["email"]);
   });
 
-  test("tampoco arranca si email viene acompañado de google", () => {
+  test("y con los dos juntos también", () => {
+    const env = loadServerEnv({ ...BASE, INTERNAL_AUTH_ALLOWED_PROVIDERS: "google,email" });
+    expect(env.INTERNAL_AUTH_ALLOWED_PROVIDERS).toEqual(["google", "email"]);
+  });
+
+  test("pero un proveedor que NO verifica el correo sigue sin arrancar, aunque venga acompañado", () => {
     // Lo peligroso es que ESTÉ, no que esté solo.
     expect(() =>
-      loadServerEnv({ ...BASE, INTERNAL_AUTH_ALLOWED_PROVIDERS: "google,email" }),
+      loadServerEnv({ ...BASE, INTERNAL_AUTH_ALLOWED_PROVIDERS: "google,email,phone" }),
     ).toThrow(/no verifica el email/);
   });
 

@@ -23,6 +23,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { ServerEnv } from "../../config/env";
 import { createSupabaseAdminClient } from "../../lib/supabase";
 import { rejectionMessage, verifyIdentity } from "../../lib/identity/verify";
+import { proveedoresAdmitidos } from "../../lib/identity/supabase-settings";
 import type { MapaDePermisos } from "./permisos";
 
 /**
@@ -66,7 +67,10 @@ async function resolveIdentity(env: ServerEnv, token: string): Promise<StaffIden
   // Mismo criterio que la identidad de la clienta: el token prueba que
   // lo emitió este proyecto, no con qué proveedor ni que el email sea
   // suyo. Sin esto, la lista de acceso quedaba como única barrera.
-  const check = verifyIdentity(data.user, env.INTERNAL_AUTH_ALLOWED_PROVIDERS);
+  // No la lista configurada a secas: la que de verdad se admite. En
+  // producción `email` sólo entra si Supabase exige confirmar el correo,
+  // porque si auto-confirma, cualquiera se registra con el mail de Sol.
+  const check = verifyIdentity(data.user, await proveedoresAdmitidos(env));
   if (!check.ok) {
     console.warn("[sol-mai-api] acceso al panel rechazado:", check.reason);
     throw new HTTPException(403, { message: rejectionMessage(check.reason) });
