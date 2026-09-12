@@ -20,11 +20,13 @@ import { useState } from "react";
 import { useCashRegister, usePendingRefunds, useStaffIdentity } from "@/lib/api/admin-hooks";
 import { puede } from "@/lib/staff-session";
 import { AgendaScreen } from "./AgendaScreen";
+import { MesScreen } from "./MesScreen";
 import { CashRegisterPanel } from "./CashRegisterPanel";
 import { PendingRefundsPanel } from "./PendingRefundsPanel";
 import { InvoicingScreen } from "./InvoicingScreen";
 import { DashboardScreen } from "./DashboardScreen";
 import { PreciosYTiemposScreen, PuestosScreen, ProductosScreen } from "./SalonScreen";
+import { PuestosFueraScreen } from "./PuestosFueraScreen";
 import { ClosedDaysBlocksPanel } from "./ClosedDaysBlocksPanel";
 import { OperationalBufferPanel } from "./OperationalBufferPanel";
 import { PeopleScreen } from "./PeopleScreen";
@@ -125,7 +127,55 @@ function Roles() {
   return <RolesScreen />;
 }
 
-export function contenidoDe(modulo: string, seccion: string): React.ReactNode | null {
+/**
+ * Agenda › Mes, y el día que se haya abierto desde ahí.
+ *
+ * Cuando la dirección trae `?dia=`, la pantalla es la agenda de ese día
+ * —operable, la misma de siempre— con una forma de volver al mes. Sin
+ * `?dia=`, es la grilla del mes.
+ */
+function Mes({
+  mes,
+  dia,
+  irAlMes,
+  irAlDia,
+}: {
+  mes: string;
+  dia?: string;
+  irAlMes: (mes: string) => void;
+  irAlDia: (dia: string | undefined) => void;
+}) {
+  if (dia) {
+    const [a, m, d] = dia.split("-");
+    return (
+      <div className="space-y-4">
+        <button
+          type="button"
+          onClick={() => irAlDia(undefined)}
+          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+        >
+          ← Volver a {m}/{a}
+        </button>
+        <p className="font-serif text-xl text-foreground">
+          {d}/{m}/{a}
+        </p>
+        <AgendaScreen range="hoy" fecha={dia} />
+      </div>
+    );
+  }
+  return <MesScreen mes={mes} onDia={(f) => irAlDia(f)} onMes={irAlMes} />;
+}
+
+export function contenidoDe(
+  modulo: string,
+  seccion: string,
+  nav?: {
+    mes: string;
+    dia?: string;
+    irAlMes: (mes: string) => void;
+    irAlDia: (dia: string | undefined) => void;
+  },
+): React.ReactNode | null {
   switch (`${modulo}/${seccion}`) {
     case "agenda/hoy":
       return <AgendaScreen range="hoy" />;
@@ -133,6 +183,10 @@ export function contenidoDe(modulo: string, seccion: string): React.ReactNode | 
       return <AgendaScreen range="manana" />;
     case "agenda/semana":
       return <AgendaScreen range="semana" />;
+    case "agenda/mes":
+      return nav ? (
+        <Mes mes={nav.mes} dia={nav.dia} irAlMes={nav.irAlMes} irAlDia={nav.irAlDia} />
+      ) : null;
 
     case "finanzas/caja":
       return <Caja />;
@@ -148,10 +202,16 @@ export function contenidoDe(modulo: string, seccion: string): React.ReactNode | 
 
     case "servicios/precios":
       return <PreciosYTiemposScreen />;
-    case "servicios/puestos":
-      return <PuestosScreen />;
     case "servicios/horarios":
       return <Horarios />;
+
+    // Los puestos, que estaban partidos en dos módulos con nombres
+    // parecidos: el alta y baja en Servicios, y los bloqueos en un
+    // cuadro de la Agenda llamado «Estaciones».
+    case "puestos/listado":
+      return <PuestosScreen />;
+    case "puestos/bloqueos":
+      return <PuestosFueraScreen />;
 
     case "usuarios/personas":
       return <PeopleScreen />;

@@ -31,7 +31,22 @@ móvil, tiene WhatsApp en uso, y el formato para Meta es con el `9`
 para Argentina antes de tocarlo: por el camino directo se pierden la
 aplicación y el historial.
 
-**3. El destino del link del mail.** Hoy `emailRedirectTo` apunta a
+**3. Agenda › Año: falta un endpoint.** Es lo único del recorrido del
+2026-09-12 que quedó sin construir, y no por tiempo: el endpoint de la
+agenda acepta **31 días por consulta** (`days: z.coerce.number().max(31)`
+en `server/src/http/routes/admin.ts`). Un mes entra justo; un año no.
+
+Las salidas, de peor a mejor:
+
+- doce consultas al abrir la pantalla, que traen el año entero de turnos
+  al navegador sólo para contarlos;
+- un endpoint de resumen —`GET /admin/agenda/resumen?desde=&hasta=`, que
+  devuelva cuántos turnos por día o por mes— y que Año lo consuma.
+
+El segundo es el correcto y es trabajo de backend con sus pruebas. Hace
+falta un sí para escribirlo.
+
+**4. El destino del link del mail.** Hoy `emailRedirectTo` apunta a
 `/agenda`, que quedó como redirección a `/panel/agenda/hoy`. Funciona,
 pero son dos cargas de página para quien vuelve del correo. Moverlo a
 `/panel` exige **primero** agregar esa URL en la lista de Redirect URLs
@@ -46,6 +61,23 @@ link deja de entrar. Es un cambio de consola, no de código.
   registro de cómo se llegó a la decisión; sus dibujos dicen
   «Calendario», que es el nombre que se descartó.
 - Auditoría contra producción: el esquema coincide, 37 = 37.
+
+## El recorrido a mano del panel (2026-09-12)
+
+Diego recorrió módulo por módulo y encontró cinco cosas. Cuatro quedaron
+hechas y una necesita backend (ver arriba).
+
+| Qué se encontró | Qué se hizo |
+| --- | --- |
+| «Estaciones» en Agenda y «Puestos de trabajo» en Servicios parecían lo mismo repetido | **No lo eran**: una saca un puesto roto, la otra da de alta y de baja. Son las dos secciones de un módulo propio, **Puestos de trabajo** |
+| El campito «Otra fecha» en la Agenda | Se fue. Lo reemplaza Mes, que además muestra dónde hay turnos antes de tener que adivinar el día |
+| Faltaba Mes | Hecho: grilla del mes con la cuenta por día; tocar un día abre ese día, operable, con la dirección puesta (`?dia=`) |
+| Faltaba Año | **Pendiente**: no entra en el endpoint actual |
+| Elegir servicio en un turno nuevo era una lista plana de 43 | Agrupada por las cuatro categorías del salón |
+
+Y una consecuencia que conviene tener presente: **sacar un puesto de
+servicio ahora exige permiso de Servicios.** Antes se hacía desde la
+Agenda, así que quien atiende el mostrador podía; ahora no.
 
 ## La navegación del panel: hecha (2026-09-11)
 

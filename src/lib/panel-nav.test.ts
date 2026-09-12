@@ -15,13 +15,17 @@ import { describe, expect, test } from "bun:test";
 import { ARBOL, BARRA_TELEFONO, buscarModulo, primeraSeccion, rutaDe } from "./panel-nav";
 
 describe("el árbol del panel", () => {
-  test("son los nueve módulos de §5.0", () => {
+  test("son los diez módulos de §5.0", () => {
+    // Diez desde el 2026-09-12: «Puestos de trabajo» se separó de
+    // Servicios para juntar el alta/baja con los bloqueos, que vivían en
+    // un cuadro de la Agenda con otro nombre.
     expect(ARBOL.map((m) => m.slug)).toEqual([
       "agenda",
       "clientas",
       "finanzas",
       "inventario",
       "servicios",
+      "puestos",
       "personal",
       "compras",
       "usuarios",
@@ -62,7 +66,7 @@ describe("el árbol del panel", () => {
     // `docs/sol-mai-arquitectura-modular.md` en el mismo commit: son la
     // misma afirmación escrita dos veces.
     const total = ARBOL.reduce((n, m) => n + m.secciones.length, 0);
-    expect(total).toBe(33);
+    expect(total).toBe(34);
   });
 });
 
@@ -115,10 +119,23 @@ describe("el permiso y el nombre visible son cosas distintas", () => {
   });
 
   test("los demás módulos usan su propio slug como permiso", () => {
+    // Salvo los dos que no pueden: los nueve nombres de `Modulo` son el
+    // contrato con la matriz de la base, y cambiarlos es una migración
+    // de datos. Agenda usa `calendario`; Puestos de trabajo usa
+    // `servicios`, que es el que ya gobernaba sus dos pantallas.
     for (const m of ARBOL) {
-      if (m.slug === "agenda") continue;
+      if (m.slug === "agenda" || m.slug === "puestos") continue;
       expect(m.permiso).toBe(m.slug as typeof m.permiso);
     }
+  });
+
+  test("Puestos de trabajo hereda el permiso de Servicios", () => {
+    expect(buscarModulo("puestos")!.permiso).toBe("servicios");
+  });
+
+  test("y ya no cuelga de Servicios", () => {
+    const servicios = buscarModulo("servicios")!;
+    expect(servicios.secciones.map((s) => s.slug)).toEqual(["precios", "areas", "horarios"]);
   });
 });
 

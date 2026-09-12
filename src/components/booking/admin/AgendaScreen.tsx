@@ -19,7 +19,6 @@ import {
 } from "@/lib/api/admin-hooks";
 import { NewBookingDialog } from "./NewBookingDialog";
 import { CloseServiceDialog } from "./CloseServiceDialog";
-import { StationsDialog } from "./StationsDialog";
 
 export type Range = "hoy" | "manana" | "semana";
 
@@ -71,18 +70,21 @@ function statusTone(status: string): string {
   return "border-border bg-muted/40 text-muted-foreground";
 }
 
-export function AgendaScreen({ range }: { range: Range }) {
-  // "¿Tenés algo para el 15?" es pregunta de todos los días: la agenda
-  // tiene que poder ir a una fecha, no sólo a hoy y esta semana.
-  const [pickedDate, setPickedDate] = useState<string>("");
+export function AgendaScreen({ range, fecha }: { range: Range; fecha?: string }) {
+  // «¿Tenés algo para el 15?» es pregunta de todos los días. Hasta el
+  // 2026-09-12 se contestaba con un campito de fecha acá mismo, que
+  // convivía raro con las pestañas de Hoy · Mañana · Semana: dos formas
+  // de elegir cuándo, una al lado de la otra, y la de abajo mandaba.
+  //
+  // Ahora la contesta Mes, que además muestra dónde hay algo en vez de
+  // hacerte adivinar el día. `fecha` es lo que manda esa pantalla.
   const [area, setArea] = useState<string>("");
   const [creating, setCreating] = useState(false);
-  const [managingStations, setManagingStations] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const cfg = RANGES.find((r) => r.id === range)!;
-  const date = pickedDate || salonToday(cfg.offset);
-  const days = pickedDate ? 1 : cfg.days;
+  const date = fecha || salonToday(cfg.offset);
+  const days = fecha ? 1 : cfg.days;
   const agenda = useAgenda({ date, days, area: area || undefined });
   const areas = useAreas();
 
@@ -111,13 +113,6 @@ export function AgendaScreen({ range }: { range: Range }) {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setManagingStations(true)}
-            className="rounded-full border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:border-champagne"
-          >
-            Estaciones
-          </button>
-          <button
-            type="button"
             onClick={() => setCreating(true)}
             className="rounded-full bg-primary px-5 py-2.5 font-serif text-sm text-primary-foreground shadow-sm transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
@@ -125,23 +120,6 @@ export function AgendaScreen({ range }: { range: Range }) {
           </button>
         </div>
       </header>
-
-      {/* Ir a una fecha puntual. Los chips de Hoy · Mañana · Semana que
-          estaban acá se fueron a la fila de secciones —son direcciones—,
-          pero esto no es un rango: es «¿tenés algo para el 15?», que es
-          pregunta de todos los días. */}
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="sr-only sm:not-sr-only">Otra fecha</span>
-          <input
-            type="date"
-            value={pickedDate}
-            onChange={(e) => setPickedDate(e.target.value)}
-            aria-label="Ver otra fecha"
-            className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </label>
-      </div>
 
       <div className="flex flex-wrap gap-2">
         <FilterChip active={area === ""} onClick={() => setArea("")}>
@@ -170,7 +148,7 @@ export function AgendaScreen({ range }: { range: Range }) {
         <div className="rounded-2xl border border-dashed border-border px-5 py-8 text-center">
           <p className="text-sm text-muted-foreground">
             No hay turnos{" "}
-            {pickedDate
+            {fecha
               ? "ese día"
               : range === "hoy"
                 ? "para hoy"
@@ -201,8 +179,6 @@ export function AgendaScreen({ range }: { range: Range }) {
           ))}
         </section>
       ))}
-
-      {managingStations && <StationsDialog onClose={() => setManagingStations(false)} />}
 
       {creating && (
         <NewBookingDialog
@@ -350,7 +326,7 @@ function BookingRow({
             <StationPicker entry={entry} onDone={() => setAssigning(false)} />
           ) : (
             <RowAction onClick={() => setAssigning(true)}>
-              {entry.station ? "Cambiar estación" : "Asignar estación"}
+              {entry.station ? "Cambiar el puesto" : "Asignar un puesto"}
             </RowAction>
           )}
 
@@ -441,7 +417,7 @@ function StationPicker({ entry, onDone }: { entry: AgendaEntry; onDone: () => vo
 
   return (
     <div className="flex w-full flex-wrap items-center gap-2">
-      {stations.isPending && <span className="text-xs opacity-70">Buscando estaciones…</span>}
+      {stations.isPending && <span className="text-xs opacity-70">Buscando los puestos…</span>}
       {usable.map((s) => (
         <RowAction
           key={s.id}

@@ -207,7 +207,7 @@ exactamente el retroceso que §1 quiere evitar. La salida no es recortar
 módulos: es **ordenarlos por cada cuánto se tocan**, que es como los
 ordena en la cabeza quien los usa.
 
-### 5.0. El árbol: nueve módulos, treinta y tres secciones
+### 5.0. El árbol: diez módulos, treinta y cuatro secciones
 
 **Confirmado por dirección el 2026-09-10**, con dos correcciones del
 2026-09-11 anotadas debajo de la tabla. Esta tabla es la estructura del
@@ -225,11 +225,39 @@ superior; en el teléfono bajan a pestañas.
 |                                      | **Clientas**         | Fichas · Sin venir hace tiempo · Consentimientos                      |
 |                                      | **Finanzas**         | Caja del día · Cobros · Devoluciones · Facturación · Gastos · Resumen |
 |                                      | **Inventario**       | Productos · Stock · Movimientos                                       |
-| **Cada tanto**                       | **Servicios**        | Precios y tiempos · Áreas · Puestos de trabajo · Horarios             |
+| **Cada tanto**                       | **Servicios**          | Precios y tiempos · Áreas · Horarios                                  |
+|                                      | **Puestos de trabajo** | Listado · Fuera de servicio                                           |
 |                                      | **Personal**         | Empleados · Horarios · Producción                                     |
 |                                      | **Compras**          | Proveedores · Pedidos                                                 |
 | **Casi nunca, pero tiene que estar** | **Usuarios y roles** | Personas · Roles · Accesos · Registro de cambios                      |
 |                                      | **Configuración**    | Datos del negocio · Términos y privacidad · Integraciones             |
+
+#### La corrección del 2026-09-12: Puestos de trabajo se separa
+
+Un recorrido a mano del panel encontró lo mismo dicho dos veces con
+nombres parecidos: un cuadro en la Agenda llamado **«Estaciones»** y una
+sección de Servicios llamada **«Puestos de trabajo»**.
+
+**No eran lo mismo repetido, que habría sido más fácil.** Eran dos cosas
+distintas con nombres que no las distinguían: el cuadro de la Agenda saca
+un puesto de servicio cuando se rompe, y la sección de Servicios da de
+alta y de baja. Había que acordarse de cuál hacía qué.
+
+Ahora son las dos secciones de un módulo propio. Son diez módulos y no
+nueve.
+
+**Esto contradice a propósito lo que decía el punto de abajo**, que
+juntaba servicios, áreas, puestos y horarios en un módulo porque
+separarlos «produce cuatro pantallas casi vacías». El argumento valía
+cuando puestos era una sola pantalla de configuración; dejó de valer
+cuando se descubrió que hay dos funciones distintas, una de ellas de uso
+diario. Queda escrito que fue una decisión y no un olvido.
+
+**El permiso sigue siendo `servicios`.** Los nueve nombres de `Modulo`
+son el contrato con la matriz de la base y con `/me`: un décimo es una
+migración de datos. Consecuencia a la vista: sacar un puesto de servicio
+ahora exige permiso de Servicios, y quien atiende el mostrador —que podía
+hacerlo desde la Agenda— ya no puede.
 
 #### Las dos correcciones del 2026-09-11
 
@@ -276,9 +304,11 @@ como código (`src/lib/panel-nav.ts`) y a contarlo.
 
 #### Lo que la agrupación por frecuencia sigue decidiendo
 
-- **Servicios, áreas, puestos y horarios son un mismo módulo.** Los
-  cuatro son «cómo está armado esto», los cuatro se tocan cada varios
-  meses, y separarlos produce cuatro pantallas casi vacías.
+- **Servicios, áreas y horarios son un mismo módulo.** Los tres son
+  «cómo está armado esto», los tres se tocan cada varios meses, y
+  separarlos produce tres pantallas casi vacías. **Puestos salió de acá
+  el 2026-09-12**, por el motivo que explica la corrección de arriba: no
+  era una pantalla, eran dos, y una se usa el día que se rompe algo.
 - **Inventario es de uso diario, no configuración.** Entra mercadería,
   se vende y se consume en cada turno.
 - **El orden de arriba es el orden del escritorio.** Lo que se toca
@@ -286,7 +316,7 @@ como código (`src/lib/panel-nav.ts`) y a contarlo.
 
 #### Una sección no es una pantalla nueva
 
-Las treinta y tres secciones se arman con **tres formatos y nada más**,
+Las treinta y cuatro secciones se arman con **tres formatos y nada más**,
 definidos en `diseno/paneles/`:
 
 | Formato            | Qué es                                              | Dónde se repite                                                  |
@@ -295,7 +325,7 @@ definidos en `diseno/paneles/`:
 | **Ficha**          | Una cosa abierta, con su historial en pestañas      | Una clienta · Un producto · Un proveedor · Una persona           |
 | **Lista editable** | El valor es el campo; no hay formulario que se abra | Precios y tiempos · Stock · Roles                                |
 
-Aprender tres formatos y no treinta y tres pantallas es el argumento de
+Aprender tres formatos y no treinta y cuatro pantallas es el argumento de
 adopción entero. Una sección que no entra en ninguno de los tres es una
 señal de que hay que discutirla, no de que haga falta un cuarto formato.
 
@@ -987,7 +1017,7 @@ cuando haya varias pantallas que proteger y alguien que necesite
 administrarlas», y que ese día no había llegado: «hoy hay dos personas y
 una pantalla».
 
-**Llegó.** Con el árbol de §5.0 hay nueve módulos y treinta y tres
+**Llegó.** Con el árbol de §5.0 hay diez módulos y treinta y cuatro
 secciones, y el argumento se dio vuelta solo. Por eso Personas sube al
 puesto 3.
 
