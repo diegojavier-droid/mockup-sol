@@ -119,6 +119,67 @@ export async function listAgenda(
   return (data ?? []).map((r) => toAgendaEntry(r as unknown as AgendaRow));
 }
 
+/**
+ * Cuántos turnos cae cada día, sin traer los turnos.
+ *
+ * POR QUÉ EXISTE
+ *
+ * `listAgenda` devuelve el turno entero con sus joins, y el endpoint que
+ * la sirve acepta 31 días por consulta. Para pintar un calendario no hace
+ * falta el turno: hace falta el número. Un año con `listAgenda` serían
+ * doce consultas trayendo miles de filas completas al navegador para
+ * contarlas y tirarlas.
+ *
+ * Acá se pide UNA columna —`starts_at`— y se cuenta.
+ *
+ * QUÉ CUENTA
+ *
+ * Lo mismo que muestra la agenda, sin filtrar por estado. Es a propósito:
+ * si el calendario contara distinto de lo que se ve al abrir el día, el
+ * número de arriba y la lista de abajo se contradirían, y el que estaría
+ * mal sería siempre el de arriba porque es el que no se puede verificar.
+ */
+export async function countAgendaByDay(
+  admin: SupabaseAdminClient,
+  params: { from: Date; to: Date; area?: string },
+): Promise<{ dia: string; turnos: number }[]> {
+  let query = admin
+    .from("bookings")
+    .select("starts_at, areas!inner(slug)")
+    .gte("starts_at", params.from.toISOString())
+    .lt("starts_at", params.to.toISOString());
+  if (params.area) query = query.eq("areas.slug", params.area);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return agruparPorDia((data ?? []).map((r) => (r as { starts_at: string }).starts_at));
+}
+
+/** Minutos que el salón está detrás de UTC. Santa Fe no aplica DST. */
+const SALON_OFFSET_MS = -3 * 60 * 60 * 1000;
+
+/**
+ * Agrupa marcas de tiempo por el día DEL SALÓN, no por el del servidor.
+ *
+ * Un turno de las 22:00 en Santa Fe cae a la 01:00 UTC del día
+ * siguiente: contarlo por UTC lo pondría en el día equivocado del
+ * calendario, y ése es justo el turno de cierre que a nadie le sobra.
+ *
+ * Separada de la consulta para poder probarla sin base.
+ */
+export function agruparPorDia(marcas: string[]): { dia: string; turnos: number }[] {
+  const cuenta = new Map<string, number>();
+  for (const m of marcas) {
+    const t = new Date(m).getTime();
+    if (Number.isNaN(t)) continue;
+    const dia = new Date(t + SALON_OFFSET_MS).toISOString().slice(0, 10);
+    cuenta.set(dia, (cuenta.get(dia) ?? 0) + 1);
+  }
+  return [...cuenta.entries()]
+    .map(([dia, turnos]) => ({ dia, turnos }))
+    .sort((a, b) => a.dia.localeCompare(b.dia));
+}
+
 export async function getBookingForStaff(
   admin: SupabaseAdminClient,
   bookingId: string,

@@ -13,13 +13,12 @@
  *
  * DE DÓNDE SALEN LOS NÚMEROS
  *
- * De la agenda, como todo lo demás: un solo pedido con los días del mes.
- * El backend acepta 31 días por consulta, que es justo lo que entra un
- * mes. Nada se escribe a mano ni se estima.
+ * Del resumen de la agenda: un pedido que devuelve cuántos turnos cae
+ * cada día, sin traer los turnos. Nada se escribe a mano ni se estima.
  */
 
 import { useMemo } from "react";
-import { useAgenda } from "@/lib/api/admin-hooks";
+import { useAgendaResumen } from "@/lib/api/admin-hooks";
 
 const DIAS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
 const MESES = [
@@ -40,11 +39,6 @@ const MESES = [
 /** Hoy en el salón (UTC-3), no en el dispositivo de quien mira. */
 function hoyEnElSalon(): string {
   return new Date(Date.now() - 180 * 60_000).toISOString().slice(0, 10);
-}
-
-/** El día del salón al que pertenece un turno. */
-function diaDelTurno(iso: string): string {
-  return new Date(new Date(iso).getTime() - 180 * 60_000).toISOString().slice(0, 10);
 }
 
 function iso(anio: number, mes: number, dia: number): string {
@@ -70,19 +64,18 @@ export function MesScreen({
   const mesIdx = mesN - 1;
   const cuantosDias = new Date(Date.UTC(anio, mesIdx + 1, 0)).getUTCDate();
 
-  const agenda = useAgenda({ date: iso(anio, mesIdx, 1), days: cuantosDias });
+  const agenda = useAgendaResumen({
+    desde: iso(anio, mesIdx, 1),
+    hasta: iso(anio, mesIdx, cuantosDias),
+  });
 
-  const porDia = useMemo(() => {
-    const cuenta = new Map<string, number>();
-    for (const e of agenda.data?.entries ?? []) {
-      const d = diaDelTurno(e.startsAt);
-      cuenta.set(d, (cuenta.get(d) ?? 0) + 1);
-    }
-    return cuenta;
-  }, [agenda.data]);
+  const porDia = useMemo(
+    () => new Map((agenda.data?.porDia ?? []).map((d) => [d.dia, d.turnos])),
+    [agenda.data],
+  );
 
   const hoy = hoyEnElSalon();
-  const total = agenda.data?.entries.length ?? 0;
+  const total = (agenda.data?.porDia ?? []).reduce((n, d) => n + d.turnos, 0);
 
   const celdas: (number | null)[] = [
     ...Array<null>(columnaDe(anio, mesIdx, 1)).fill(null),

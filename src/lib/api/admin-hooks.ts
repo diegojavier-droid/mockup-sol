@@ -66,6 +66,30 @@ export function useStaffIdentity() {
   });
 }
 
+export interface AgendaResumen {
+  desde: string;
+  hasta: string;
+  porDia: { dia: string; turnos: number }[];
+}
+
+/**
+ * Cuántos turnos cae cada día de un rango.
+ *
+ * Lo usan el calendario del mes y el del año. Trae números, no turnos:
+ * `/agenda` devuelve el turno entero y acepta 31 días por consulta, así
+ * que un año por ahí serían doce pedidos con miles de filas completas
+ * para contarlas y tirarlas.
+ */
+export function useAgendaResumen(params: { desde: string; hasta: string; area?: string }) {
+  const search = new URLSearchParams({ desde: params.desde, hasta: params.hasta });
+  if (params.area) search.set("area", params.area);
+  return useQuery({
+    queryKey: ["admin", "agenda-resumen", params.desde, params.hasta, params.area ?? ""],
+    queryFn: () => adminApi.get<AgendaResumen>(`/agenda/resumen?${search.toString()}`),
+    staleTime: 60_000,
+  });
+}
+
 export function useAgenda(params: { date: string; days: number; area?: string }) {
   const search = new URLSearchParams({ date: params.date, days: String(params.days) });
   if (params.area) search.set("area", params.area);

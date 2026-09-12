@@ -29,7 +29,7 @@ for s in json.load(sys.stdin)['data']:
         print(s['slug']); break
 else:
     print(json.load(sys.stdin)['data'][0]['slug'])")
-TERMS=$(curl -s -m 10 "$API/catalog/salon" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['termsVersion'])")
+TERMS=$(curl -s -m 10 "$BASE/api/v1/catalog/salon" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['termsVersion'])")
 BODY="{\"serviceSlug\":\"$SVC\",\"lengthTier\":\"medio\",\"startsAt\":\"${DAY}T13:00:00.000Z\",\"source\":\"manual\",\"customer\":{\"firstName\":\"Testina\",\"phone\":\"3424111222\"},\"consent\":{\"termsVersion\":\"$TERMS\"}}"
 CREATE=$(curl -s -m 15 -X POST -H "$H" -H "content-type: application/json" -d "$BODY" "$API/bookings")
 BID=$(echo "$CREATE" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('data',{}).get('id',''))" 2>/dev/null)
@@ -60,7 +60,20 @@ BLK=$(curl -s -X POST -H "$H" -H "content-type: application/json" \
   -d "{\"startsAt\":\"${DAY}T00:00:00.000Z\",\"endsAt\":\"$(date -u -d "+4 days" +%Y-%m-%d)T00:00:00.000Z\",\"reason\":\"Reparación\"}" \
   "$API/stations/$P1/block")
 DISP=$(echo "$BLK" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['displacedBookings'])")
-ok "sacar de servicio libera los turnos que estaban ahí" "$([ "$DISP" = "1" ] && echo 1 || echo 0)" "desplazados=$DISP"
+# Al menos uno, no exactamente uno.
+#
+# Exigir exactamente uno hacía que esta prueba dependiera del día de la
+# semana: `e2e-flow.sh` corre antes, toma el PRIMER horario disponible y
+# le asigna P1. Cuando el salón está cerrado los dos días siguientes, ese
+# primer horario cae justo en `hoy+3` —el día que usa esta prueba—, los
+# dos turnos quedan en el mismo puesto y el bloqueo desplaza dos. Pasó el
+# sábado 2026-09-12, con el primer horario disponible el martes 15.
+#
+# Lo que importa no es cuántos había, sino que los que había quedaron
+# liberados sin cancelarse, y eso lo prueba la comprobación siguiente
+# sobre el turno propio. La respuesta sólo trae el número, así que no se
+# puede afinar más sin cambiar la API.
+ok "sacar de servicio libera los turnos que estaban ahí" "$([ "$DISP" -ge 1 ] 2>/dev/null && echo 1 || echo 0)" "desplazados=$DISP"
 
 STATE=$(curl -s -H "$H" "$API/agenda?date=$DAY&days=1" | python3 -c "
 import sys,json

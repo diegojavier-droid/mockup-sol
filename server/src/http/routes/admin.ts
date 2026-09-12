@@ -60,6 +60,7 @@ import {
   addCustomerNote,
   getBookingForStaff,
   getCustomerDetail,
+  countAgendaByDay,
   listAgenda,
   searchCustomers,
   TransitionError,
@@ -171,6 +172,47 @@ export function createAdminRoute(env: ServerEnv) {
       area: parsed.data.area,
     });
     return c.json({ data: { date: day, days: parsed.data.days, entries } });
+  });
+
+  /**
+   * Cuántos turnos cae cada día de un rango.
+   *
+   * Lo pide el calendario: para pintar un mes o un año hace falta el
+   * número por día, no el turno. `/agenda` devuelve el turno entero y
+   * acepta 31 días, así que un año por ahí serían doce consultas
+   * trayendo miles de filas completas para contarlas y tirarlas.
+   *
+   * El tope es 366 días —un año bisiesto— y no más: sin tope, una
+   * dirección escrita a mano puede pedir una década.
+   */
+  route.get("/agenda/resumen", async (c) => {
+    const schema = z.object({
+      desde: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      hasta: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      area: z.string().max(32).optional(),
+    });
+    const parsed = schema.safeParse(c.req.query());
+    if (!parsed.success) throw new HTTPException(400, { message: "Consulta inválida." });
+
+    const from = new Date(`${parsed.data.desde}T00:00:00${SALON_TZ}`);
+    // `hasta` entra en el resumen: se pide el día siguiente como límite
+    // abierto. Sin esto, pedir del 1 al 31 dejaría el 31 afuera y nadie
+    // lo notaría hasta que faltara un turno de fin de mes.
+    const to = new Date(
+      new Date(`${parsed.data.hasta}T00:00:00${SALON_TZ}`).getTime() + 86_400_000,
+    );
+
+    if (to <= from) throw new HTTPException(400, { message: "El rango está al revés." });
+    if (to.getTime() - from.getTime() > 366 * 86_400_000) {
+      throw new HTTPException(400, { message: "El rango no puede pasar de un año." });
+    }
+
+    const porDia = await countAgendaByDay(createSupabaseAdminClient(env), {
+      from,
+      to,
+      area: parsed.data.area,
+    });
+    return c.json({ data: { desde: parsed.data.desde, hasta: parsed.data.hasta, porDia } });
   });
 
   route.get("/bookings/:id", async (c) => {

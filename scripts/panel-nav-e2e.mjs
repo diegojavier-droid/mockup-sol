@@ -119,6 +119,20 @@ async function abrir(quien = SOL, { ancho = 1440, alto = 900, demoraMe = 0 } = {
   await ctx.route("**/api/v1/**", (r) => {
     const u = r.request().url();
     if (/admin\/me|panel-config/.test(u)) return r.fallback();
+    // El resumen: cuántos turnos por día. Lo usan Mes y Año.
+    if (/admin\/agenda\/resumen/.test(u))
+      return r.fulfill({
+        json: {
+          data: {
+            desde: "2026-01-01",
+            hasta: "2026-12-31",
+            porDia: [
+              { dia: "2026-05-15", turnos: 40 },
+              { dia: "2026-09-12", turnos: 3 },
+            ],
+          },
+        },
+      });
     if (/admin\/agenda/.test(u)) return r.fulfill({ json: { data: { entries: [] } } });
     if (/admin\/cash-register/.test(u))
       return r.fulfill({
@@ -415,6 +429,35 @@ console.log("\n── Los puestos viven en un solo módulo");
     page.url().endsWith("/panel/puestos/listado"),
     page.url(),
   );
+  await ctx.close();
+}
+
+console.log("\n── Mes y Año son pantallas, no un campito de fecha");
+{
+  const { ctx, page } = await abrir();
+
+  const tm = await ver(page, "/panel/agenda/mes?mes=2026-09");
+  ok("Mes muestra la grilla del mes", /septiembre 2026/i.test(tm), tm.slice(0, 90));
+  ok("y cuenta los turnos por día", /3 turnos/.test(tm));
+  // El campito suelto se fue: lo reemplazó esta pantalla.
+  const th = await ver(page, "/panel/agenda/hoy");
+  ok("la Agenda ya no tiene el campito «Otra fecha»", !/otra fecha/i.test(th));
+
+  const ta = await ver(page, "/panel/agenda/anio?mes=2026-01");
+  ok("Año muestra los doce meses", /Enero/.test(ta) && /Diciembre/.test(ta));
+  ok("con el total del año", /43 turnos en el año/.test(ta), ta.slice(0, 90));
+  ok("y un mes sin turnos dice «—», no «0»", /Abril —/.test(ta));
+
+  // Tocar un día del mes abre ese día, y la dirección lo dice.
+  await ver(page, "/panel/agenda/mes?mes=2026-09");
+  await page.locator('button[aria-label^="12 de"]').click();
+  await page.waitForURL("**dia=2026-09-12**", { timeout: 10000 }).catch(() => {});
+  ok(
+    "tocar un día del mes lo abre, y se puede compartir",
+    page.url().includes("dia=2026-09-12"),
+    page.url(),
+  );
+
   await ctx.close();
 }
 
