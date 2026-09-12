@@ -16,8 +16,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { PanelShell } from "@/components/booking/admin/PanelShell";
 import { contenidoDe } from "@/components/booking/admin/secciones";
 import { buscarModulo, buscarSeccion } from "@/lib/panel-nav";
-import { puede } from "@/lib/staff-session";
-import { useSesionPanel } from "@/lib/panel-sesion";
+import { queMostrar, useSesionPanel } from "@/lib/panel-sesion";
 
 export const Route = createFileRoute("/panel/$modulo/$seccion")({
   // Una dirección que no existe en el árbol es un 404 antes de dibujar
@@ -44,7 +43,7 @@ export const Route = createFileRoute("/panel/$modulo/$seccion")({
 
 function SeccionRoute() {
   const params = Route.useParams();
-  const { identidad, cerrar } = useSesionPanel();
+  const { identidad, cargando, cerrar } = useSesionPanel();
 
   const modulo = buscarModulo(params.modulo)!;
   const seccion = buscarSeccion(modulo, params.seccion)!;
@@ -53,13 +52,25 @@ function SeccionRoute() {
   // no corresponde: esconder no es una frontera, y la dirección se puede
   // escribir a mano. El servidor niega igual; esto es para que la
   // pantalla no discrepe con la puerta.
-  const autorizada = puede(identidad, modulo.permiso);
-
-  const contenido = autorizada ? contenidoDe(modulo.slug, seccion.slug) : null;
+  //
+  // MIENTRAS NO SE SABE, NO SE DECIDE
+  //
+  // `identidad` vale `undefined` tanto si la respuesta no llegó como si
+  // llegó y no hay permisos, y `puede()` contesta que no a las dos. Sin
+  // separarlas, Sol abría su propio panel y leía «esto no es tuyo»
+  // durante todo lo que tardara el pedido —que con el Worker frío o
+  // desde el teléfono en la calle no es un parpadeo—. Decir que no por
+  // no saber todavía es el peor error posible acá: el cartel dice que le
+  // pida acceso a quien administra el panel, y quien administra el panel
+  // es ella.
+  const que = queMostrar({ identidad, cargando }, modulo.permiso);
+  const contenido = que === "adelante" ? contenidoDe(modulo.slug, seccion.slug) : null;
 
   return (
     <PanelShell modulo={modulo} seccion={seccion} identidad={identidad} onSalir={cerrar}>
-      {!autorizada ? (
+      {que === "esperando" ? (
+        <p className="text-sm text-muted-foreground">Un segundo…</p>
+      ) : que === "sin-permiso" ? (
         <Cartel
           titulo="Esto no es tuyo"
           texto={`Tu rol no tiene acceso a ${modulo.label}. El acceso lo da quien administra el panel.`}

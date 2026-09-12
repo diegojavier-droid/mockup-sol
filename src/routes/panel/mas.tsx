@@ -25,8 +25,10 @@ export const Route = createFileRoute("/panel/mas")({
 });
 
 function MasRoute() {
-  const { identidad, cerrar } = useSesionPanel();
-  const visibles = ARBOL.filter((m) => puede(identidad, m.permiso));
+  const { identidad, cargando, cerrar } = useSesionPanel();
+  // Sin identidad no pasa ningún módulo el filtro, así que mientras el
+  // pedido viaja esta pantalla quedaba en blanco y sin decir por qué.
+  const visibles = cargando ? [] : ARBOL.filter((m) => puede(identidad, m.permiso));
 
   return (
     <div className="min-h-svh bg-background pb-24">
@@ -56,6 +58,7 @@ function MasRoute() {
       </header>
 
       <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
+        {cargando && <p className="text-sm text-muted-foreground">Un segundo…</p>}
         <ul className="space-y-2">
           {visibles.map((m) => {
             const hayPantalla = m.secciones.some((s) => s.listo);
