@@ -3,9 +3,9 @@
 --
 -- PARA QUÉ
 --
--- La migración anterior marcó los tratamientos, pero la oferta del salón
+-- La migración anterior marcó los tratamientos, pero la promoción del salón
 -- —color y tratamiento juntos salen menos— necesita las dos mitades. Sin
--- saber cuáles son color, `aplicarOferta` no se dispara nunca y
+-- saber cuáles son color, `aplicarPromocion` no se dispara nunca y
 -- `price_addon` queda cargada y sin usar.
 --
 -- DE DÓNDE SALE LA LISTA
@@ -22,7 +22,7 @@
 -- aparecen 27, 21 y 46 veces. Su lista de precios no cubre ese trabajo.
 --
 -- Marcarlos como color sería decidir por ella dos cosas a la vez: que son
--- coloración, y que la oferta de tratamientos también corre sobre ellos.
+-- coloración, y que la promoción de tratamientos también corre sobre ellos.
 -- Ninguna de las dos se puede sacar del archivo. Quedan como `servicio`
 -- —el valor que no cambia ningún precio— hasta que Sol lo diga.
 --
@@ -38,7 +38,7 @@ alter table public.services
 
 comment on column public.services.kind is
   'servicio: el precio no depende de qué más haya en el turno. '
-  'color: servicio de coloración; es lo que dispara la oferta sobre los '
+  'color: servicio de coloración; es lo que dispara la promoción sobre los '
   'tratamientos del mismo turno. '
   'tratamiento: junto con un color cotiza a service_price_tiers.price_addon. '
   'Ver §8.2 y §8.10 de docs/sol-mai-reingenieria.md.';

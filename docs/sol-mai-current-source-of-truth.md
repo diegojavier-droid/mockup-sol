@@ -234,7 +234,7 @@ Hallazgos que estos documentos incorporan y que antes no estaban medidos:
   vez.
 - De 127 filas de precios en producción, **123 son `industry_baseline` con
   `confidence: low`** y sólo 4 están validadas por Sol.
-- El bloque «TRATAMIENTOS MAS COLOR» es **una oferta por llevarse color y
+- El bloque «TRATAMIENTOS MAS COLOR» es **una promoción por llevarse color y
   tratamiento juntos**, confirmado por Sol el 2026-09-12. La columna
   `price_addon` de `service_price_tiers` existe, está vacía y es el lugar
   correcto para cargarlo.

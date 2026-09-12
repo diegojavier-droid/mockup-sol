@@ -46,9 +46,9 @@
 --
 -- PRECIO SOLO Y PRECIO CON COLOR
 --
--- `price_addon` es la oferta del salón a quien se lleva color y
+-- `price_addon` es la promoción del salón a quien se lleva color y
 -- tratamiento juntos. Donde la lista de Sol no tiene ese precio, la
--- columna queda NULL: significa «no hay oferta para esto», no cero.
+-- columna queda NULL: significa «no hay promoción para esto», no cero.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------

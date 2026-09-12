@@ -11,7 +11,7 @@
 
 import { z } from "zod";
 import { QuoteError, type QuoteResult, type QuoteSettings } from "../../domain/types";
-import { aplicarOferta } from "../../domain/oferta";
+import { aplicarPromocion } from "../../domain/promocion";
 import { composeQuote, computeQuote } from "../../domain/quote";
 import type { CatalogRepository } from "../catalog/repository";
 import type { SupabaseAnonServerClient } from "../supabase";
@@ -114,19 +114,19 @@ export async function loadServiceParts(
 }
 
 /**
- * Cotiza el turno entero, con la oferta de color + tratamiento aplicada.
+ * Cotiza el turno entero, con la promoción de color + tratamiento aplicada.
  *
  * POR QUÉ ACÁ Y NO EN CADA RUTA
  *
  * Cuatro lugares cotizan turnos: `/quote`, `/availability`, `/bookings` y
- * el alta del panel. Si la oferta se escribiera en cada uno, alcanzaría con
+ * el alta del panel. Si la promoción se escribiera en cada uno, alcanzaría con
  * que alguien tocara tres para que el cuarto empezara a cobrar de más, y
  * nadie se enteraría hasta que una clienta lo notara. Este archivo existe
  * justo para eso: acá vive lo compartido.
  *
  * EL ORDEN IMPORTA
  *
- * Primero se decide la oferta mirando el turno entero —un tratamiento no
+ * Primero se decide la promoción mirando el turno entero —un tratamiento no
  * sabe solo si viene con un color— y recién después se cotiza cada parte.
  * Al revés no se puede: cuando `computeQuote` terminó, el precio ya está
  * puesto.
@@ -136,8 +136,8 @@ export interface PartesCotizadas {
   total: QuoteResult;
   /** Cada prestación por separado, para armar los items del turno. */
   partes: QuoteResult[];
-  /** Cuáles entraron a precio de oferta, en el mismo orden. */
-  conOferta: boolean[];
+  /** Cuáles entraron a precio de promoción, en el mismo orden. */
+  conPromocion: boolean[];
 }
 
 export function cotizarPartes(
@@ -145,7 +145,7 @@ export function cotizarPartes(
   parts: ServicePart[],
   settings: QuoteSettings,
 ): PartesCotizadas {
-  const conOferta = aplicarOferta(contexts.map((c) => c.service));
+  const conPromocion = aplicarPromocion(contexts.map((c) => c.service));
 
   const partes = contexts.map((context, i) =>
     computeQuote({
@@ -154,11 +154,11 @@ export function cotizarPartes(
       personalization: parts[i].personalization,
       extras: context.extras,
       settings: context.settings,
-      comoAgregado: conOferta[i],
+      comoAgregado: conPromocion[i],
     }),
   );
 
-  return { total: composeQuote(partes, settings), partes, conOferta };
+  return { total: composeQuote(partes, settings), partes, conPromocion };
 }
 
 /** Qué se le dice a la persona, por su nombre. */

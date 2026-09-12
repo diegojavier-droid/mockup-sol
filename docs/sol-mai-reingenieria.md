@@ -94,7 +94,7 @@ distinto según vaya solo o arriba de un color. Medido sobre 56 tickets reales
 | AMPOLLA | $5.500 | 20.000 – 28.000 |
 
 Un corte no hace eso: vale prácticamente lo mismo vaya solo o acompañado.
-**Un tratamiento tiene dos precios porque el salón hace una oferta a quien se
+**Un tratamiento tiene dos precios porque el salón hace una promoción a quien se
 lleva las dos cosas** — así lo explicó Sol, ver §8.2. Sea cual sea el motivo
 comercial, la consecuencia técnica es la misma: el precio del tratamiento
 depende de qué más haya en el turno, y un servicio común no funciona así.
@@ -383,12 +383,12 @@ la planilla.
 | Las fichas de las clientas | **«Sí, cargalas»** | Luz verde de la dueña para sembrar Clientas › Fichas |
 | El aviso a los 45 días | **«Sí, avisame»** | Se construye como aviso **a Sol**, que después escribe ella. No es mensajería automática a la clienta |
 
-### 8.2 El «tratamiento más color»: era una oferta, no una dosis más chica
+### 8.2 El «tratamiento más color»: era una promoción, no una dosis más chica
 
 Sol lo explicó con sus palabras:
 
 > «tratamiento solo, es una cosa. tratamiento más color son dos servicios
-> juntos, por eso la diferencia de precio es como una oferta que se hace por
+> juntos, por eso la diferencia de precio es como una promoción que se hace por
 > optar por los dos»
 
 **Esto corrige lo que decía §2 de este documento.** La lectura de «precio de
@@ -400,12 +400,12 @@ sigue siendo la columna correcta, porque la mecánica es la misma —si en el
 turno hay un color y un tratamiento, el tratamiento cotiza a ese precio—.
 
 Lo que **sí** cambia es la consecuencia de producto, y para mejor: si es una
-oferta, la web tiene que **ofrecerla**. Elegido un color, corresponde proponer
+promoción, la web tiene que **ofrecerla**. Elegido un color, corresponde proponer
 sumarle un tratamiento al precio de paquete. Hoy no se ofrece, y es el 47% de
 los tickets de color del salón.
 
 Queda un detalle sin cerrar: en ese mismo bloque el corte baja 12% y los
-tratamientos 63%. Si las dos cosas son «oferta por llevar dos», los
+tratamientos 63%. Si las dos cosas son «promoción por llevar dos», los
 descuentos deberían parecerse más. Conviene confirmarlo cuando se carguen los
 precios.
 
@@ -703,14 +703,14 @@ Y vale subrayar lo que esto habilita: **es el primer servicio del salón que
 va a tener margen real calculado**, porque es el único donde el costo se
 conoce con exactitud en vez de estimarse.
 
-### 8.10 La oferta, construida (2026-09-12)
+### 8.10 La promoción, construida (2026-09-12)
 
 Los datos estaban cargados y la regla de cálculo no existía: el sistema
 tenía `price_addon` lleno y seguía cobrando el precio suelto. Esto lo cierra.
 
 #### Dónde vive la regla
 
-En `server/src/domain/oferta.ts`, pura y sin I/O:
+En `server/src/domain/promocion.ts`, pura y sin I/O:
 
 ```
 si en el turno hay al menos un COLOR y al menos un TRATAMIENTO,
@@ -718,7 +718,7 @@ entonces todos los tratamientos del turno cotizan a price_addon.
 ```
 
 No vive en `computeQuote` porque `computeQuote` cotiza **una** prestación y
-no ve a las demás; que un tratamiento entre a precio de oferta no depende del
+no ve a las demás; que un tratamiento entre a precio de promoción no depende del
 tratamiento sino de qué más haya en el turno. Se decide antes de cotizar.
 
 Y no vive en las rutas porque son **cuatro** las que cotizan turnos —`/quote`,
@@ -732,9 +732,9 @@ eso.
 
 | Caso | Qué hace | Por qué |
 | --- | --- | --- |
-| Tratamiento sin `price_addon` | Cobra el precio suelto | NULL significa «no hay oferta para esto», nunca cero. Cobrar $0 sería regalar el tratamiento por un dato que falta |
-| Dos tratamientos y un color | Los dos reciben la oferta | Es la lectura que se parece a la lista de Sol, donde el precio «más color» está fila por fila y no como un descuento único del ticket |
-| El color | Nunca entra a precio de oferta | La oferta la hace el salón sobre el tratamiento |
+| Tratamiento sin `price_addon` | Cobra el precio suelto | NULL significa «no hay promoción para esto», nunca cero. Cobrar $0 sería regalar el tratamiento por un dato que falta |
+| Dos tratamientos y un color | Los dos reciben la promoción | Es la lectura que se parece a la lista de Sol, donde el precio «más color» está fila por fila y no como un descuento único del ticket |
+| El color | Nunca entra a precio de promoción | La promoción la hace el salón sobre el tratamiento |
 | Un corte con un tratamiento | No dispara nada | La regla es «color», no «dos cosas» |
 | Modificadores porcentuales | Se aplican sobre el precio efectivo | Un 10% es 10% de lo que se cobra, no de lo que se habría cobrado suelto |
 | La seña | Sobre lo que se cobra | 20% de $7.000, no de $20.000 |
@@ -756,14 +756,14 @@ SERVICIOS, aunque en los cobros de marzo a mayo aparecen 27, 21 y 46 veces.
 Su lista de precios no cubre ese trabajo.
 
 Marcarlos sería decidir por ella dos cosas de una vez: que son coloración, y
-que la oferta de tratamientos corre también sobre ellos. Ninguna sale del
+que la promoción de tratamientos corre también sobre ellos. Ninguna sale del
 archivo.
 
 **Pregunta para Sol:** cuando hacés mechas o balayage y le sumás un
-tratamiento, ¿cobrás el tratamiento al precio de oferta igual que con un
+tratamiento, ¿cobrás el tratamiento al precio de promoción igual que con un
 color, o no?
 
-#### Lo que todavía falta para que la oferta sea plata real
+#### Lo que todavía falta para que la promoción sea plata real
 
 1. **Los precios de coloración siguen siendo genéricos.** El turno de prueba
    dio $42.000 → $29.000, pero las raíces salieron a $22.000, que es el
@@ -773,11 +773,11 @@ color, o no?
    reconciliación de §8.7, pero del lado del color.
 2. **La web todavía no la ofrece.** El backend cobra bien si la clienta elige
    las dos cosas; lo que falta es que al elegir un color le proponga sumar un
-   tratamiento, con el precio de oferta a la vista. Sin eso, la oferta existe
+   tratamiento, con el precio de promoción a la vista. Sin eso, la promoción existe
    en el precio y no en la pantalla, y la clienta que reserva online nunca se
-   entera. `ahorroDeLaOferta` está escrita para ese texto.
+   entera. `ahorroDeLaPromocion` está escrita para ese texto.
 3. **`color-nutricion` y `color-tratamiento` quedaron colgados.** Son el
-   intento del catálogo genérico de resolver exactamente esta oferta con un
+   intento del catálogo genérico de resolver exactamente esta promoción con un
    servicio combinado. Ahora que el mecanismo existe, duplican. Conviene
    decidir si se dan de baja.
 

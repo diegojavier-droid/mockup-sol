@@ -1,12 +1,12 @@
 /**
- * El cableado de la oferta.
+ * El cableado de la promoción.
  *
- * POR QUÉ ESTE ARCHIVO EXISTE APARTE DE `oferta.test.ts`
+ * POR QUÉ ESTE ARCHIVO EXISTE APARTE DE `promocion.test.ts`
  *
  * Aquellas pruebas cubren la REGLA: dado un turno, cuáles prestaciones
- * entran a precio de oferta. Ésta cubre que la regla se APLIQUE de verdad
+ * entran a precio de promoción. Ésta cubre que la regla se APLIQUE de verdad
  * al cotizar. Son cosas distintas y se rompen por separado: se comprobó
- * cambiando `comoAgregado: conOferta[i]` por `comoAgregado: false` en
+ * cambiando `comoAgregado: conPromocion[i]` por `comoAgregado: false` en
  * `cotizarPartes`, y las 72 pruebas del dominio siguieron pasando. Una
  * regla correcta que nadie llama cobra igual que no tenerla.
  */
@@ -64,25 +64,25 @@ const enCorto = (n: number) =>
   Array.from({ length: n }, () => ({ serviceSlug: "x", lengthTier: "corto" as const }));
 
 describe("cotizarPartes", () => {
-  it("aplica la oferta cuando el turno lleva color y tratamiento", () => {
+  it("aplica la promoción cuando el turno lleva color y tratamiento", () => {
     const r = cotizarPartes([raices(), karseell()], enCorto(2), settings);
     // 28.000 de raíces + 7.000 de karseell arriba del color, no 20.000.
     expect(r.total.estimatedMinAmount).toBe(35000);
-    expect(r.conOferta).toEqual([false, true]);
+    expect(r.conPromocion).toEqual([false, true]);
   });
 
   it("sin color cobra los dos precios sueltos", () => {
     const r = cotizarPartes([corte(), karseell()], enCorto(2), settings);
     expect(r.total.estimatedMinAmount).toBe(35000); // 15.000 + 20.000
-    expect(r.conOferta).toEqual([false, false]);
+    expect(r.conPromocion).toEqual([false, false]);
   });
 
-  it("un tratamiento solo no recibe la oferta", () => {
+  it("un tratamiento solo no recibe la promoción", () => {
     const r = cotizarPartes([karseell()], enCorto(1), settings);
     expect(r.total.estimatedMinAmount).toBe(20000);
   });
 
-  it("la seña sale sobre el total con la oferta ya aplicada", () => {
+  it("la seña sale sobre el total con la promoción ya aplicada", () => {
     const r = cotizarPartes([raices(), karseell()], enCorto(2), settings);
     expect(r.total.depositAmount).toBe(7000); // 20% de 35.000
   });
@@ -94,7 +94,7 @@ describe("cotizarPartes", () => {
     expect(r.partes[1].estimatedMinAmount).toBe(7000);
   });
 
-  it("la oferta también libera agenda: el tratamiento ocupa menos", () => {
+  it("la promoción también libera agenda: el tratamiento ocupa menos", () => {
     const conColor = cotizarPartes([raices(), karseell()], enCorto(2), settings);
     const sinColor = cotizarPartes([corte(), karseell()], enCorto(2), settings);
     // 45 + 15 contra 45 + 45: el tratamiento se aplica durante el color.
@@ -102,10 +102,10 @@ describe("cotizarPartes", () => {
     expect(sinColor.total.durationShownMin).toBe(90);
   });
 
-  it("un tratamiento sin precio de oferta no se regala", () => {
+  it("un tratamiento sin precio de promoción no se regala", () => {
     const nutricion = contexto("nutricion", "tratamiento", 17000, null);
     const r = cotizarPartes([raices(), nutricion], enCorto(2), settings);
-    expect(r.conOferta).toEqual([false, true]);
+    expect(r.conPromocion).toEqual([false, true]);
     expect(r.total.estimatedMinAmount).toBe(45000); // 28.000 + 17.000
   });
 });

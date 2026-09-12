@@ -49,8 +49,8 @@ export function resolveTier(
  * Cuando la prestación entra como agregado —un tratamiento arriba de un
  * color—, el salón cobra `priceAddon` y ocupa `durationAddonMin`, porque
  * se aplica con la clienta ya sentada. Si el tier no tiene esos valores,
- * se cae a los normales: que exista oferta para un tratamiento no obliga
- * a que exista para todos, y un nulo significa «no hay oferta para esto»,
+ * se cae a los normales: que exista promoción para un tratamiento no obliga
+ * a que exista para todos, y un nulo significa «no hay promoción para esto»,
  * nunca cero.
  */
 export function tierEfectivo(
@@ -84,7 +84,7 @@ export function computeQuote(input: QuoteInput): QuoteResult {
     }
 
     // Sobre el precio EFECTIVO: si el tratamiento entró a precio de
-    // oferta, un modificador del 10% es 10% de lo que se cobra, no de lo
+    // promoción, un modificador del 10% es 10% de lo que se cobra, no de lo
     // que se habría cobrado suelto.
     const priceDelta =
       option.priceFixedAmount + Math.round((efectivo.precio * option.pricePercentage) / 100);

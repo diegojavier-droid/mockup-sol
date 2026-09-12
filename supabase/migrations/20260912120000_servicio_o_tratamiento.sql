@@ -5,12 +5,12 @@
 --
 -- Hasta acá `services` mezclaba dos cosas que el salón cobra distinto.
 -- Un corte vale lo mismo vaya solo o acompañado. Un tratamiento no:
--- Sol hace una oferta a quien se lleva color y tratamiento juntos, y lo
+-- Sol hace una promoción a quien se lleva color y tratamiento juntos, y lo
 -- dijo con sus palabras el 2026-09-12:
 --
 --   «tratamiento solo, es una cosa. tratamiento más color son dos
 --    servicios juntos, por eso la diferencia de precio es como una
---    oferta que se hace por optar por los dos»
+--    promoción que se hace por optar por los dos»
 --
 -- Medido contra 56 tickets reales de marzo a mayo, comparando la mediana
 -- de «raíces solas» contra «raíces + tratamiento»: karseell $8.000,
@@ -54,7 +54,7 @@ end $$;
 comment on column public.services.kind is
   'servicio: el precio no depende de qué más haya en el turno. tratamiento: '
   'cuando va junto con un color cotiza a service_price_tiers.price_addon, '
-  'que es la oferta del salón por llevarse los dos. Ver §8.2 de '
+  'que es la promoción del salón por llevarse los dos. Ver §8.2 de '
   'docs/sol-mai-reingenieria.md.';
 
 -- ---------------------------------------------------------------------

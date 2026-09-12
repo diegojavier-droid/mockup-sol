@@ -1,10 +1,10 @@
 /**
- * La oferta del salón: color y tratamiento juntos salen menos.
+ * La promoción del salón: color y tratamiento juntos salen menos.
  *
  * POR QUÉ ESTO NO VIVE EN `computeQuote`
  *
  * `computeQuote` cotiza UNA prestación y no ve a las demás. Pero si un
- * tratamiento entra a precio de oferta no depende del tratamiento: depende
+ * tratamiento entra a precio de promoción no depende del tratamiento: depende
  * de si en el mismo turno hay un color. Es una regla del turno, no del
  * servicio, así que se decide antes de cotizar y el resultado se le pasa a
  * cada parte.
@@ -14,7 +14,7 @@
  * Sol lo explicó el 2026-09-12:
  *
  *   «tratamiento solo, es una cosa. tratamiento más color son dos
- *    servicios juntos, por eso la diferencia de precio es como una oferta
+ *    servicios juntos, por eso la diferencia de precio es como una promoción
  *    que se hace por optar por los dos»
  *
  * Y se ve en lo que cobró de verdad. Comparando la mediana de «raíces
@@ -39,21 +39,21 @@ import type { QuoteServiceData } from "./types";
  *
  * La regla, entera: **si en el turno hay al menos un color y al menos un
  * tratamiento, todos los tratamientos del turno cotizan a precio de
- * agregado.** El color nunca: la oferta la hace el salón sobre el
+ * agregado.** El color nunca: la promoción la hace el salón sobre el
  * tratamiento, no sobre la coloración.
  *
- * Dos tratamientos con un solo color reciben los dos la oferta. Es la
+ * Dos tratamientos con un solo color reciben los dos la promoción. Es la
  * lectura generosa y es la que se parece a la lista de Sol, donde el
  * precio «más color» está fila por fila y no como un descuento único del
- * ticket. Si alguna vez se decide que la oferta es una sola por turno,
+ * ticket. Si alguna vez se decide que la promoción es una sola por turno,
  * el cambio es acá y en ningún otro lado.
  */
-export function aplicarOferta(servicios: QuoteServiceData[]): boolean[] {
+export function aplicarPromocion(servicios: QuoteServiceData[]): boolean[] {
   const hayColor = servicios.some((s) => s.kind === "color");
   const hayTratamiento = servicios.some((s) => s.kind === "tratamiento");
-  const ofertaActiva = hayColor && hayTratamiento;
+  const promocionActiva = hayColor && hayTratamiento;
 
-  return servicios.map((s) => ofertaActiva && s.kind === "tratamiento");
+  return servicios.map((s) => promocionActiva && s.kind === "tratamiento");
 }
 
 /**
@@ -65,19 +65,19 @@ export function aplicarOferta(servicios: QuoteServiceData[]): boolean[] {
  * el cálculo —el cálculo ya lo hizo `computeQuote` con el precio de
  * agregado—, así que se toma de los mismos tiers y no se recalcula aparte.
  *
- * Devuelve 0 cuando no hay oferta aplicada o cuando los tiers no permiten
+ * Devuelve 0 cuando no hay promoción aplicada o cuando los tiers no permiten
  * compararla, que no es lo mismo pero para el texto da igual: no se
  * anuncia un ahorro que no se puede afirmar.
  */
-export function ahorroDeLaOferta(
+export function ahorroDeLaPromocion(
   servicios: QuoteServiceData[],
-  conOferta: boolean[],
+  conPromocion: boolean[],
   largoPorServicio: (string | null)[],
 ): number {
   let ahorro = 0;
 
   servicios.forEach((servicio, i) => {
-    if (!conOferta[i]) return;
+    if (!conPromocion[i]) return;
     const largo = largoPorServicio[i];
     const tier =
       servicio.tiers.find((t) => t.lengthTier === largo) ??
