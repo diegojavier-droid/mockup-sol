@@ -184,8 +184,21 @@ jobs:
             select count(*) into n from public.categories;
             if n <> 4 then raise exception 'anon categories expected 4, got %', n; end if;
 
+            -- 41 desde que babylights y claritos se agruparon bajo Mechas
+            -- (decisión de Sol, 2026-09-12) y los 16 tratamientos nuevos
+            -- entraron activos pero SIN publicar, a la espera de que ella
+            -- defina las duraciones.
             select count(*) into n from public.services;
-            if n <> 43 then raise exception 'anon services expected 43, got %', n; end if;
+            if n <> 41 then raise exception 'anon services expected 41, got %', n; end if;
+
+            -- Lo que el número de arriba solo no prueba: hasta ahora todos
+            -- los servicios eran públicos, así que un RLS roto habría dado
+            -- el mismo conteo. Ahora hay 16 activos que anon NO debe ver.
+            select count(*) into n from public.services where not is_public;
+            if n <> 0 then raise exception 'anon ve % servicios sin publicar', n; end if;
+
+            select count(*) into n from public.services where kind = 'tratamiento';
+            if n <> 6 then raise exception 'anon tratamientos publicos expected 6, got %', n; end if;
 
             select count(*) into n from public.extras;
             if n <> 13 then raise exception 'anon extras expected 13, got %', n; end if;
@@ -263,10 +276,29 @@ jobs:
             -- alguien le pone un número desde el repositorio.
             select count(*) into n from public.business_settings;
             if n <> 10 then raise exception 'business_settings expected 10, got %', n; end if;
+            -- 59 = 43 + los 16 tratamientos que el salón cobra y el
+            -- sistema no tenía (karseell, riflessi, ampolla, biotina…).
             select count(*) into n from public.service_parameters;
-            if n <> 43 then raise exception 'service_parameters expected 43, got %', n; end if;
+            if n <> 59 then raise exception 'service_parameters expected 59, got %', n; end if;
+            -- 191 = 127 + 64 filas de precio nuevas. Las otras 20 de la
+            -- lista de Sol pisaron filas que ya existían.
             select count(*) into n from public.service_price_tiers;
-            if n <> 127 then raise exception 'service_price_tiers expected 127, got %', n; end if;
+            if n <> 191 then raise exception 'service_price_tiers expected 191, got %', n; end if;
+
+            -- La lista de Sol entró como sol_pricelist, NUNCA como
+            -- sol_validated: son sus precios, pero ella todavía no los
+            -- confirmó, y /admin/pending-values filtra por eso.
+            select count(*) into n from public.service_price_tiers
+             where source = 'sol_pricelist' and confidence = 'medium';
+            if n <> 84 then raise exception 'tiers de la lista de Sol expected 84, got %', n; end if;
+
+            -- price_addon es la oferta por llevarse color y tratamiento
+            -- juntos. Sólo la tienen tratamientos: un corte vale lo mismo
+            -- vaya solo o acompañado.
+            select count(*) into n from public.service_price_tiers t
+            join public.services s on s.id = t.service_id
+            where t.price_addon is not null and s.kind <> 'tratamiento';
+            if n <> 0 then raise exception '% servicios no-tratamiento tienen price_addon', n; end if;
 
             -- Gate A1: el largo nunca es modificador
             select count(*) into n
