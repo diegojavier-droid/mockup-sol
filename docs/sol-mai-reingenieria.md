@@ -525,6 +525,98 @@ Siete confirmaciones de una palabra, más una pregunta abierta:
 7. **Maquillaje**: ¿lo hacés en el salón? Si sí, ¿dónde queda anotado,
    porque en estas planillas no aparece?
 
+### 8.7 Emparejamiento confirmado (2026-09-12)
+
+Sol contestó las siete. **Seis quedan cerradas**; la séptima abre un problema
+de arquitectura que no es de catálogo.
+
+| Nombre en la web | Lo que anota Sol | Estado |
+| --- | --- | --- |
+| Baño de luz | `tono sobre tono` | **Confirmado.** «Es la forma comercial de llamar a la coloración tono sobre tono» |
+| Reparación | `mascara repair` | **Confirmado.** Sella la cutícula, daño externo |
+| Hidratación | `magic water` | **Confirmado** |
+| Reconstrucción | `shock de keratina` | **Confirmado con corrección**, abajo |
+| Recogido | `peinados` | **Confirmado.** Moños, colitas y peinados de fiesta entran todos ahí |
+| Babylights y Claritos | `mechas` | **Confirmado, y se agrupan**, abajo |
+
+#### La corrección: Karseell no es reconstrucción
+
+Yo había propuesto reconstrucción ↔ `karseell` **o** `shock de keratina`. Sol
+los separa:
+
+> «El shock de keratina es 100% reconstrucción (aporta la proteína pura para
+> reponer masa capilar). La máscara de Karseell es un tratamiento de colágeno
+> que funciona más como una nutrición e hidratación profunda.»
+
+Entonces: **Reconstrucción = shock de keratina**, y Karseell es otra cosa.
+
+**Qué hacer con Karseell.** Es el tratamiento con más volumen de todos —39
+tickets en tres meses— y tiene línea propia en la lista de precios de Sol. No
+corresponde meterlo a la fuerza en un cajón genérico: **va como servicio
+propio, llamado Karseell**, que es como lo pide la clienta. Es el punto
+general de esta reingeniería: el catálogo de Sol habla por marca de producto
+y el sistema tiene que hablar igual.
+
+#### La decisión de agrupar, tomada
+
+Sobre babylights y claritos, Sol respondió lo que §8.5 planteaba como opción:
+
+> «Sí, es lo ideal para simplificar. Ambas técnicas son variantes de mechas,
+> así que podés agruparlas bajo ese nombre general.»
+
+**Queda decidido: se agrupan en la web bajo Mechas.** La técnica concreta se
+conversa en el turno. Se dan de baja `babylights` y `claritos` como servicios
+separados.
+
+#### Cómo se nombran los tratamientos en la web
+
+De los emparejamientos sale una regla para el catálogo público: **el nombre
+genérico orienta a quien no conoce, el nombre de marca es el que pide la
+clienta habitual.** Con el 63% de la facturación viniendo de clientas que
+vuelven, sacar el nombre de marca sería sacarles la palabra con la que piden.
+
+La forma propuesta es mostrar los dos: **«Hidratación profunda (Magic
+Water)»**, «Reconstrucción (Shock de keratina)», «Reparación (Máscara
+repair)». Una línea, sin ficha aparte.
+
+### 8.8 Maquillaje: no es catálogo, es un tercero dentro del salón
+
+> «El maquillaje se hace en el salón pero lo hace una experta tercerizada,
+> pero quiero que quede registro también en el sistema.»
+
+**Esto explica el dato y lo confirma en vez de desmentirlo.** Maquillaje no
+aparecía en tres meses de planilla porque esa plata no pasa por la caja de
+Sol, no porque el servicio no exista. El cero era correcto; lo que estaba mal
+era mi conclusión de que el servicio no se hacía.
+
+Y lo que pide Sol —que quede registro— es una capacidad que el sistema **hoy
+no tiene**. Todo lo que modela asume que quien atiende es del salón:
+`staff_members` son personas con acceso al panel, y `areas` y `resources` son
+capacidad propia.
+
+Una tercerizada rompe tres supuestos a la vez:
+
+| Qué | Por qué no encaja |
+| --- | --- |
+| **La plata** | El cierre de atención registra lo cobrado como ingreso del salón. Si la clienta le paga a la maquilladora, no es ingreso: o es cero, o es una comisión |
+| **La agenda** | Ocupa lugar y tiempo en el salón, así que tiene que estar en la agenda; pero no consume una estación de peluquería |
+| **La disponibilidad** | Los horarios los pone ella, no el salón. Ofrecerlo online sin saber cuándo viene es prometer un turno que el salón no controla |
+
+**No se construye hasta responder tres preguntas**, porque cada respuesta da
+un modelo distinto:
+
+1. **¿Quién cobra?** ¿La clienta le paga directo a la maquilladora, le paga
+   al salón y el salón le paga a ella, o hay una comisión?
+2. **¿Se reserva online o sólo queda anotado?** Hoy la portada ya deriva
+   novias y eventos a WhatsApp, que es la respuesta prudente mientras la
+   disponibilidad dependa de un tercero.
+3. **¿Tiene días fijos en el salón?** Si los tiene, es un horario más. Si
+   viene cuando hay turno, la agenda tiene que poder anotar sin garantizar.
+
+Mientras tanto, **los cinco servicios de maquillaje no deberían seguir
+reservables online**: prometen un turno con alguien cuya agenda el salón no
+tiene. Anotarlos sí; venderlos online, todavía no.
+
 ## 9. Lo que esta reingeniería deliberadamente no toca
 
 | | Por qué |

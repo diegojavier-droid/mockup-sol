@@ -255,8 +255,23 @@ Hallazgos que estos documentos incorporan y que antes no estaban medidos:
 - **Sol autoriza cargar las fichas de sus clientas.**
 - **El aviso de «sin venir hace tiempo» va dirigido a Sol**, que escribe ella:
   no es mensajería automática a la clienta.
-- **Sigue abierto** cómo anota Sol en la planilla los servicios que el sistema
-  nombra distinto (babylights, claritos, reconstrucción, etc.). Ver §8.4.
+- **Los nombres quedaron emparejados** (§8.7): baño de luz = tono sobre tono,
+  reparación = máscara repair, hidratación = magic water, reconstrucción =
+  shock de keratina, recogido = peinados. **Karseell no es reconstrucción**
+  —es nutrición profunda— y va como servicio propio: 39 tickets en tres meses
+  y línea propia en la lista de Sol.
+- **Babylights y claritos se agrupan bajo «Mechas»** en la web, por decisión
+  de Sol. La técnica se conversa en el turno.
+- **En el catálogo público los tratamientos llevan los dos nombres**:
+  «Hidratación profunda (Magic Water)». El genérico orienta a quien no
+  conoce; el de marca es el que pide la clienta habitual, y el 63% de la
+  facturación viene de clientas que vuelven.
+- **Maquillaje lo hace una experta tercerizada** dentro del salón. Por eso no
+  aparece en la planilla: esa plata no pasa por la caja. Sol quiere registro
+  en el sistema, y eso **rompe tres supuestos del modelo** —quién cobra, qué
+  capacidad ocupa y quién define la disponibilidad—. No se construye hasta
+  contestar las tres preguntas de §8.8, y mientras tanto los cinco servicios
+  de maquillaje **no deberían seguir reservables online**.
 
 ## Regla de mantenimiento
 
