@@ -91,6 +91,11 @@ function PanelLayout() {
     <SesionPanelCtx.Provider
       value={{
         identidad: identity.data,
+        // `isPending` y no `isLoading`: mientras la consulta está
+        // deshabilitada —no hay token todavía— también cuenta como «no
+        // sé», y es justo el instante en que se dibuja la primera
+        // pantalla.
+        cargando: identity.isPending,
         cerrar: () => {
           void salir().then(() => setHasToken(false));
         },

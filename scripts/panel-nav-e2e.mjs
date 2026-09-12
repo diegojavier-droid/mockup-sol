@@ -103,14 +103,19 @@ const browser = await chromium.launch({
 
 const errores = [];
 
-async function abrir(quien = SOL, { ancho = 1440, alto = 900 } = {}) {
+async function abrir(quien = SOL, { ancho = 1440, alto = 900, demoraMe = 0 } = {}) {
   const ctx = await browser.newContext({ viewport: { width: ancho, height: alto } });
   await ctx.addInitScript(
     ([s]) => window.localStorage.setItem("sb-falso-auth-token", JSON.stringify(s)),
     [SESION],
   );
   await ctx.route("**/api/v1/auth/panel-config", (r) => r.fulfill({ json: { data: CONFIG } }));
-  await ctx.route("**/api/v1/admin/me", (r) => r.fulfill({ json: { data: quien } }));
+  await ctx.route("**/api/v1/admin/me", async (r) => {
+    // `demoraMe` simula la conexión lenta o el Worker frío: es el rato
+    // en que la pantalla ya se dibujó y todavía no sabe quién sos.
+    if (demoraMe) await new Promise((listo) => setTimeout(listo, demoraMe));
+    return r.fulfill({ json: { data: quien } });
+  });
   await ctx.route("**/api/v1/**", (r) => {
     const u = r.request().url();
     if (/admin\/me|panel-config/.test(u)) return r.fallback();
@@ -143,6 +148,22 @@ async function abrir(quien = SOL, { ancho = 1440, alto = 900 } = {}) {
 }
 
 const limpio = (t) => (t ?? "").replace(/\s+/g, " ").trim();
+
+async function esperar(page, patron, ms = 8000) {
+  const hasta = Date.now() + ms;
+  let t = "";
+  while (Date.now() < hasta) {
+    t = limpio(
+      await page
+        .locator("main")
+        .innerText()
+        .catch(() => ""),
+    );
+    if (patron.test(t)) return t;
+    await page.waitForTimeout(200);
+  }
+  return t;
+}
 
 async function ver(page, ruta) {
   await page.goto(`${BASE}${ruta}`, { waitUntil: "commit", timeout: 20000 });
@@ -323,6 +344,50 @@ console.log("\n── Una dirección que no existe es un 404");
     await page.waitForTimeout(1200);
     ok(`${ruta} no existe`, res?.status() === 404, `status ${res?.status()}`);
   }
+  await ctx.close();
+}
+
+console.log("\n── Mientras no se sabe quién sos, no se dice que no");
+{
+  // El defecto que motivó esta comprobación: `identidad` vale
+  // `undefined` tanto mientras el pedido viaja como cuando no hay
+  // permisos, y la pantalla contestaba «esto no es tuyo» a las dos. Sol
+  // abría su propio panel y leía que le pidiera acceso a quien lo
+  // administra, que es ella.
+  const { ctx, page } = await abrir(SOL, { demoraMe: 2500 });
+  await page.goto(`${BASE}/panel/finanzas/caja`, { waitUntil: "commit", timeout: 20000 });
+  await page.waitForSelector('nav[aria-label="Dónde estás"]', { timeout: 20000 });
+
+  // Se mira DURANTE la espera, no después: mirar al final es
+  // exactamente lo que dejó pasar el defecto.
+  const durante = [];
+  for (let i = 0; i < 12; i++) {
+    durante.push(
+      limpio(
+        await page
+          .locator("main")
+          .innerText()
+          .catch(() => ""),
+      ),
+    );
+    await page.waitForTimeout(150);
+  }
+  const enAlgunMomento = (re) => durante.some((t) => re.test(t));
+
+  ok(
+    "no dice «esto no es tuyo» mientras espera",
+    !enAlgunMomento(/no es tuyo|no tiene acceso/i),
+    durante.find((t) => /no es tuyo|no tiene acceso/i.test(t)) ?? "",
+  );
+  ok("dice que está esperando", enAlgunMomento(/un segundo/i), durante[0]?.slice(0, 80));
+
+  // Y cuando por fin llega, abre.
+  const fin = await esperar(page, /la caja de hoy|todavía no entró plata/i, 8000);
+  ok(
+    "y cuando llega la identidad, abre la sección",
+    /la caja de hoy|todavía no entró plata/i.test(fin),
+    fin.slice(0, 90),
+  );
   await ctx.close();
 }
 

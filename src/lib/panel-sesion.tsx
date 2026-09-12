@@ -18,10 +18,20 @@
  */
 
 import { createContext, useContext } from "react";
-import type { StaffIdentity } from "@/lib/staff-session";
+import { puede, type Modulo, type StaffIdentity } from "@/lib/staff-session";
 
 export interface SesionPanel {
   identidad: StaffIdentity | undefined;
+  /**
+   * Todavía no volvió la respuesta de quién sos.
+   *
+   * Hace falta porque `identidad` vale `undefined` en dos situaciones
+   * opuestas —no llegó, o llegó y no hay— y confundirlas le dice a Sol
+   * que no tiene permiso en su propio panel mientras el pedido viaja.
+   * Es el mismo error que el bloque anterior arregló en el servidor
+   * entre el 401 y el 403, una capa más arriba.
+   */
+  cargando: boolean;
   cerrar: () => void;
 }
 
@@ -31,4 +41,29 @@ export function useSesionPanel(): SesionPanel {
   const ctx = useContext(SesionPanelCtx);
   if (!ctx) throw new Error("useSesionPanel se usa adentro de /panel");
   return ctx;
+}
+
+/** Qué corresponde dibujar en una sección del panel. */
+export type QueMostrar = "esperando" | "sin-permiso" | "adelante";
+
+/**
+ * La decisión de si se abre una sección, separada de la pantalla para
+ * poder probarla.
+ *
+ * Son TRES respuestas y no dos, y ahí estuvo el error: `identidad` vale
+ * `undefined` tanto cuando la respuesta de quién sos no llegó como
+ * cuando llegó y no alcanza, así que preguntarle sólo a `puede()` le
+ * contestaba «no tenés permiso» a quien todavía no había sido
+ * preguntado. Sol abría su propio panel y leía que le pidiera acceso a
+ * quien administra el panel, que es ella.
+ *
+ * Esto NO es la frontera de seguridad: el servidor niega igual. Es para
+ * que la pantalla no diga una cosa distinta de la puerta.
+ */
+export function queMostrar(
+  sesion: Pick<SesionPanel, "identidad" | "cargando">,
+  modulo: Modulo,
+): QueMostrar {
+  if (sesion.cargando) return "esperando";
+  return puede(sesion.identidad, modulo) ? "adelante" : "sin-permiso";
 }
