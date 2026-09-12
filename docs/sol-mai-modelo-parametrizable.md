@@ -253,19 +253,42 @@ clase y la baja corren contra una base recién migrada y se revierten.
 
 ---
 
-## 10. Lo que todavía falta
+## 10. Dónde lo toca Sol
 
-Esto es modelo de datos. Falta la parte que Sol toca con el dedo:
+El panel entra por `/panel/servicios`, que pasó de tres secciones a seis:
 
-| # | Qué falta | Estado |
+| Sección | Qué hace | Endpoints |
 | --- | --- | --- |
-| 1 | Endpoints HTTP que llamen a las cuatro funciones | No construido |
-| 2 | Pantallas de alta y edición en el panel | No construido |
-| 3 | Submódulos Servicios / Tratamientos / Promociones en el árbol del panel | No construido |
-| 4 | Que el motor de cotización lea `promotions` en vez de la regla de `promocion.ts` | No construido |
-| 5 | Agrupar el catálogo público por dato y no por listas de slugs | No construido |
+| **Servicios** | Alta, nombre, categoría, clase, publicación, costo y baja de lo principal del turno | `GET/POST /salon/catalog`, `PATCH`/`DELETE /salon/catalog/:slug`, `POST /salon/catalog/:slug/cost` |
+| **Tratamientos** | Lo mismo, filtrado a `kind = 'tratamiento'` | los mismos |
+| **Promociones** | Alta, los dos lados de la regla, prender, apagar y borrar | `GET/POST /salon/promotions`, `POST /salon/promotions/:slug/rules`, `.../active`, `DELETE` |
+| **Precios y tiempos** | Precio y duración por largo (ya existía) | `POST /salon/services/:slug/price` |
+| **Áreas** · **Horarios** | Sin cambios | — |
 
-Mientras (4) no esté, la regla vive en dos lugares a la vez: la tabla la tiene
+Las once rutas nuevas exigen permiso de **Servicios**: `view` para leer,
+`full` para escribir. Quien atiende el mostrador ve y no toca.
+
+**Servicios y Tratamientos son la misma pantalla con distinto filtro**, y por
+eso cambiarle la clase a un servicio lo muda de sección. La fila lo avisa
+antes de que pase.
+
+---
+
+## 11. Lo que todavía falta
+
+| # | Qué falta | Por qué importa |
+| --- | --- | --- |
+| 1 | Que el motor de cotización lea `promotions` en vez de la regla de `promocion.ts` | Hoy la regla vive en dos lugares |
+| 2 | Agrupar el catálogo público por dato y no por listas de slugs | `Landing.tsx:413-446` todavía nombra servicios dados de baja |
+| 3 | Pantalla para áreas y para los valores de negocio | Tienen endpoint y no tienen UI |
+| 4 | ABM de clientas y de categorías | Los de menos urgencia comprobada |
+
+Mientras (1) no esté, la regla vive en dos lugares a la vez: la tabla la tiene
 cargada y el código la sigue decidiendo. **Son idénticas hoy**, y ése es el
 punto: hace que el reemplazo se pueda verificar comparando las dos, en vez de
 ser un salto.
+
+La consecuencia práctica, dicha sin vueltas: **Sol ya puede crear una
+promoción desde la pantalla, y el cálculo del precio todavía no la va a
+usar.** La que sí funciona es la que está cargada, porque es la misma que
+tiene escrita el código.

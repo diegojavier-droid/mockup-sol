@@ -30,6 +30,20 @@ import {
   setRolePermission,
 } from "../../lib/admin/roles-repository";
 import {
+  createService,
+  deletePromotion,
+  deleteService,
+  estadoDelRechazo,
+  listCatalog,
+  listCategories,
+  listPromotions,
+  setPromotionActive,
+  setPromotionRule,
+  setServiceCost,
+  updateService,
+  upsertPromotion,
+} from "../../lib/admin/catalog-repository";
+import {
   listProducts,
   listServiceTiers,
   setProductActive,
@@ -1211,6 +1225,236 @@ export function createAdminRoute(env: ServerEnv) {
         productId: c.req.param("id"),
         active: parsed.data.active,
         actorId: staff.staffId,
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  /**
+   * El catálogo, dado de alta y de baja por Sol.
+   *
+   * Hasta acá Sol podía cambiarle el precio a un servicio que ya existía,
+   * y nada más. Los 16 tratamientos de su lista entraron por migración: un
+   * archivo SQL que escribió un desarrollador. Eso convertía cada decisión
+   * comercial en un pedido.
+   *
+   * Todas las escrituras pasan por funciones de la base que validan y
+   * auditan. Acá no hay ninguna regla: esta capa traduce HTTP a llamadas y
+   * rechazos a números.
+   */
+  const catalogo = async <T>(c: Context<{ Variables: StaffVars }>, fn: () => Promise<T>) => {
+    try {
+      return c.json({ data: await fn() });
+    } catch (error) {
+      if (!(error instanceof SalonEditError)) throw error;
+      const { status, message } = estadoDelRechazo(error.code);
+      throw new HTTPException(status, { message });
+    }
+  };
+
+  const KIND = z.enum(["servicio", "color", "tratamiento"]);
+  const SLUG = z
+    .string()
+    .min(2)
+    .max(64)
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "El identificador va en minúsculas y con guiones.");
+
+  owner.get("/salon/catalog", async (c) =>
+    catalogo(c, () => listCatalog(createSupabaseAdminClient(env))),
+  );
+
+  owner.get("/salon/categories", async (c) =>
+    catalogo(c, () => listCategories(createSupabaseAdminClient(env))),
+  );
+
+  owner.post("/salon/catalog", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({
+        slug: SLUG,
+        name: z.string().min(1).max(120),
+        category: z.string().min(1).max(64),
+        kind: KIND,
+        durationMin: z.number().int().positive().max(1440),
+        price: z.number().int().min(0),
+        description: z.string().max(500).nullish(),
+        isPublic: z.boolean().optional(),
+      })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+      throw new HTTPException(400, {
+        message: parsed.error.issues[0]?.message ?? "Revisá los datos del servicio.",
+      });
+    }
+    return catalogo(c, () =>
+      createService(createSupabaseAdminClient(env), { ...parsed.data, actorLabel: staff.email }),
+    );
+  });
+
+  /**
+   * La clase —servicio, color o tratamiento— se cambia desde acá.
+   *
+   * Es la respuesta a «¿mechas y balayage reciben la promoción de
+   * tratamientos?». Deja de ser una pregunta para un desarrollador y pasa
+   * a ser una casilla: el día que Sol marque balayage como color, la
+   * promoción lo cubre sin que nadie escriba nada.
+   */
+  owner.patch("/salon/catalog/:slug", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({
+        name: z.string().min(1).max(120).optional(),
+        description: z.string().max(500).nullish(),
+        category: z.string().min(1).max(64).optional(),
+        kind: KIND.optional(),
+        isPublic: z.boolean().optional(),
+        isActive: z.boolean().optional(),
+      })
+      .safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success || Object.keys(parsed.data).length === 0) {
+      throw new HTTPException(400, { message: "No hay nada para cambiar." });
+    }
+    return catalogo(c, () =>
+      updateService(createSupabaseAdminClient(env), {
+        slug: c.req.param("slug"),
+        ...parsed.data,
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  owner.delete("/salon/catalog/:slug", async (c) => {
+    const staff = c.get("staff");
+    return catalogo(c, () =>
+      deleteService(createSupabaseAdminClient(env), {
+        slug: c.req.param("slug"),
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  /**
+   * Cuánto le cuesta al salón prestar el servicio.
+   *
+   * `null` se acepta y quiere decir «no sabemos»: sin el dato el margen
+   * queda NO DISPONIBLE y no se estima. Cero diría que no cuesta nada, y
+   * un margen sobre un cero inventado parece un número.
+   *
+   * El primer caso real es la maquilladora tercerizada: la clienta le paga
+   * al salón y el salón le paga a ella un fijo por maquillaje.
+   */
+  owner.post("/salon/catalog/:slug/cost", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({ amount: z.number().int().min(0).nullable() })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+      throw new HTTPException(400, { message: "El costo no puede ser negativo." });
+    }
+    return catalogo(c, () =>
+      setServiceCost(createSupabaseAdminClient(env), {
+        slug: c.req.param("slug"),
+        amount: parsed.data.amount,
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  /* ---------------------------------------------------------------- */
+  /* Promociones                                                       */
+  /* ---------------------------------------------------------------- */
+
+  /**
+   * Una promoción tiene dos lados y se editan por separado: qué tiene que
+   * haber en el turno para que se active, y qué baja de precio. Meterlos
+   * en una sola lista haría imposible decir «con cualquier color, los
+   * tratamientos salen menos», que es la promoción que el salón ya hace.
+   */
+  owner.get("/salon/promotions", async (c) =>
+    catalogo(c, () => listPromotions(createSupabaseAdminClient(env))),
+  );
+
+  owner.post("/salon/promotions", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({
+        slug: SLUG,
+        name: z.string().min(1).max(120),
+        description: z.string().max(500).nullish(),
+        benefitKind: z.enum(["precio_de_agregado", "porcentaje", "monto_fijo"]).optional(),
+        benefitValue: z.number().int().min(0).nullish(),
+        startsOn: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .nullish(),
+        endsOn: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .nullish(),
+        isActive: z.boolean().optional(),
+      })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+      throw new HTTPException(400, {
+        message: parsed.error.issues[0]?.message ?? "Revisá los datos de la promoción.",
+      });
+    }
+    return catalogo(c, () =>
+      upsertPromotion(createSupabaseAdminClient(env), { ...parsed.data, actorLabel: staff.email }),
+    );
+  });
+
+  /**
+   * Agregar o sacar un lado de la regla.
+   *
+   * Por CLASE de servicio o por SERVICIO puntual, uno u otro y no los dos.
+   * La primera forma es la que se mantiene sola cuando Sol agrega un
+   * servicio nuevo; la segunda es para las excepciones.
+   */
+  owner.post("/salon/promotions/:slug/rules", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({
+        lado: z.enum(["disparador", "beneficio"]),
+        serviceKind: KIND.nullish(),
+        serviceSlug: z.string().min(1).max(64).nullish(),
+        agregar: z.boolean(),
+      })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) throw new HTTPException(400, { message: "Revisá la regla." });
+    return catalogo(c, () =>
+      setPromotionRule(createSupabaseAdminClient(env), {
+        slug: c.req.param("slug"),
+        ...parsed.data,
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  /**
+   * Apagar no es borrar. Una promoción que corrió tres meses y se apagó
+   * explica turnos viejos; borrarla deja esos precios sin explicación.
+   */
+  owner.post("/salon/promotions/:slug/active", async (c) => {
+    const staff = c.get("staff");
+    const parsed = z
+      .object({ active: z.boolean() })
+      .safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) throw new HTTPException(400, { message: "Datos inválidos." });
+    return catalogo(c, () =>
+      setPromotionActive(createSupabaseAdminClient(env), {
+        slug: c.req.param("slug"),
+        active: parsed.data.active,
+        actorLabel: staff.email,
+      }),
+    );
+  });
+
+  owner.delete("/salon/promotions/:slug", async (c) => {
+    const staff = c.get("staff");
+    return catalogo(c, () =>
+      deletePromotion(createSupabaseAdminClient(env), {
+        slug: c.req.param("slug"),
         actorLabel: staff.email,
       }),
     );

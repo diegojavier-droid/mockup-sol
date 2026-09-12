@@ -66,7 +66,9 @@ describe("el árbol del panel", () => {
     // `docs/sol-mai-arquitectura-modular.md` en el mismo commit: son la
     // misma afirmación escrita dos veces.
     const total = ARBOL.reduce((n, m) => n + m.secciones.length, 0);
-    expect(total).toBe(34);
+    // 37 desde que Servicios se abrió en tres: Servicios, Tratamientos y
+    // Promociones son submódulos del catálogo. Ver §5.0.
+    expect(total).toBe(37);
   });
 });
 
@@ -135,7 +137,28 @@ describe("el permiso y el nombre visible son cosas distintas", () => {
 
   test("y ya no cuelga de Servicios", () => {
     const servicios = buscarModulo("servicios")!;
-    expect(servicios.secciones.map((s) => s.slug)).toEqual(["precios", "areas", "horarios"]);
+    expect(servicios.secciones.map((s) => s.slug)).toEqual([
+      "catalogo",
+      "tratamientos",
+      "promociones",
+      "precios",
+      "areas",
+      "horarios",
+    ]);
+    expect(servicios.secciones.some((s) => s.slug.startsWith("puesto"))).toBe(false);
+  });
+
+  /**
+   * Los tres submódulos del catálogo van primero y los tres tienen
+   * pantalla. Si alguno quedara apagado, la sección se vería gris y no
+   * habría manera de dar de alta un servicio, que es justamente lo que
+   * este bloque vino a arreglar.
+   */
+  test("Servicios, Tratamientos y Promociones tienen pantalla", () => {
+    const servicios = buscarModulo("servicios")!;
+    for (const slug of ["catalogo", "tratamientos", "promociones"]) {
+      expect(servicios.secciones.find((s) => s.slug === slug)?.listo).toBe(true);
+    }
   });
 });
 

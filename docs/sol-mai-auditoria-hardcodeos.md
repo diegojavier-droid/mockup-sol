@@ -154,15 +154,19 @@ darle dónde escribirlo.
 
 ## 6. Lo que hay que construir, en orden de dependencia
 
-| # | Qué | Por qué va acá |
+| # | Qué | Estado |
 | --- | --- | --- |
-| 1 | **ABM completo de servicios** (alta, nombre, descripción, categoría, `kind`, público, baja) | Destraba los tres casos y es el que más falta |
-| 2 | **Promociones como entidad**: tabla, CRUD y motor que lea reglas de la base | Saca la regla de TypeScript. Ver §4 de este documento y §8.10 de la reingeniería |
-| 3 | **Costo estándar por servicio** | Un campo y un endpoint. Habilita el margen del dashboard |
-| 4 | **Agrupación del catálogo público por dato, no por lista** | Hoy el código nombra servicios dados de baja |
-| 5 | **Pantalla para áreas y para los valores de negocio** | Tienen endpoint y no tienen UI |
-| 6 | **Líneas de coloración** | Depende de decidir si son servicios o una dimensión aparte |
-| 7 | **ABM de clientas** y de **categorías** | Los de menos urgencia comprobada |
+| 1 | **ABM completo de servicios** (alta, nombre, descripción, categoría, `kind`, público, baja) | **Hecho.** Servicios › Servicios y › Tratamientos |
+| 2 | **Promociones como entidad**: tabla y CRUD | **Hecho.** Servicios › Promociones |
+| 3 | **Costo estándar por servicio** | **Hecho.** Un campo en la fila de cada servicio |
+| 4 | **Líneas de coloración** | **Hecho como configuración**: son servicios, y Sol los da de alta |
+| 5 | **Motor que lea las reglas de la base** | Pendiente. La regla sigue en `promocion.ts` con el mismo contenido |
+| 6 | **Agrupación del catálogo público por dato, no por lista** | Pendiente. Hoy el código nombra servicios dados de baja |
+| 7 | **Pantalla para áreas y para los valores de negocio** | Pendiente. Tienen endpoint y no tienen UI |
+| 8 | **ABM de clientas** y de **categorías** | Pendiente. Los de menos urgencia comprobada |
+
+El modelo y las pantallas están en
+[`sol-mai-modelo-parametrizable.md`](./sol-mai-modelo-parametrizable.md) §10.
 
 ---
 

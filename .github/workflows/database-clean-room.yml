@@ -338,8 +338,11 @@ jobs:
           do $$
           declare v_id uuid; n int; v_kind text; v_costo int;
           begin
+            -- Un slug que el catálogo real no usa: si la comprobación
+            -- reutilizara uno sembrado, contaría su fila de auditoría y
+            -- fallaría por una razón que no es la que vigila.
             v_id := public.create_service(
-              'raiz-exiline', 'Raiz Exiline', 'peluqueria', 'color',
+              'alta-de-prueba-clean-room', 'Alta de prueba', 'peluqueria', 'color',
               60, 28000, null, false, 'clean-room');
 
             select count(*) into n from public.service_price_tiers where service_id = v_id;
@@ -347,11 +350,12 @@ jobs:
             select count(*) into n from public.service_parameters where service_id = v_id;
             if n <> 1 then raise exception 'el alta no creo los parametros'; end if;
             select count(*) into n from public.audit_log
-             where action = 'service.created' and entity_id = v_id;
+             where action = 'service.created' and entity_id = v_id
+               and actor_label = 'clean-room';
             if n <> 1 then raise exception 'el alta no quedo auditada'; end if;
 
             -- El caso de la maquilladora: costo conocido con exactitud.
-            perform public.set_service_cost('raiz-exiline', 18000, 'clean-room');
+            perform public.set_service_cost('alta-de-prueba-clean-room', 18000, 'clean-room');
             select standard_cost_amount into v_costo
               from public.service_parameters where service_id = v_id;
             -- `is distinct from` y no `<>`: si la funcion no escribe nada el
@@ -360,13 +364,13 @@ jobs:
             if v_costo is distinct from 18000 then raise exception 'el costo quedo en %', v_costo; end if;
 
             -- El caso de mechas: que sea color se tilda, no se pregunta.
-            perform public.update_service('raiz-exiline', p_kind => 'tratamiento',
+            perform public.update_service('alta-de-prueba-clean-room', p_kind => 'tratamiento',
                                           p_actor => 'clean-room');
             select kind into v_kind from public.services where id = v_id;
             if v_kind is distinct from 'tratamiento' then raise exception 'el kind quedo en %', v_kind; end if;
 
             -- Baja logica: los turnos viejos que lo nombran siguen valiendo.
-            perform public.delete_service('raiz-exiline', 'clean-room');
+            perform public.delete_service('alta-de-prueba-clean-room', 'clean-room');
             select count(*) into n from public.services
              where id = v_id and deleted_at is not null and not is_active and not is_public;
             if n <> 1 then raise exception 'la baja no fue logica'; end if;
@@ -402,6 +406,105 @@ jobs:
             if n <> 0 then raise exception 'anon ve % promociones apagadas', n; end if;
           end $$;
           reset role;
+          rollback;
+          SQL
+
+          # Las promociones también se editan: sin estas cuatro funciones la
+          # tabla existe y sigue haciendo falta un desarrollador para tocarla.
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare n int;
+          begin
+            select count(*) into n from pg_proc p
+              join pg_namespace ns on ns.oid = p.pronamespace
+             where ns.nspname = 'public'
+               and p.proname in ('upsert_promotion','set_promotion_rule',
+                                 'set_promotion_active','delete_promotion');
+            if n <> 4 then raise exception 'faltan funciones de promociones, hay %', n; end if;
+
+            if has_function_privilege('anon',
+                 'public.upsert_promotion(text,text,text,text,integer,date,date,boolean,text)',
+                 'execute')
+            then raise exception 'anon puede escribir promociones'; end if;
+            if has_function_privilege('authenticated',
+                 'public.delete_promotion(text,text)', 'execute')
+            then raise exception 'authenticated puede borrar promociones'; end if;
+          end $$;
+          SQL
+
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          do $$
+          declare n int; v_activa boolean;
+          begin
+            perform public.upsert_promotion('verano-clean-room', 'Verano',
+              'Los peinados salen menos.', 'porcentaje', 20,
+              '2027-01-01', '2027-01-31', true, 'clean-room');
+
+            -- Los dos lados por separado: el que activa y el que se abarata.
+            perform public.set_promotion_rule('verano-clean-room', 'disparador',
+                                              p_service_kind => 'color', p_actor => 'clean-room');
+            perform public.set_promotion_rule('verano-clean-room', 'beneficio',
+                                              p_service_kind => 'servicio', p_actor => 'clean-room');
+            select count(*) into n from public.promotion_triggers t
+              join public.promotions p on p.id = t.promotion_id
+             where p.slug = 'verano-clean-room' and t.service_kind = 'color';
+            if n <> 1 then raise exception 'el disparador no quedó, hay %', n; end if;
+
+            -- Poner dos veces la misma regla no la duplica: Sol toca el mismo
+            -- botón dos veces y no tiene por qué pasar nada raro.
+            perform public.set_promotion_rule('verano-clean-room', 'disparador',
+                                              p_service_kind => 'color', p_actor => 'clean-room');
+            select count(*) into n from public.promotion_triggers t
+              join public.promotions p on p.id = t.promotion_id
+             where p.slug = 'verano-clean-room';
+            if n <> 1 then raise exception 'la regla se duplicó, hay %', n; end if;
+
+            perform public.set_promotion_rule('verano-clean-room', 'disparador',
+                                              p_service_kind => 'color', p_agregar => false,
+                                              p_actor => 'clean-room');
+            select count(*) into n from public.promotion_triggers t
+              join public.promotions p on p.id = t.promotion_id
+             where p.slug = 'verano-clean-room';
+            if n <> 0 then raise exception 'sacar la regla no la sacó, quedan %', n; end if;
+
+            perform public.set_promotion_active('verano-clean-room', false, 'clean-room');
+            select is_active into v_activa from public.promotions where slug = 'verano-clean-room';
+            if v_activa is distinct from false then raise exception 'no se apagó'; end if;
+
+            -- Lo que la base rechaza al guardar, y no al cobrar.
+            begin
+              perform public.upsert_promotion('mala-clean-room', 'Mala', null, 'porcentaje', 150);
+              raise exception 'acepto un porcentaje de 150';
+            exception when others then
+              if sqlerrm like 'acepto un porcentaje%' then raise; end if;
+            end;
+            begin
+              perform public.upsert_promotion('mala2-clean-room', 'Mala', null,
+                                              'precio_de_agregado', 30);
+              raise exception 'acepto un numero en precio_de_agregado';
+            exception when others then
+              if sqlerrm like 'acepto un numero%' then raise; end if;
+            end;
+            begin
+              perform public.set_promotion_rule('verano-clean-room', 'disparador',
+                                                'color', 'corte-fem');
+              raise exception 'acepto clase y servicio a la vez';
+            exception when others then
+              if sqlerrm like 'acepto clase%' then raise; end if;
+            end;
+
+            perform public.delete_promotion('verano-clean-room', 'clean-room');
+            select count(*) into n from public.promotions where slug = 'verano-clean-room';
+            if n <> 0 then raise exception 'la promocion no se borro'; end if;
+            -- La fila de auditoría sobrevive al borrado: es lo que permite
+            -- explicar por qué un turno viejo salió lo que salió.
+            select count(*) into n from public.audit_log
+             where action = 'promotion.deleted' and actor_label = 'clean-room';
+            if n <> 1 then raise exception 'el borrado no quedo auditado'; end if;
+
+            raise notice 'PROMOCIONES EDITABLES: pasa';
+          end $$;
           rollback;
           SQL
 

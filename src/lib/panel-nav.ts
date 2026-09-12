@@ -105,10 +105,29 @@ export const ARBOL: ModuloDef[] = [
     cortaDespues: true,
   },
   {
+    /**
+     * Servicios, Tratamientos y Promociones son tres secciones y no una
+     * (2026-09-12).
+     *
+     * Sol los nombra distinto y los cobra distinto. Verlos mezclados en
+     * una lista de sesenta renglones no la ayuda a encontrar nada, y la
+     * promoción no es un servicio: es una regla que habla de dos.
+     *
+     * SERVICIOS Y TRATAMIENTOS SON LA MISMA TABLA
+     *
+     * Lo que los separa es `services.kind`. Un tratamiento se reserva,
+     * ocupa tiempo y ocupa estación igual que un corte: partirlos en dos
+     * tablas duplicaría el motor de disponibilidad para no ganar nada.
+     * La consecuencia está a la vista y es deliberada: cambiarle la clase
+     * a un servicio lo muda de sección, y la fila lo avisa antes.
+     */
     slug: "servicios",
     label: "Servicios",
     permiso: "servicios",
     secciones: [
+      seccion("catalogo", "Servicios", true),
+      seccion("tratamientos", "Tratamientos", true),
+      seccion("promociones", "Promociones", true),
       seccion("precios", "Precios y tiempos", true),
       seccion("areas", "Áreas"),
       seccion("horarios", "Horarios", true),

@@ -27,6 +27,7 @@ import { PendingRefundsPanel } from "./PendingRefundsPanel";
 import { InvoicingScreen } from "./InvoicingScreen";
 import { DashboardScreen } from "./DashboardScreen";
 import { PreciosYTiemposScreen, PuestosScreen, ProductosScreen } from "./SalonScreen";
+import { PromocionesScreen, ServiciosScreen, TratamientosScreen } from "./CatalogoScreen";
 import { PuestosFueraScreen } from "./PuestosFueraScreen";
 import { ClosedDaysBlocksPanel } from "./ClosedDaysBlocksPanel";
 import { OperationalBufferPanel } from "./OperationalBufferPanel";
@@ -206,6 +207,14 @@ export function contenidoDe(
     case "inventario/productos":
       return <ProductosScreen />;
 
+    // Los tres submódulos del catálogo. Servicios y Tratamientos son la
+    // misma pantalla con distinto filtro: lo que los separa es `kind`.
+    case "servicios/catalogo":
+      return <ServiciosScreen />;
+    case "servicios/tratamientos":
+      return <TratamientosScreen />;
+    case "servicios/promociones":
+      return <PromocionesScreen />;
     case "servicios/precios":
       return <PreciosYTiemposScreen />;
     case "servicios/horarios":
