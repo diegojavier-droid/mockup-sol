@@ -41,6 +41,7 @@ type ServiceRow = {
   price_amount: number;
   currency: string;
   tag: string | null;
+  kind: string;
   categories: { slug: string } | null;
   service_parameters: { price_display_mode: string } | null;
   service_price_tiers: { price_main: number }[] | null;
@@ -96,6 +97,10 @@ function toServiceDTO(row: ServiceRow): ServiceSummaryDTO {
     priceAmount: row.price_amount,
     currency: row.currency,
     tag: row.tag,
+    // Un `kind` desconocido se lee como `servicio`: es el valor que no
+    // cambia ningún precio. Inventar una clase por un dato raro sería
+    // peor que tratarlo como lo más común.
+    kind: row.kind === "tratamiento" || row.kind === "color" ? row.kind : "servicio",
     priceDisplayMode: mode === "fixed" || mode === "subject_to_confirmation" ? mode : "from",
     priceFromAmount,
   };
@@ -278,7 +283,7 @@ export function createCatalogRepository(client: SupabaseAnonServerClient): Catal
       const { data, error } = await client
         .from("services")
         .select(
-          "id, slug, name, description, duration_minutes, price_amount, currency, tag, sort_order, categories!inner(slug), service_parameters(price_display_mode, length_affects_price, length_affects_duration, requires_consultation), service_price_tiers(length_tier, price_main, duration_main_min, process_min, source, confidence)",
+          "id, slug, name, description, duration_minutes, price_amount, currency, tag, kind, sort_order, categories!inner(slug), service_parameters(price_display_mode, length_affects_price, length_affects_duration, requires_consultation), service_price_tiers(length_tier, price_main, price_addon, duration_main_min, duration_addon_min, process_min, source, confidence)",
         )
         .eq("is_public", true)
         .eq("is_active", true)
@@ -303,7 +308,9 @@ export function createCatalogRepository(client: SupabaseAnonServerClient): Catal
           | {
               length_tier: ServiceTierDTO["lengthTier"];
               price_main: number;
+              price_addon: number | null;
               duration_main_min: number;
+              duration_addon_min: number | null;
               process_min: number;
               source: string;
               confidence: string;
@@ -375,7 +382,9 @@ export function createCatalogRepository(client: SupabaseAnonServerClient): Catal
       const tiers: ServiceTierDTO[] = (row.service_price_tiers ?? []).map((t) => ({
         lengthTier: t.length_tier,
         priceMain: t.price_main,
+        priceAddon: t.price_addon,
         durationMainMin: t.duration_main_min,
+        durationAddonMin: t.duration_addon_min,
         processMin: t.process_min,
         source: t.source,
         confidence: t.confidence,

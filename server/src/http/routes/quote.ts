@@ -12,8 +12,8 @@ import type { ServerEnv } from "../../config/env";
 import { createSupabaseAnonClient, createSupabaseAdminClient } from "../../lib/supabase";
 import { recordAssistedActivityInBackground, waitUntilContextOf } from "../../lib/assisted/record";
 import { createCatalogRepository } from "../../lib/catalog/repository";
-import { composeQuote, computeQuote } from "../../domain/quote";
 import {
+  cotizarPartes,
   loadServiceParts,
   normalizeServiceParts,
   servicePartSchema,
@@ -81,18 +81,7 @@ export function createQuoteRoute(env: ServerEnv) {
     const parts = normalizeServiceParts(parsed.data);
 
     try {
-      const quote = composeQuote(
-        loaded.contexts.map((context, i) =>
-          computeQuote({
-            service: context.service,
-            lengthTier: parts[i].lengthTier ?? null,
-            personalization: parts[i].personalization,
-            extras: context.extras,
-            settings: context.settings,
-          }),
-        ),
-        loaded.contexts[0].settings,
-      );
+      const quote = cotizarPartes(loaded.contexts, parts, loaded.contexts[0].settings).total;
       // La web acaba de contestar cuánto sale y cuánto dura. Es una de
       // las dos preguntas que hoy consumen a Sol antes de cada venta, y
       // no queda registrada en ningún lado si no se cuenta acá.

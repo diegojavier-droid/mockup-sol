@@ -14,6 +14,21 @@ export type PriceDisplayMode = "fixed" | "from" | "subject_to_confirmation";
 
 export type FieldRole = "tier_selector" | "modifier" | "context";
 
+/**
+ * Qué clase de prestación es, que decide cómo se cobra.
+ *
+ * · `servicio`   — vale lo mismo vaya solo o acompañado. Un corte.
+ * · `color`      — un servicio de coloración. Importa porque es lo que
+ *                  dispara la oferta del salón sobre los tratamientos.
+ * · `tratamiento`— cuando va junto con un color cotiza a `priceAddon`,
+ *                  que es la oferta por llevarse los dos.
+ *
+ * Sol lo explicó así el 2026-09-12: «tratamiento solo, es una cosa;
+ * tratamiento más color son dos servicios juntos, por eso la diferencia
+ * de precio es como una oferta que se hace por optar por los dos».
+ */
+export type ServiceKind = "servicio" | "color" | "tratamiento";
+
 export interface ServiceTier {
   lengthTier: LengthTier;
   priceMain: number;
@@ -60,6 +75,7 @@ export interface QuoteServiceData {
   slug: string;
   name: string;
   categorySlug: string;
+  kind: ServiceKind;
   tiers: ServiceTier[];
   parameters: ServiceQuoteParameters;
   fields: QuoteField[];
@@ -77,6 +93,16 @@ export interface QuoteInput {
   personalization?: Record<string, string>;
   extras?: QuoteExtraInput[];
   settings: QuoteSettings;
+  /**
+   * Cotizar esta prestación al precio de agregado.
+   *
+   * Lo decide `aplicarOferta` mirando el turno ENTERO, no esta
+   * prestación sola: un tratamiento no sabe por sí mismo si viene con un
+   * color. Si el tier no tiene `priceAddon`, cae al precio normal: que
+   * la oferta exista para un tratamiento no obliga a que exista para
+   * todos.
+   */
+  comoAgregado?: boolean;
 }
 
 export interface QuoteItem {

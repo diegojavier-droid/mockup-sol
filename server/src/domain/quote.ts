@@ -43,9 +43,31 @@ export function resolveTier(
   throw new QuoteError("length_required");
 }
 
+/**
+ * El precio y la duración efectivos de un tier.
+ *
+ * Cuando la prestación entra como agregado —un tratamiento arriba de un
+ * color—, el salón cobra `priceAddon` y ocupa `durationAddonMin`, porque
+ * se aplica con la clienta ya sentada. Si el tier no tiene esos valores,
+ * se cae a los normales: que exista oferta para un tratamiento no obliga
+ * a que exista para todos, y un nulo significa «no hay oferta para esto»,
+ * nunca cero.
+ */
+export function tierEfectivo(
+  tier: ServiceTier,
+  comoAgregado: boolean,
+): { precio: number; duracion: number } {
+  if (!comoAgregado) return { precio: tier.priceMain, duracion: tier.durationMainMin };
+  return {
+    precio: tier.priceAddon ?? tier.priceMain,
+    duracion: tier.durationAddonMin ?? tier.durationMainMin,
+  };
+}
+
 export function computeQuote(input: QuoteInput): QuoteResult {
   const { service, settings } = input;
   const tier = resolveTier(service.tiers, input.lengthTier ?? null);
+  const efectivo = tierEfectivo(tier, input.comoAgregado === true);
 
   const appliedModifiers: QuoteResult["appliedModifiers"] = [];
   let modifierPrice = 0;
@@ -61,8 +83,11 @@ export function computeQuote(input: QuoteInput): QuoteResult {
       throw new QuoteError("unknown_option", `${fieldSlug}=${optionSlug}`);
     }
 
+    // Sobre el precio EFECTIVO: si el tratamiento entró a precio de
+    // oferta, un modificador del 10% es 10% de lo que se cobra, no de lo
+    // que se habría cobrado suelto.
     const priceDelta =
-      option.priceFixedAmount + Math.round((tier.priceMain * option.pricePercentage) / 100);
+      option.priceFixedAmount + Math.round((efectivo.precio * option.pricePercentage) / 100);
     modifierPrice += priceDelta;
     modifierDuration += option.durationDeltaMinutes;
     if (priceDelta !== 0 || option.durationDeltaMinutes !== 0) {
@@ -80,11 +105,11 @@ export function computeQuote(input: QuoteInput): QuoteResult {
   const extrasDuration = extras.reduce((acc, e) => acc + e.durationDeltaMinutes, 0);
 
   const setupMin = service.parameters.setupMinutesOverride ?? settings.defaultSetupMinutes;
-  const mainDuration = tier.durationMainMin + modifierDuration;
+  const mainDuration = efectivo.duracion + modifierDuration;
   const durationShownMin = mainDuration + extrasDuration;
   const blockingMin = durationShownMin + setupMin;
 
-  const estimatedMinAmount = tier.priceMain + modifierPrice + extrasPrice;
+  const estimatedMinAmount = efectivo.precio + modifierPrice + extrasPrice;
   const depositAmount = Math.round((estimatedMinAmount * settings.depositRatePct) / 100);
 
   const items: QuoteItem[] = [
@@ -92,7 +117,7 @@ export function computeQuote(input: QuoteInput): QuoteResult {
       role: "main",
       slug: service.slug,
       name: service.name,
-      priceAmount: tier.priceMain + modifierPrice,
+      priceAmount: efectivo.precio + modifierPrice,
       lengthTier: tier.lengthTier,
       durationMin: mainDuration,
       processMin: tier.processMin,

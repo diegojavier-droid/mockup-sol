@@ -90,8 +90,8 @@ import {
 } from "../../lib/booking/repository";
 import { normalizePhoneAr } from "../../domain/phone";
 import { logBookingFailure, requestId } from "../../lib/observability";
-import { composeQuote, computeQuote } from "../../domain/quote";
 import {
+  cotizarPartes,
   loadServiceParts,
   normalizeServiceParts,
   servicePartSchema,
@@ -656,16 +656,9 @@ export function createAdminRoute(env: ServerEnv) {
     let quote;
     let partQuotes;
     try {
-      partQuotes = loaded.contexts.map((ctx, i) =>
-        computeQuote({
-          service: ctx.service,
-          lengthTier: parts[i].lengthTier ?? null,
-          personalization: parts[i].personalization,
-          extras: ctx.extras,
-          settings: ctx.settings,
-        }),
-      );
-      quote = composeQuote(partQuotes, context.settings);
+      const cotizado = cotizarPartes(loaded.contexts, parts, context.settings);
+      partQuotes = cotizado.partes;
+      quote = cotizado.total;
     } catch (error) {
       if (error instanceof QuoteError) {
         throw new HTTPException(422, { message: quoteErrorMessage(error.code) });

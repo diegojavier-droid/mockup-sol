@@ -20,6 +20,7 @@ const service = (over: Partial<QuoteServiceData> = {}): QuoteServiceData => ({
   slug: "corte-fem",
   name: "Corte",
   categorySlug: "peluqueria",
+  kind: "servicio",
   tiers: [tier()],
   parameters: {
     priceDisplayMode: "fixed",

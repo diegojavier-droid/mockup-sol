@@ -22,6 +22,12 @@ export interface ServiceSummaryDTO {
   slug: string;
   categorySlug: string;
   name: string;
+  /**
+   * Qué clase de prestación es. La web lo necesita para poder ofrecer un
+   * tratamiento cuando la clienta ya eligió un color: sin esto, la oferta
+   * existiría en el precio y no en la pantalla.
+   */
+  kind: "servicio" | "color" | "tratamiento";
   description: string | null;
   durationMinutes: number;
   priceAmount: number;
@@ -85,7 +91,15 @@ export interface PersonalizationFieldDTO {
 export interface ServiceTierDTO {
   lengthTier: "corto" | "medio" | "largo" | "xl" | "unico";
   priceMain: number;
+  /**
+   * Lo que sale este servicio cuando va arriba de un color: la oferta del
+   * salón por llevarse los dos. NULL significa que no hay oferta para
+   * este servicio, nunca cero.
+   */
+  priceAddon: number | null;
   durationMainMin: number;
+  /** Cuánto ocupa cuando se aplica durante otro servicio. */
+  durationAddonMin: number | null;
   processMin: number;
   source: string;
   confidence: string;
