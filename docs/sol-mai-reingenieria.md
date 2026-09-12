@@ -41,11 +41,14 @@ clienta los puso un promedio de industria.
 
 El sistema publica 43 servicios. Cruzándolos contra 926 cobros reales:
 
-- **`mk-novia`, `mk-fiesta`, `mk-social`, `mk-evento`, `mk-prueba`**: la
-  categoría Maquillaje completa, publicada y reservable online, **facturó cero
-  pesos en tres meses**. Ni un ticket.
-- **`babylights`, `claritos`, `bano-luz`, `hidratacion`, `reconstruccion`,
-  `reparacion`, `recogido`**: cero también.
+- **`mk-novia`, `mk-fiesta`, `mk-social`, `mk-evento`, `mk-prueba`**,
+  **`babylights`, `claritos`, `bano-luz`, `hidratacion`, `reconstruccion`,
+  `reparacion`, `recogido`**: no aparecen por ese nombre en ningún cobro de
+  los tres meses. **CORREGIDO en §8.3**: el conteo original decía «cero
+  facturación» y estaba mal hecho —sumaba sólo `efectivo` y `transferencia`,
+  y el salón también anota en las columnas con nombre de peluquera—. Sol
+  confirma que los hace. Lo que sigue en pie es que **el sistema los nombra
+  distinto de como los nombra ella**.
 - Al revés, lo que sí se cobra todo el tiempo —`BIOTINA`, `KARSEELL`,
   `RIFLESSI`, `PLASMA`, `MAGIC WATER`, `SHOCK KERATINA`, `COLOR SHINE`,
   `AMPOLLA`, `FUSION WELLA`, `LISS BIOCELL`, `EXILINE`, `ITELY`,
@@ -90,11 +93,11 @@ distinto según vaya solo o arriba de un color. Medido sobre 56 tickets reales
 | FUSION | $11.000 | 25.000 – 35.000 |
 | AMPOLLA | $5.500 | 20.000 – 28.000 |
 
-Un corte no hace eso. Un corte vale lo mismo vaya solo o acompañado (de hecho
-la planilla lo confirma: $15.000 suelto, $15.000 con color — la única
-diferencia es del 12% contra el otro bloque de la hoja). **Un tratamiento
-tiene dos precios porque es una cosa distinta de un servicio: es algo que se
-aplica durante otra atención.**
+Un corte no hace eso: vale prácticamente lo mismo vaya solo o acompañado.
+**Un tratamiento tiene dos precios porque el salón hace una oferta a quien se
+lleva las dos cosas** — así lo explicó Sol, ver §8.2. Sea cual sea el motivo
+comercial, la consecuencia técnica es la misma: el precio del tratamiento
+depende de qué más haya en el turno, y un servicio común no funciona así.
 
 Y lo notable: **el modelo de datos ya lo sabía.**
 `service_price_tiers` tiene una columna `price_addon` al lado de `price_main`,
@@ -364,23 +367,106 @@ números o pantallas a un catálogo que primero tiene que ser el correcto.
 
 ---
 
-## 8. Las cinco preguntas para Sol
+## 8. Las respuestas de Sol (2026-09-12)
 
-Ninguna se contesta desde el archivo ni desde el código, y las cinco cambian
-qué se construye.
+Sol contestó las dieciséis preguntas de la hoja. **Dos de sus respuestas
+corrigen este documento**, y una corrige un error de método en el análisis de
+la planilla.
 
-1. **Maquillaje**: ¿se hace y no se anotó, o no se hace? Hoy está publicado y
-   reservable online con cero facturación en tres meses.
-2. **El bloque «TRATAMIENTOS MAS COLOR»**: ¿es una aplicación más chica
-   arriba del color, o el mismo tratamiento más barato? Define si son dos
-   servicios o uno con dos precios.
-3. **El +10%**: ¿es regla fija o se negocia? Si es regla, el sistema la
-   calcula solo.
-4. **Lunes y sábados**: ¿el salón abre alguna vez? En tres meses no pasó ni
-   una vez.
-5. **El padrón de clientas**: ¿se carga al sistema el historial de las 498?
+### 8.1 Lo que queda decidido y se puede construir
 
----
+| Pregunta | Respuesta de Sol | Qué habilita |
+| --- | --- | --- |
+| El +10% de la transferencia | **«Siempre se cobra»** | `payment_surcharge_pct` pasa a `sol_validated` / `high`. El sistema puede calcularlo solo: ya no hacen falta dos precios por servicio |
+| Lunes y sábados | **«Los lunes siempre está cerrado. A veces abrimos los sábados»** | Agenda: lunes cerrado por defecto; **sábado abierto pero excepcional**, no cerrado |
+| Los 21 tratamientos de su lista | **«Sí, están todos»** | La lista queda confirmada y se puede cargar |
+| Las fichas de las clientas | **«Sí, cargalas»** | Luz verde de la dueña para sembrar Clientas › Fichas |
+| El aviso a los 45 días | **«Sí, avisame»** | Se construye como aviso **a Sol**, que después escribe ella. No es mensajería automática a la clienta |
+
+### 8.2 El «tratamiento más color»: era una oferta, no una dosis más chica
+
+Sol lo explicó con sus palabras:
+
+> «tratamiento solo, es una cosa. tratamiento más color son dos servicios
+> juntos, por eso la diferencia de precio es como una oferta que se hace por
+> optar por los dos»
+
+**Esto corrige lo que decía §2 de este documento.** La lectura de «precio de
+agregado — es menos servicio» era equivocada: es **el mismo tratamiento**, a
+precio de paquete por llevarse las dos cosas.
+
+Lo que **no** cambia es la implementación: `service_price_tiers.price_addon`
+sigue siendo la columna correcta, porque la mecánica es la misma —si en el
+turno hay un color y un tratamiento, el tratamiento cotiza a ese precio—.
+
+Lo que **sí** cambia es la consecuencia de producto, y para mejor: si es una
+oferta, la web tiene que **ofrecerla**. Elegido un color, corresponde proponer
+sumarle un tratamiento al precio de paquete. Hoy no se ofrece, y es el 47% de
+los tickets de color del salón.
+
+Queda un detalle sin cerrar: en ese mismo bloque el corte baja 12% y los
+tratamientos 63%. Si las dos cosas son «oferta por llevar dos», los
+descuentos deberían parecerse más. Conviene confirmarlo cuando se carguen los
+precios.
+
+### 8.3 La corrección de método: la planilla no registra todo
+
+§2 afirmaba que Maquillaje, los peinados, el recogido y otros seis servicios
+tenían **cero facturación** en tres meses. **Ese conteo estaba mal hecho:**
+sumaba sólo las columnas `efectivo` y `transferencia`, y el salón usa además
+las columnas con nombre de peluquera.
+
+La prueba está en `marzo pagos`, filas 209 a 215:
+
+```
+209  peindaos 7/3               (marca de bloque, sin monto)
+210  melisa giacosa                                sol = 60.000
+211  jesi urigh                                    sol = 55.000
+212  analia presser                                (sin monto)
+213  mariel shocron e hijas                        sol = 29.700
+214  maca olivera                                  (sin monto)
+215  ingrid                                        sol = 66.000
+```
+
+Seis clientas, cuatro con importe, **$210.700 anotados fuera de las columnas
+que yo estaba contando**. Es una fiesta o un casamiento del sábado 7 de
+marzo, cargado bajo el 13. Hay dos marcas más del mismo tipo: `sabado 21/ 3`
+y `sabado 9`.
+
+En total hay **7 filas** con importe sólo en una columna de peluquera y nada
+en efectivo ni transferencia: **$255.100**. Es poco dinero sobre $48,5 M,
+pero no es el monto lo que importa: **es la prueba de que la categoría
+existe y de que la planilla no la registra igual que el resto.**
+
+**El alcance de la corrección.** Todo lo que este documento deriva de
+`precios.xlsx` describe **el trabajo de martes a viernes cobrado por caja**,
+no la totalidad del salón. Los sábados y los eventos quedan afuera o a
+medias. Las mediciones de días, ciclo de clientas y mezcla de servicios hay
+que leerlas con ese límite.
+
+**Lo que no se puede afirmar tampoco ahora.** La palabra «maquillaje» no
+aparece en ninguna fila de ninguna de las tres hojas, ni siquiera en las que
+tienen importe en columna de peluquera. Y la columna `sol` se usa de forma
+inconsistente —a veces repite el total del ticket, a veces es una parte—, así
+que no sirve para cuantificar. Que Sol haga maquillaje está fuera de
+discusión; **cuánto** no se puede saber con este archivo.
+
+### 8.4 Lo que quedó sin resolver: los nombres
+
+Sol contestó «sí, lo hago» a los ocho servicios que el sistema publica y la
+planilla no mostraba: Maquillaje, Babylights, Claritos, Baño de luz,
+Hidratación profunda, Reconstrucción, Reparación capilar y Recogido. También
+«lo hago seguido» a Alisado y a Peinados.
+
+**La pregunta estaba mal formulada.** «¿Lo hacés?» le pregunta a una
+peluquera si sabe hacer algo, y la respuesta va a ser que sí. Lo que hacía
+falta preguntar es **cómo lo anota**, porque la hipótesis más probable sigue
+siendo que lo hace con otro nombre: escribe «mechas» donde el sistema dice
+«claritos», «karseell» donde dice «reconstrucción».
+
+La reconciliación del catálogo **no está cerrada**. Falta una vuelta corta,
+de una palabra por servicio: *«Cuando hacés un babylights, ¿qué escribís en
+la planilla?»*.
 
 ## 9. Lo que esta reingeniería deliberadamente no toca
 

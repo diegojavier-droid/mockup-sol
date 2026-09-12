@@ -234,11 +234,29 @@ Hallazgos que estos documentos incorporan y que antes no estaban medidos:
   vez.
 - De 127 filas de precios en producción, **123 son `industry_baseline` con
   `confidence: low`** y sólo 4 están validadas por Sol.
-- **Maquillaje** está publicada y reservable online con **cero facturación**
-  en tres meses.
-- El bloque «TRATAMIENTOS MAS COLOR» de la planilla es **precio de agregado**,
-  no descuento: medido contra 56 tickets reales. La columna `price_addon` de
-  `service_price_tiers` existe y está vacía.
+- El bloque «TRATAMIENTOS MAS COLOR» es **una oferta por llevarse color y
+  tratamiento juntos**, confirmado por Sol el 2026-09-12. La columna
+  `price_addon` de `service_price_tiers` existe, está vacía y es el lugar
+  correcto para cargarlo.
+- **La planilla no registra todo el salón.** Los sábados y los eventos se
+  anotan en las columnas con nombre de peluquera, no en `efectivo` /
+  `transferencia`: hay $255.100 en 7 filas que un conteo de esas dos columnas
+  se pierde. Toda medición derivada de `precios.xlsx` describe el trabajo de
+  martes a viernes cobrado por caja. Ver `docs/sol-mai-reingenieria.md` §8.3.
+
+### Definiciones de negocio cerradas con Sol (2026-09-12)
+
+- **El +10% de la transferencia siempre se cobra.** Deja de ser
+  `sol_pricelist_derived / medium` y pasa a ser una regla validada: el sistema
+  puede calcularla en vez de guardar dos precios por servicio.
+- **Los lunes el salón está cerrado siempre. Los sábados abre a veces.** La
+  agenda cierra lunes por defecto; el sábado queda abierto y excepcional.
+- **Los 21 tratamientos de la lista de Sol están al día.**
+- **Sol autoriza cargar las fichas de sus clientas.**
+- **El aviso de «sin venir hace tiempo» va dirigido a Sol**, que escribe ella:
+  no es mensajería automática a la clienta.
+- **Sigue abierto** cómo anota Sol en la planilla los servicios que el sistema
+  nombra distinto (babylights, claritos, reconstrucción, etc.). Ver §8.4.
 
 ## Regla de mantenimiento
 
