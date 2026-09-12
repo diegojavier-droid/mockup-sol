@@ -16,8 +16,8 @@ import { z } from "zod";
 import type { ServerEnv } from "../../config/env";
 import { createSupabaseAdminClient, createSupabaseAnonClient } from "../../lib/supabase";
 import { createCatalogRepository } from "../../lib/catalog/repository";
-import { composeQuote, computeQuote } from "../../domain/quote";
 import {
+  cotizarPartes,
   loadServiceParts,
   normalizeServiceParts,
   servicePartSchema,
@@ -217,16 +217,9 @@ export function createBookingsRoute(env: ServerEnv) {
     let quote;
     let partQuotes;
     try {
-      partQuotes = loaded.contexts.map((ctx, i) =>
-        computeQuote({
-          service: ctx.service,
-          lengthTier: parts[i].lengthTier ?? null,
-          personalization: parts[i].personalization,
-          extras: ctx.extras,
-          settings: ctx.settings,
-        }),
-      );
-      quote = composeQuote(partQuotes, context.settings);
+      const cotizado = cotizarPartes(loaded.contexts, parts, context.settings);
+      partQuotes = cotizado.partes;
+      quote = cotizado.total;
     } catch (error) {
       if (error instanceof QuoteError) {
         logBookingFailure({

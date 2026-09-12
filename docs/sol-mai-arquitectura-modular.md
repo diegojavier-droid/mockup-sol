@@ -225,12 +225,36 @@ superior; en el teléfono bajan a pestañas.
 |                                      | **Clientas**         | Fichas · Sin venir hace tiempo · Consentimientos                      |
 |                                      | **Finanzas**         | Caja del día · Cobros · Devoluciones · Facturación · Gastos · Resumen |
 |                                      | **Inventario**       | Productos · Stock · Movimientos                                       |
-| **Cada tanto**                       | **Servicios**          | Precios y tiempos · Áreas · Horarios                                  |
+| **Cada tanto**                       | **Servicios**          | Servicios · Tratamientos · Promociones · Precios y tiempos · Áreas · Horarios |
 |                                      | **Puestos de trabajo** | Listado · Fuera de servicio                                           |
 |                                      | **Personal**         | Empleados · Horarios · Producción                                     |
 |                                      | **Compras**          | Proveedores · Pedidos                                                 |
 | **Casi nunca, pero tiene que estar** | **Usuarios y roles** | Personas · Roles · Accesos · Registro de cambios                      |
 |                                      | **Configuración**    | Datos del negocio · Términos y privacidad · Integraciones             |
+
+#### La ampliación del 2026-09-12: Servicios se abre en tres
+
+Servicios tenía tres secciones y pasa a tener seis. Las tres nuevas son
+los submódulos del catálogo:
+
+| Sección | De qué es dueña |
+| --- | --- |
+| **Servicios** | Lo principal del turno: corte, color, mechas, balayage. Alta, baja, nombre, categoría, clase, publicación y costo |
+| **Tratamientos** | Lo que se suma a otro trabajo: hidratación, keratina, botox. La misma pantalla con otro filtro |
+| **Promociones** | Las reglas que abaratan. Cada una tiene dos lados: qué la activa y qué baja de precio |
+
+**Servicios y Tratamientos son la misma tabla.** Lo que los separa es
+`services.kind`, no un `from` distinto: un tratamiento se reserva, ocupa
+tiempo y ocupa estación igual que un corte, y partirlos en dos tablas
+duplicaría el motor de disponibilidad para no ganar nada. Se muestran
+aparte porque Sol los nombra distinto y los cobra distinto, y una lista
+de sesenta renglones mezclados no la ayuda a encontrar nada.
+
+La consecuencia está a la vista y es deliberada: **cambiarle la clase a
+un servicio lo muda de sección**, y la fila lo avisa antes de hacerlo.
+
+**Las promociones no son un servicio.** Son una regla que habla de dos, y
+por eso no podían vivir dentro de ninguna de las otras dos secciones.
 
 #### La corrección del 2026-09-12: Puestos de trabajo se separa
 

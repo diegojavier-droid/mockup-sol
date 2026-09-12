@@ -140,6 +140,21 @@ export const PERMISOS: Record<string, Permiso> = {
   "POST /salon/price-assist/apply": { modulo: "servicios", nivel: "full" },
   "PATCH /services/:slug/tiers/:tier": { modulo: "servicios", nivel: "full" },
 
+  // El catálogo y las promociones: alta, baja y edición. Van en el mismo
+  // módulo porque son la misma decisión —qué vende el salón y a cuánto—,
+  // y quien no puede cambiar un precio tampoco puede crear un servicio.
+  "GET /salon/catalog": { modulo: "servicios", nivel: "view" },
+  "GET /salon/categories": { modulo: "servicios", nivel: "view" },
+  "GET /salon/promotions": { modulo: "servicios", nivel: "view" },
+  "POST /salon/catalog": { modulo: "servicios", nivel: "full" },
+  "PATCH /salon/catalog/:slug": { modulo: "servicios", nivel: "full" },
+  "DELETE /salon/catalog/:slug": { modulo: "servicios", nivel: "full" },
+  "POST /salon/catalog/:slug/cost": { modulo: "servicios", nivel: "full" },
+  "POST /salon/promotions": { modulo: "servicios", nivel: "full" },
+  "POST /salon/promotions/:slug/rules": { modulo: "servicios", nivel: "full" },
+  "POST /salon/promotions/:slug/active": { modulo: "servicios", nivel: "full" },
+  "DELETE /salon/promotions/:slug": { modulo: "servicios", nivel: "full" },
+
   // ------------------------------------------------------------ usuarios
   "GET /staff": { modulo: "usuarios", nivel: "view" },
   "GET /audit": { modulo: "usuarios", nivel: "view" },

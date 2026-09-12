@@ -13,8 +13,8 @@ import { z } from "zod";
 import type { ServerEnv } from "../../config/env";
 import { createSupabaseAdminClient, createSupabaseAnonClient } from "../../lib/supabase";
 import { createCatalogRepository } from "../../lib/catalog/repository";
-import { composeQuote, computeQuote } from "../../domain/quote";
 import {
+  cotizarPartes,
   loadServiceParts,
   normalizeServiceParts,
   servicePartsErrorMessage,
@@ -114,18 +114,7 @@ export function createAvailabilityRoute(env: ServerEnv) {
 
     let blockingMin: number;
     try {
-      blockingMin = composeQuote(
-        loaded.contexts.map((ctx, i) =>
-          computeQuote({
-            service: ctx.service,
-            lengthTier: partsInput[i].lengthTier ?? null,
-            personalization: partsInput[i].personalization,
-            extras: ctx.extras,
-            settings: ctx.settings,
-          }),
-        ),
-        context.settings,
-      ).blockingMin;
+      blockingMin = cotizarPartes(loaded.contexts, partsInput, context.settings).total.blockingMin;
     } catch (error) {
       if (error instanceof QuoteError) {
         throw new HTTPException(422, { message: error.code });

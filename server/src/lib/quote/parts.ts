@@ -10,7 +10,9 @@
  */
 
 import { z } from "zod";
-import { QuoteError } from "../../domain/types";
+import { QuoteError, type QuoteResult, type QuoteSettings } from "../../domain/types";
+import { aplicarPromocion } from "../../domain/promocion";
+import { composeQuote, computeQuote } from "../../domain/quote";
 import type { CatalogRepository } from "../catalog/repository";
 import type { SupabaseAnonServerClient } from "../supabase";
 import { loadQuoteContext, type LoadedQuoteContext } from "./repository";
@@ -109,6 +111,54 @@ export async function loadServiceParts(
   }
 
   return { contexts, areaSlug };
+}
+
+/**
+ * Cotiza el turno entero, con la promoción de color + tratamiento aplicada.
+ *
+ * POR QUÉ ACÁ Y NO EN CADA RUTA
+ *
+ * Cuatro lugares cotizan turnos: `/quote`, `/availability`, `/bookings` y
+ * el alta del panel. Si la promoción se escribiera en cada uno, alcanzaría con
+ * que alguien tocara tres para que el cuarto empezara a cobrar de más, y
+ * nadie se enteraría hasta que una clienta lo notara. Este archivo existe
+ * justo para eso: acá vive lo compartido.
+ *
+ * EL ORDEN IMPORTA
+ *
+ * Primero se decide la promoción mirando el turno entero —un tratamiento no
+ * sabe solo si viene con un color— y recién después se cotiza cada parte.
+ * Al revés no se puede: cuando `computeQuote` terminó, el precio ya está
+ * puesto.
+ */
+export interface PartesCotizadas {
+  /** El turno entero, que es lo que se le cobra a la clienta. */
+  total: QuoteResult;
+  /** Cada prestación por separado, para armar los items del turno. */
+  partes: QuoteResult[];
+  /** Cuáles entraron a precio de promoción, en el mismo orden. */
+  conPromocion: boolean[];
+}
+
+export function cotizarPartes(
+  contexts: LoadedQuoteContext[],
+  parts: ServicePart[],
+  settings: QuoteSettings,
+): PartesCotizadas {
+  const conPromocion = aplicarPromocion(contexts.map((c) => c.service));
+
+  const partes = contexts.map((context, i) =>
+    computeQuote({
+      service: context.service,
+      lengthTier: parts[i].lengthTier ?? null,
+      personalization: parts[i].personalization,
+      extras: context.extras,
+      settings: context.settings,
+      comoAgregado: conPromocion[i],
+    }),
+  );
+
+  return { total: composeQuote(partes, settings), partes, conPromocion };
 }
 
 /** Qué se le dice a la persona, por su nombre. */

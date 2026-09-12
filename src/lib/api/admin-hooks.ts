@@ -827,3 +827,218 @@ export function useUnblockStation() {
     },
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* El catálogo y las promociones, tal como Sol los edita               */
+/* ------------------------------------------------------------------ */
+
+/** Las tres clases de prestación. Es el mismo dominio que `services.kind`. */
+export type ServiceKind = "servicio" | "color" | "tratamiento";
+
+export interface CatalogRow {
+  slug: string;
+  name: string;
+  description: string | null;
+  category: string;
+  kind: ServiceKind;
+  durationMin: number;
+  priceAmount: number;
+  /** `null` es «no sabemos», nunca cero. */
+  standardCost: number | null;
+  isPublic: boolean;
+  isActive: boolean;
+}
+
+export interface CategoryRow {
+  slug: string;
+  name: string;
+  isPublic: boolean;
+}
+
+export type BenefitKind = "precio_de_agregado" | "porcentaje" | "monto_fijo";
+export type LadoDeLaRegla = "disparador" | "beneficio";
+
+export interface ReglaRow {
+  serviceKind: ServiceKind | null;
+  serviceSlug: string | null;
+}
+
+export interface PromotionRow {
+  slug: string;
+  name: string;
+  description: string | null;
+  benefitKind: BenefitKind;
+  benefitValue: number | null;
+  startsOn: string | null;
+  endsOn: string | null;
+  isActive: boolean;
+  disparadores: ReglaRow[];
+  beneficios: ReglaRow[];
+}
+
+/**
+ * El catálogo entero.
+ *
+ * Servicios y tratamientos salen de la misma consulta porque son la misma
+ * tabla: lo que los separa es `kind`, y cada pantalla filtra por ahí. Dos
+ * consultas distintas obligarían a refrescar las dos cuando Sol cambia una
+ * clase, que es exactamente la operación que más va a hacer.
+ */
+export function useCatalogo(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "salon", "catalog"],
+    queryFn: () => adminApi.get<CatalogRow[]>("/salon/catalog"),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useCategorias(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "salon", "categories"],
+    queryFn: () => adminApi.get<CategoryRow[]>("/salon/categories"),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * Todo lo que toca el catálogo invalida lo mismo.
+ *
+ * Las tres listas —catálogo, precios y el catálogo público— salen de las
+ * mismas tablas. Si una escritura refrescara sólo la suya, Sol vería el
+ * cambio en su pantalla y la clienta el valor viejo en la web.
+ */
+function useInvalidarCatalogo() {
+  const qc = useQueryClient();
+  return () => {
+    void qc.invalidateQueries({ queryKey: ["admin", "salon", "catalog"] });
+    void qc.invalidateQueries({ queryKey: ["admin", "salon", "services"] });
+    void qc.invalidateQueries({ queryKey: ["catalog"] });
+  };
+}
+
+export function useCrearServicio() {
+  const invalidar = useInvalidarCatalogo();
+  return useMutation({
+    mutationFn: (v: {
+      slug: string;
+      name: string;
+      category: string;
+      kind: ServiceKind;
+      durationMin: number;
+      price: number;
+      description?: string | null;
+      isPublic?: boolean;
+    }) => adminApi.post<{ id: string; slug: string }>("/salon/catalog", v),
+    onSuccess: invalidar,
+  });
+}
+
+export function useEditarServicio() {
+  const invalidar = useInvalidarCatalogo();
+  return useMutation({
+    mutationFn: (v: {
+      slug: string;
+      name?: string;
+      description?: string | null;
+      category?: string;
+      kind?: ServiceKind;
+      isPublic?: boolean;
+      isActive?: boolean;
+    }) => {
+      const { slug, ...campos } = v;
+      return adminApi.patch<{ slug: string }>(`/salon/catalog/${slug}`, campos);
+    },
+    onSuccess: invalidar,
+  });
+}
+
+export function useBajaDeServicio() {
+  const invalidar = useInvalidarCatalogo();
+  return useMutation({
+    mutationFn: (slug: string) => adminApi.del<{ slug: string }>(`/salon/catalog/${slug}`),
+    onSuccess: invalidar,
+  });
+}
+
+export function useSetServiceCost() {
+  const invalidar = useInvalidarCatalogo();
+  return useMutation({
+    mutationFn: (v: { slug: string; amount: number | null }) =>
+      adminApi.post<{ slug: string; amount: number | null }>(`/salon/catalog/${v.slug}/cost`, {
+        amount: v.amount,
+      }),
+    onSuccess: invalidar,
+  });
+}
+
+export function usePromociones(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin", "salon", "promotions"],
+    queryFn: () => adminApi.get<PromotionRow[]>("/salon/promotions"),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+function useInvalidarPromociones() {
+  const qc = useQueryClient();
+  return () => {
+    void qc.invalidateQueries({ queryKey: ["admin", "salon", "promotions"] });
+    void qc.invalidateQueries({ queryKey: ["catalog"] });
+  };
+}
+
+export function useGuardarPromocion() {
+  const invalidar = useInvalidarPromociones();
+  return useMutation({
+    mutationFn: (v: {
+      slug: string;
+      name: string;
+      description?: string | null;
+      benefitKind?: BenefitKind;
+      benefitValue?: number | null;
+      startsOn?: string | null;
+      endsOn?: string | null;
+      isActive?: boolean;
+    }) => adminApi.post<{ id: string; slug: string }>("/salon/promotions", v),
+    onSuccess: invalidar,
+  });
+}
+
+export function useReglaDePromocion() {
+  const invalidar = useInvalidarPromociones();
+  return useMutation({
+    mutationFn: (v: {
+      slug: string;
+      lado: LadoDeLaRegla;
+      serviceKind?: ServiceKind | null;
+      serviceSlug?: string | null;
+      agregar: boolean;
+    }) => {
+      const { slug, ...campos } = v;
+      return adminApi.post<{ slug: string }>(`/salon/promotions/${slug}/rules`, campos);
+    },
+    onSuccess: invalidar,
+  });
+}
+
+export function useSetPromocionActiva() {
+  const invalidar = useInvalidarPromociones();
+  return useMutation({
+    mutationFn: (v: { slug: string; active: boolean }) =>
+      adminApi.post<{ slug: string; isActive: boolean }>(`/salon/promotions/${v.slug}/active`, {
+        active: v.active,
+      }),
+    onSuccess: invalidar,
+  });
+}
+
+export function useBorrarPromocion() {
+  const invalidar = useInvalidarPromociones();
+  return useMutation({
+    mutationFn: (slug: string) => adminApi.del<{ slug: string }>(`/salon/promotions/${slug}`),
+    onSuccess: invalidar,
+  });
+}

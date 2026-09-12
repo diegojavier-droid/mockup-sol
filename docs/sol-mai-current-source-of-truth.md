@@ -169,7 +169,15 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 ## Pendientes
 
 - Validar catálogo real con Sol antes de convertirlo en dataset definitivo.
-- Validar significado de las dos columnas/tarifas, vigencia, largos, duraciones, setup/buffers, combinaciones, segmentos de clienta y taxonomía real de Maquillaje/Uñas.
+- ~~Validar significado de las dos columnas/tarifas~~ **RESUELTO (2026-09-12).**
+  No son dos tarifas: la hoja tiene **ocho** columnas de precio —cuatro largos
+  por **dos formas de pago**— y la segunda de cada par es la primera más 10%
+  (249 de 264 parejas exactas). Confirmado contra 787 cobros reales: el 99,3%
+  de lo pagado en efectivo termina en 000 contra el 20,8% de lo transferido, y
+  el 79,2% de lo transferido dividido por 1,10 cae en un múltiplo exacto de
+  mil. `business_settings.payment_surcharge_pct = 10` ya existe; queda decidir
+  si se aplica. Ver `docs/sol-mai-reingenieria.md` §4.
+- Validar vigencia, largos, duraciones, setup/buffers, combinaciones, segmentos de clienta y taxonomía real de Maquillaje/Uñas.
 - Crear proyecto Supabase propio bajo la cuenta del propietario y aplicar allí las migraciones canónicas.
 - Crear/configurar cuenta Cloudflare del propietario y cargar secretos de deploy en GitHub.
 - Cargar las credenciales de Mercado Pago para que el cobro de la seña deje de ser coordinación manual.
@@ -201,6 +209,80 @@ Notas operativas:
 ## Alcance de este documento
 
 Este documento no modifica componentes, hooks, schemas, estilos ni lógica. Su objetivo es ordenar el estado vigente del producto y evitar que documentación histórica, mocks o particularidades de las sandboxes de herramienta sean confundidas con la fuente operativa actual.
+
+## Documentos de la reingeniería de septiembre 2026
+
+- `docs/sol-mai-reingenieria.md` — auditoría de lo construido contra la
+  operación real y plan por bloques. **Documento rector de esta etapa.**
+- `docs/sol-mai-catalogo-reconciliacion.md` — catálogo del sistema contra
+  catálogo del salón, generado desde `precios.xlsx` y el Supabase de
+  producción. Insumo para que Sol marque qué queda y qué se da de baja.
+- `docs/sol-mai-flujo-clienta.md` — el recorrido de la web pública,
+  documentado y verificado en navegador con `scripts/reserva-e2e.mjs`.
+- `docs/sol-mai-benchmark-plataformas.md` — qué hacen Booksy, Fresha,
+  Treatwell, StyleSeat, Vagaro y Mindbody, y qué patrones se adoptan.
+- `docs/returning-customers-flow.md` §11-16 — adenda con lo que quedó
+  implementado del flujo de clientas recurrentes y la corrección a §2.
+
+Hallazgos que estos documentos incorporan y que antes no estaban medidos:
+
+- El salón abre **martes a viernes**; en 47 jornadas no hay un solo lunes ni
+  sábado, y los feriados faltantes coinciden con el calendario argentino.
+- Las clientas vuelven cada **27 días** (mediana sobre 423 intervalos). El
+  umbral de «sin venir hace tiempo» queda en **45 días**.
+- El **63% de la facturación** viene de clientas que volvieron al menos una
+  vez.
+- De 127 filas de precios en producción, **123 son `industry_baseline` con
+  `confidence: low`** y sólo 4 están validadas por Sol.
+- El bloque «TRATAMIENTOS MAS COLOR» es **una promoción por llevarse color y
+  tratamiento juntos**, confirmado por Sol el 2026-09-12. La columna
+  `price_addon` de `service_price_tiers` existe, está vacía y es el lugar
+  correcto para cargarlo.
+- **La planilla no registra todo el salón.** Los sábados y los eventos se
+  anotan en las columnas con nombre de peluquera, no en `efectivo` /
+  `transferencia`: hay $255.100 en 7 filas que un conteo de esas dos columnas
+  se pierde. Toda medición derivada de `precios.xlsx` describe el trabajo de
+  martes a viernes cobrado por caja. Ver `docs/sol-mai-reingenieria.md` §8.3.
+
+### Definiciones de negocio cerradas con Sol (2026-09-12)
+
+- **El +10% de la transferencia siempre se cobra.** Deja de ser
+  `sol_pricelist_derived / medium` y pasa a ser una regla validada: el sistema
+  puede calcularla en vez de guardar dos precios por servicio.
+- **Los lunes el salón está cerrado siempre. Los sábados abre a veces.** La
+  agenda cierra lunes por defecto; el sábado queda abierto y excepcional.
+- **Los 21 tratamientos de la lista de Sol están al día.**
+- **Sol autoriza cargar las fichas de sus clientas.**
+- **El aviso de «sin venir hace tiempo» va dirigido a Sol**, que escribe ella:
+  no es mensajería automática a la clienta.
+- **Los nombres quedaron emparejados** (§8.7): baño de luz = tono sobre tono,
+  reparación = máscara repair, hidratación = magic water, reconstrucción =
+  shock de keratina, recogido = peinados. **Karseell no es reconstrucción**
+  —es nutrición profunda— y va como servicio propio: 39 tickets en tres meses
+  y línea propia en la lista de Sol.
+- **Babylights y claritos se agrupan bajo «Mechas»** en la web, por decisión
+  de Sol. La técnica se conversa en el turno.
+- **En el catálogo público los tratamientos llevan los dos nombres**:
+  «Hidratación profunda (Magic Water)». El genérico orienta a quien no
+  conoce; el de marca es el que pide la clienta habitual, y el 63% de la
+  facturación viene de clientas que vuelven.
+- **Maquillaje lo hace una experta tercerizada** dentro del salón, y por eso
+  no aparece en la planilla de cobros. Resuelto en §8.9: **la clienta le paga
+  al salón y el salón le paga a ella**, así que el ingreso es normal y lo que
+  se le paga es el `cost_amount` de esa atención —el primer uso real de ese
+  campo, que es el insumo que le falta al margen del dashboard—. El área
+  `maquillaje` ya existe con capacidad 1 y reserva online.
+- **La maquilladora siempre está disponible**: «tercerizada» describe cómo se
+  le paga, no cuándo aparece. Por eso **maquillaje es un servicio normal** —se
+  reserva online con la anticipación de siempre, ocupa el área `maquillaje`
+  que ya existe y se confirma sola al pagar la seña—. Se retira la propuesta
+  de `min_advance_hours` por área: no hace falta.
+- **Lo único abierto de maquillaje es la forma del arreglo comercial.** El
+  esquema sólo soporta costos de monto fijo (`standard_cost_amount` y
+  `cost_amount`); no hay concepto de porcentaje. Si el arreglo es un fijo por
+  servicio, se carga una vez y no se construye nada; si es un porcentaje, hay
+  que escribirlo a mano en cada cierre o agregar el concepto; si es mensual,
+  no es costo por atención sino un gasto del salón.
 
 ## Regla de mantenimiento
 

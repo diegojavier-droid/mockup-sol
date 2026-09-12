@@ -368,3 +368,155 @@ Queda fuera del MVP y de este documento implementar o modificar:
 - Cambios en seña 20%.
 
 Estas decisiones pueden retomarse cuando exista una definición de CRM, reglas de privacidad, validación de identidad y criterios comerciales más completos.
+
+---
+
+# ADENDA · 2026-09-12 — Qué se construyó, qué no, y la decisión de fondo
+
+> Las secciones 1 a 10 de arriba son la especificación funcional escrita
+> antes de implementar. Esta adenda dice **qué pasó después**, verificado
+> contra el código y contra el Supabase de producción, y corrige la decisión
+> MVP de §2 a la luz de datos que no existían cuando se escribió.
+
+## 11. Lo que quedó implementado
+
+El mecanismo que reconoce a una clienta que vuelve **existe y funciona**,
+pero no es el que describe §2. Lo construido es más estricto y mejor.
+
+### La cadena real
+
+```
+proveedor de identidad (Google, vía Supabase Auth)
+        │  emite un token; guardarlo no da acceso a nada
+        ▼
+POST /api/v1/identity/session
+        ▼
+resolve_customer_identity  ← una RPC, una transacción, toda la decisión
+        │
+        ├─ 'known'          ficha ya vinculada        → can_see_history: true
+        ├─ 'matched_email'  el email coincide         → queda 'pending_link'
+        ├─ 'pending_link'   espera aprobación de Sol  → can_see_history: false
+        ├─ 'created'        ficha nueva               → no hay historial
+        └─ 'needs_phone'    faltan datos              → flujo estándar
+        ▼
+GET /api/v1/identity/recent  → hasta 3 servicios REALIZADOS
+```
+
+Dónde vive cada pieza:
+
+| Pieza | Archivo |
+| --- | --- |
+| Token en el navegador | `src/lib/api/identity-hooks.ts` |
+| Rutas del backend | `server/src/http/routes/identity.ts` |
+| Acceso y RPC | `server/src/lib/identity/repository.ts` |
+| Bloque «Hola María» | `src/components/booking/KnownCustomerBlock.tsx` |
+| Esquema | `supabase/migrations/20260823160000_customer_identity.sql` |
+
+### Las cuatro reglas que sostienen el diseño
+
+1. **El teléfono no autentica.** Nunca. Ni combinado con el nombre.
+2. **Toda la decisión vive en una sola RPC.** Si estuviera partida entre SQL
+   y TypeScript, sería cuestión de tiempo que las dos mitades dejaran de
+   coincidir. Esto es más fuerte que lo que pedía §3.
+3. **Vincular una ficha existente lo aprueba Sol**, desde el panel. El
+   sistema nunca decide solo que dos personas son la misma. Es el estado
+   `pending_link`, y responde a `ambiguous_match` de §3 con una persona en el
+   medio en vez de un umbral de confianza.
+4. **Sólo cuentan los servicios realizados.** Una reserva cancelada no es un
+   servicio y no aparece en «la última vez que viniste».
+
+### Qué NO se construyó
+
+**El camino sin login de §2** —doble coincidencia de WhatsApp normalizado +
+email— nunca se implementó. `resolve_customer_identity` exige un proveedor de
+identidad.
+
+## 12. El estado real hoy: construido y apagado
+
+`KnownCustomerBlock` se muestra sólo con `can_see_history`, que exige
+identidad probada. **Las credenciales de Google OAuth no están cargadas.**
+
+Conclusión sin adornos: **hoy toda clienta que vuelve es tratada como
+nueva.** No es un bug; es un pendiente de credenciales listado en la fuente
+de verdad.
+
+## 13. La corrección a §2: el camino sin login no se implementa
+
+§2 decidió que, sin OTP ni login, la doble coincidencia WhatsApp + email
+alcanzaba para `confirmed_returning_customer`. **Se recomienda descartar esa
+decisión**, por evidencia que no existía al escribirla.
+
+**La evidencia.** En `precios.xlsx`, tres meses de operación real: **581
+nombres de clienta distintos**, que al unir los que son obviamente la misma
+persona escrita distinto bajan a **498**. El 14% del padrón es ambigüedad de
+tipeo: «talia» y «tali», «nota alicia» y «alicia nota», «btina zsupiany».
+
+Un sistema de coincidencias sobre datos con esa tasa de ruido se va a
+equivocar. Y equivocarse acá no es mostrar un dato viejo: **es mostrarle a
+una persona el historial de otra** —qué se hizo, cuándo vino, cuánto pagó—.
+
+**El costo comparado:**
+
+| Camino | Trabajo | Riesgo |
+| --- | --- | --- |
+| Cargar Google OAuth | Una tarde de consola, cero código | Ninguno nuevo |
+| Matching WhatsApp + email | Varios bloques, con auditoría de privacidad | Exposición de datos de terceros |
+
+El camino corto es también el seguro. §2 queda como registro de cómo se
+pensó, no como plan vigente.
+
+## 14. El aviso de re-reserva: 45 días
+
+§10 postergó el CRM. Una pieza se puede definir ahora porque **el número ya
+está medido**.
+
+Intervalos entre visitas de clientas que volvieron, sobre 423 intervalos
+reales de marzo a mayo de 2026:
+
+| Cuándo vuelve | Proporción |
+| --- | ---: |
+| Antes de 15 días | 28,8% |
+| Entre 15 y 30 días | 42,8% |
+| Entre 31 y 60 días | 24,6% |
+| Después de 60 días | **3,8%** |
+
+**Mediana: 27 días** — el ciclo de la raíz que crece. Siete de cada diez
+vuelven antes del mes; pasados los 60 días, la clienta ya se perdió.
+
+**El umbral es 45 días.** Después del ciclo normal, para no molestar a quien
+iba a volver igual; antes del punto de no retorno. No es un número elegido:
+es el que separa a las que vuelven de las que no.
+
+Y el dato que justifica construirlo: **el 63% de la facturación viene de
+clientas que volvieron al menos una vez**, sin concentración peligrosa —las
+10 que más gastan son el 6,6% del total—. El negocio se sostiene sobre la
+repetición.
+
+Cómo se dice, siguiendo lo que hace StyleSeat (ver
+`docs/sol-mai-benchmark-plataformas.md`, patrón 5): **específico, no
+nostálgico.** «Tu color de raíces fue el 14 de agosto. ¿Te reservo el martes
+16 a las 10?» con un toque para confirmar. Nunca «¡te extrañamos!».
+
+## 15. El padrón de clientas: no se carga sin decisión de Sol
+
+Hay 498 clientas identificables con su historial de consumo. Técnicamente
+sembraría el módulo Clientas con datos reales desde el primer día.
+
+**Son personas reales que le dieron su nombre a una peluquera, no a un
+sistema.** En Argentina eso cae bajo la Ley 25.326, y el repositorio ya
+reconoce el tema (`supabase/migrations/20260908120000_consentimiento_datos_personales.sql`,
+`docs/sol-mai-datos-personales.md`).
+
+Cargarlo o no **lo decide Sol**, y va antes de escribir una línea.
+
+## 16. Lo que hay que hacer, en orden
+
+| # | Qué | Tipo |
+| --- | --- | --- |
+| 1 | Cargar credenciales de Google OAuth | Consola, no código |
+| 2 | Pantalla en el panel para aprobar `pending_link` | Código |
+| 3 | Clientas › Fichas | Código |
+| 4 | Clientas › Sin venir hace tiempo, umbral 45 días | Código |
+| 5 | Decidir con Sol qué se hace con el padrón | Decisión |
+
+El 1 desbloquea todo lo demás y no es trabajo de programación.

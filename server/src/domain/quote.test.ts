@@ -21,6 +21,7 @@ const baseService = (over: Partial<QuoteServiceData> = {}): QuoteServiceData => 
   slug: "corte-fem",
   name: "Corte",
   categorySlug: "peluqueria",
+  kind: "servicio",
   tiers: [
     tier({ lengthTier: "corto", durationMainMin: 45 }),
     tier({ lengthTier: "medio", durationMainMin: 55 }),
