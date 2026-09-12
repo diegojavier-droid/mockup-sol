@@ -169,7 +169,15 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 ## Pendientes
 
 - Validar catálogo real con Sol antes de convertirlo en dataset definitivo.
-- Validar significado de las dos columnas/tarifas, vigencia, largos, duraciones, setup/buffers, combinaciones, segmentos de clienta y taxonomía real de Maquillaje/Uñas.
+- ~~Validar significado de las dos columnas/tarifas~~ **RESUELTO (2026-09-12).**
+  No son dos tarifas: la hoja tiene **ocho** columnas de precio —cuatro largos
+  por **dos formas de pago**— y la segunda de cada par es la primera más 10%
+  (249 de 264 parejas exactas). Confirmado contra 787 cobros reales: el 99,3%
+  de lo pagado en efectivo termina en 000 contra el 20,8% de lo transferido, y
+  el 79,2% de lo transferido dividido por 1,10 cae en un múltiplo exacto de
+  mil. `business_settings.payment_surcharge_pct = 10` ya existe; queda decidir
+  si se aplica. Ver `docs/sol-mai-reingenieria.md` §4.
+- Validar vigencia, largos, duraciones, setup/buffers, combinaciones, segmentos de clienta y taxonomía real de Maquillaje/Uñas.
 - Crear proyecto Supabase propio bajo la cuenta del propietario y aplicar allí las migraciones canónicas.
 - Crear/configurar cuenta Cloudflare del propietario y cargar secretos de deploy en GitHub.
 - Cargar las credenciales de Mercado Pago para que el cobro de la seña deje de ser coordinación manual.
@@ -201,6 +209,36 @@ Notas operativas:
 ## Alcance de este documento
 
 Este documento no modifica componentes, hooks, schemas, estilos ni lógica. Su objetivo es ordenar el estado vigente del producto y evitar que documentación histórica, mocks o particularidades de las sandboxes de herramienta sean confundidas con la fuente operativa actual.
+
+## Documentos de la reingeniería de septiembre 2026
+
+- `docs/sol-mai-reingenieria.md` — auditoría de lo construido contra la
+  operación real y plan por bloques. **Documento rector de esta etapa.**
+- `docs/sol-mai-catalogo-reconciliacion.md` — catálogo del sistema contra
+  catálogo del salón, generado desde `precios.xlsx` y el Supabase de
+  producción. Insumo para que Sol marque qué queda y qué se da de baja.
+- `docs/sol-mai-flujo-clienta.md` — el recorrido de la web pública,
+  documentado y verificado en navegador con `scripts/reserva-e2e.mjs`.
+- `docs/sol-mai-benchmark-plataformas.md` — qué hacen Booksy, Fresha,
+  Treatwell, StyleSeat, Vagaro y Mindbody, y qué patrones se adoptan.
+- `docs/returning-customers-flow.md` §11-16 — adenda con lo que quedó
+  implementado del flujo de clientas recurrentes y la corrección a §2.
+
+Hallazgos que estos documentos incorporan y que antes no estaban medidos:
+
+- El salón abre **martes a viernes**; en 47 jornadas no hay un solo lunes ni
+  sábado, y los feriados faltantes coinciden con el calendario argentino.
+- Las clientas vuelven cada **27 días** (mediana sobre 423 intervalos). El
+  umbral de «sin venir hace tiempo» queda en **45 días**.
+- El **63% de la facturación** viene de clientas que volvieron al menos una
+  vez.
+- De 127 filas de precios en producción, **123 son `industry_baseline` con
+  `confidence: low`** y sólo 4 están validadas por Sol.
+- **Maquillaje** está publicada y reservable online con **cero facturación**
+  en tres meses.
+- El bloque «TRATAMIENTOS MAS COLOR» de la planilla es **precio de agregado**,
+  no descuento: medido contra 56 tickets reales. La columna `price_addon` de
+  `service_price_tiers` existe y está vacía.
 
 ## Regla de mantenimiento
 

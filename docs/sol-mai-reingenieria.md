@@ -1,0 +1,404 @@
+# Reingeniería del sistema interior · septiembre 2026
+
+> **Qué es esto.** Una auditoría de lo construido contra lo que el salón
+> realmente hace, y el plan para cerrar la distancia. No es un rediseño: casi
+> todo lo que hay sirve. Lo que falla es más específico y más caro de lo que
+> parece desde afuera.
+>
+> **Con qué evidencia.** Tres fuentes, todas verificables:
+> 1. El código y las migraciones del repositorio.
+> 2. El Supabase de producción, consultado el 2026-09-12.
+> 3. `precios.xlsx` de Sol: 1.026 movimientos escritos a mano entre el 3 de
+>    marzo y el 29 de mayo de 2026, de los cuales 926 son cobros. Ver
+>    `docs/sol-mai-catalogo-reconciliacion.md` para el detalle.
+
+---
+
+## 1. El diagnóstico en una frase
+
+**El sistema está bien construido y mal poblado.** La arquitectura aguanta
+todo lo que el salón necesita; los datos que tiene adentro describen otro
+salón.
+
+La medición que lo prueba, tomada de producción:
+
+| | |
+| --- | --- |
+| Filas de precios cargadas (`service_price_tiers`) | 127 |
+| Validadas por Sol (`source = 'sol_validated'`) | **4** |
+| Tomadas de su lista de precios (`source = 'sol_pricelist'`) | **0** |
+| Genéricas de industria con `confidence: low` | **123** |
+| Con precio de agregado cargado (`price_addon`) | **0** |
+
+Noventa y siete de cada cien precios con los que el sistema le cobraría a una
+clienta los puso un promedio de industria.
+
+---
+
+## 2. Los tres desajustes de fondo
+
+### Desajuste A — El catálogo del sistema no es el catálogo del salón
+
+El sistema publica 43 servicios. Cruzándolos contra 926 cobros reales:
+
+- **`mk-novia`, `mk-fiesta`, `mk-social`, `mk-evento`, `mk-prueba`**: la
+  categoría Maquillaje completa, publicada y reservable online, **facturó cero
+  pesos en tres meses**. Ni un ticket.
+- **`babylights`, `claritos`, `bano-luz`, `hidratacion`, `reconstruccion`,
+  `reparacion`, `recogido`**: cero también.
+- Al revés, lo que sí se cobra todo el tiempo —`BIOTINA`, `KARSEELL`,
+  `RIFLESSI`, `PLASMA`, `MAGIC WATER`, `SHOCK KERATINA`, `COLOR SHINE`,
+  `AMPOLLA`, `FUSION WELLA`, `LISS BIOCELL`, `EXILINE`, `ITELY`,
+  `SIN TACC`, `VINCHA TONO`— **no existe en el sistema**.
+
+El sistema habla en genérico de peluquería; Sol cobra por nombre de marca de
+producto. No es un problema de nombres: es que una clienta que entra a la web
+no encuentra lo que va a ir a hacerse.
+
+Consecuencia inmediata y comprobable: **el sistema publica y permite reservar
+online una categoría entera que el salón no facturó nunca.** Eso no es un
+catálogo incompleto, es una promesa que el salón no tiene por qué poder
+cumplir.
+
+### Desajuste B — «Tratamiento» no existe como concepto
+
+Este es el desajuste estructural, y viola directamente el principio de que
+**Servicios ≠ Tratamientos ≠ Productos**.
+
+Cómo está hoy:
+
+| Eje | Dónde vive | Estado |
+| --- | --- | --- |
+| **Servicios** | `public.services` (43 filas) | Existe |
+| **Productos** | `public.products` (tabla propia, panel Inventario) | Existe y está bien separado |
+| **Tratamientos** | **en ninguna parte** — están metidos dentro de `services` | **No existe** |
+
+`botox`, `nutricion`, `hidratacion`, `reparacion`, `reconstruccion` y
+`post-color` están en la misma tabla y con el mismo tratamiento que
+`corte-fem` o `mechas`. Para el sistema, un botox capilar es un servicio
+igual que un corte.
+
+**Por qué importa, con el número que lo prueba.** Un tratamiento cuesta
+distinto según vaya solo o arriba de un color. Medido sobre 56 tickets reales
+—comparando la mediana de «raíces solas» contra «raíces + tratamiento»:
+
+| Tratamiento | Lo que se cobró arriba del color | Lista del mismo tratamiento solo |
+| --- | ---: | ---: |
+| KARSEELL | $8.000 | 20.000 – 30.000 |
+| MASCARA REPAIR | $7.000 | 20.000 – 28.000 |
+| RIFLESSI | $9.000 | 21.000 – 34.000 |
+| FUSION | $11.000 | 25.000 – 35.000 |
+| AMPOLLA | $5.500 | 20.000 – 28.000 |
+
+Un corte no hace eso. Un corte vale lo mismo vaya solo o acompañado (de hecho
+la planilla lo confirma: $15.000 suelto, $15.000 con color — la única
+diferencia es del 12% contra el otro bloque de la hoja). **Un tratamiento
+tiene dos precios porque es una cosa distinta de un servicio: es algo que se
+aplica durante otra atención.**
+
+Y lo notable: **el modelo de datos ya lo sabía.**
+`service_price_tiers` tiene una columna `price_addon` al lado de `price_main`,
+exactamente para esto. Está vacía en las 127 filas. Alguien diseñó el lugar y
+nadie puso los números.
+
+### Desajuste C — La informalidad no está donde el sistema la vigila
+
+El sistema protege el canal `online` con seña del 20%. Los otros cuatro
+canales —`manual` (mostrador), `phone`, `whatsapp`, `walk_in`— nacen
+`confirmed` y **sin seña**, por decisión explícita: ahí el compromiso es la
+conversación.
+
+Eso es razonable, pero hay que decir en voz alta lo que implica: **hoy la
+totalidad de la operación real de Sol Mai pasa por esos cuatro canales.** La
+planilla de tres meses no tiene una sola reserva online, porque el cobro de
+seña todavía no está conectado. El sistema vigila la puerta por la que no
+entra nadie.
+
+La consecuencia práctica: la ausencia (`no_show`) es un estado que existe en
+el modelo, pero **no hay ninguna medición de cuántas ausencias hay**, porque
+la planilla de Sol sólo registra lo que se cobró. Nadie sabe hoy cuánto le
+cuestan las ausencias al salón. Es el agujero de medición más grande del
+proyecto.
+
+---
+
+## 3. Inventario: qué existe, qué sirve, qué no
+
+Los diez módulos del árbol (`src/lib/panel-nav.ts`), auditados.
+
+| Módulo | Secciones con pantalla | Veredicto |
+| --- | --- | --- |
+| **Agenda** | Hoy, Mañana, Semana, Mes, Año (5/5) | **Se mantiene.** Completo y probado. Único ajuste: cerrar lunes y sábados por defecto |
+| **Clientas** | 0 de 3 | **Se construye.** Es el módulo con más valor sin construir. §6 |
+| **Finanzas** | Caja, Devoluciones, Facturación, Resumen (4/6) | **Se mejora.** Faltan Cobros y Gastos. Gastos es urgente: §5 |
+| **Inventario** | Productos (1/3) | Se mantiene. Stock y Movimientos no tienen demanda comprobada |
+| **Servicios** | Precios y tiempos, Horarios (2/3) | **Se rehace por dentro.** §4 |
+| **Puestos de trabajo** | Listado, Fuera de servicio (2/2) | **Se mantiene.** Recién unificado y correcto |
+| **Personal** | 0 de 3 | **No se construye ahora.** `staff_schedules` vacío a propósito: Sol no definió horarios por persona. Y las seis columnas de peluqueras de la planilla tienen dato en 39 de 452 filas — no alcanza para producción por persona |
+| **Compras** | 0 de 2 | No se construye. Sin demanda |
+| **Usuarios y roles** | Personas, Roles, Registro de cambios (3/4) | **Se mantiene.** Completo para lo que hace falta |
+| **Configuración** | 0 de 3 | Se construye después. Los valores se editan por SQL mientras tanto |
+
+**Traducción:** de diez módulos, seis se mantienen como están, dos se
+construyen (Clientas y Gastos), uno se rehace por dentro (Servicios) y dos se
+posponen con motivo declarado.
+
+Esto es reingeniería, no reescritura: **no se toca la agenda, ni la
+capacidad, ni los permisos, ni el motor de reservas, ni la autenticación.**
+Todo eso funciona y está probado contra PostgreSQL real.
+
+---
+
+## 4. La corrección estructural: los tres ejes del catálogo
+
+### El modelo propuesto
+
+```
+SERVICIO                    TRATAMIENTO                 PRODUCTO
+(se reserva, ocupa           (se aplica durante          (se vende, sale
+ una estación y un rango      un servicio; tiene          del stock; no
+ de tiempo)                   dos precios)                ocupa agenda)
+
+corte                        biotina                     shampoo biocell
+color de raíces              karseell                    máscara sow
+mechas                       riflessi                    ampolla para casa
+brushing                     plasma
+                             magic water
+public.services              public.services             public.products
+                             + treatment_of               (ya existe y
+                             + price_addon                 está bien)
+```
+
+### Cómo se implementa sin romper nada
+
+La tentación es crear una tabla `treatments`. **No hay que hacerlo.** Un
+tratamiento se reserva, ocupa tiempo y estación, y aparece en la agenda
+exactamente igual que un servicio cuando va solo. Partirlo en dos tablas
+duplicaría el motor de disponibilidad.
+
+Lo que un tratamiento necesita es **una marca y un precio**, no una tabla:
+
+1. **`services.kind`** — una columna con `'servicio' | 'tratamiento'`. Por
+   defecto `'servicio'`, así ninguna fila existente cambia de significado.
+2. **`service_price_tiers.price_addon`** — **ya existe**. Se llena con el
+   bloque `TRATAMIENTOS MAS COLOR` de la planilla.
+3. **La regla de cobro**: si en el mismo turno hay un servicio de la familia
+   color y un `kind = 'tratamiento'`, el tratamiento cotiza a `price_addon`.
+   Si va solo, cotiza a `price_main`.
+
+Es una migración aditiva de una columna con default. Ninguna fila existente
+cambia de comportamiento, y el cálculo vive donde ya viven precio y duración:
+en el backend, nunca en el navegador.
+
+### La otra columna que falta: la forma de pago
+
+La hoja `servicios` tiene **ocho** columnas de precio, no cuatro: cuatro
+largos por **dos formas de pago**. La fila 2 lo dice —`CORTO, CORTO, MEDIO,
+MEDIO, LARGO, LARGO, XL, XL`— y la segunda de cada par es la primera más 10%,
+en 249 de 264 parejas.
+
+Confirmado contra los cobros reales: el **99,3%** de los montos en efectivo
+termina en 000, contra el **20,8%** de los transferidos; y el **79,2%** de lo
+transferido, dividido por 1,10, cae en un múltiplo exacto de mil. El +10% es
+la forma de pago, no el largo del pelo.
+
+**Esto cierra un pendiente abierto de la fuente de verdad**, que pedía
+*«validar significado de las dos columnas/tarifas»*.
+
+**Y no hace falta migración.** `business_settings` ya tiene
+`payment_surcharge_pct = 10`, descrito como *«informativo, no aplicado
+online»* y marcado `sol_pricelist_derived / medium`. Lo que corresponde es
+subirlo a medido y decidir si se aplica. Duplicar 127 precios sería el diseño
+equivocado: es **una regla global**, no un atributo por servicio.
+
+### Qué se carga, y con qué etiqueta
+
+`service_price_tiers.source` ya tiene el vocabulario exacto para esto:
+
+| Valor | Qué significa | Cuántas filas hoy |
+| --- | --- | --- |
+| `industry_baseline` | promedio genérico, nadie lo validó | 123 |
+| `sol_pricelist` | sale de la lista de Sol, ella todavía no lo confirmó | **0** |
+| `sol_validated` | Sol lo miró y dijo que sí | 4 |
+| `sol_adjusted` | Sol lo cambió desde el panel | 0 |
+
+**Transcribir la lista de Sol no es inventar negocio: es copiarla.** Pasa de
+`industry_baseline / low` a `sol_pricelist / medium`. Sol deja de tener que
+tipear 127 números desde cero y pasa a tener que decir sí o no sobre 127
+números que ya son suyos. Sólo cuando ella los confirme se marcan
+`sol_validated`, y recién ahí son precio vigente.
+
+---
+
+## 5. Gastos: el módulo urgente que nadie pidió
+
+La planilla tiene **27 filas con monto negativo** por −$325.850 en tres
+meses: «super», «lavadero», «pedidos ya», «nafta», «AUTO», «entrada gra
+mendez». Están **en la misma columna que lo que paga una clienta**, y sólo se
+distinguen por el signo menos.
+
+Esto no es un detalle contable. Mientras los gastos vivan mezclados con los
+cobros:
+
+- La caja del día es falsa: mezcla ingresos con salidas.
+- No hay forma de saber el margen, que es justo el indicador que el dashboard
+  declara **NO DISPONIBLE** por falta de costos.
+- Cualquier número que el sistema le muestre a Sol va a discrepar con su
+  planilla, y ella va a confiar en la planilla.
+
+**Finanzas › Gastos ya existe en el árbol y dice «Todavía no».** Es la
+construcción con mejor relación valor/esfuerzo del proyecto: una tabla, un
+alta, una lista por día y una categoría. Nada de esto es difícil; lo difícil
+era saber que hacía falta.
+
+Además hay **74 filas con nombre y sin monto**: turnos anotados que no se
+cobraron, o cobros que quedaron sin cargar. No hay forma de distinguirlos, y
+esa ambigüedad es exactamente lo que el sistema viene a eliminar.
+
+---
+
+## 6. Clientas habituales: el mecanismo
+
+El detalle funcional completo está en `docs/returning-customers-flow.md`.
+Acá, la decisión de arquitectura y el número que la sostiene.
+
+### Cómo reconoce el sistema a una clienta que vuelve
+
+La regla es una sola y no se negocia: **el teléfono no autentica.** Una
+coincidencia por WhatsApp no habilita ver historial. Está implementada así en
+producción y es correcta: el teléfono es un dato de contacto que cualquiera
+puede escribir.
+
+La cadena real es:
+
+```
+proveedor de identidad (Google)  →  email probado
+        │
+        ▼
+resolve_customer_identity (una RPC, una transacción)
+        │
+        ├─ 'known'          la ficha ya está vinculada      → ve su historial
+        ├─ 'matched_email'  el email coincide con una ficha → queda 'pending_link'
+        ├─ 'pending_link'   espera que Sol lo apruebe       → NO ve historial
+        ├─ 'created'        ficha nueva                     → no hay historial
+        └─ 'needs_phone'    faltan datos                    → flujo normal
+```
+
+`can_see_history` es lo único que abre el bloque de «Hola María». Y la
+vinculación de una ficha existente **la aprueba Sol desde el panel**: el
+sistema nunca decide solo que dos personas son la misma.
+
+### El problema, que es de credenciales y no de diseño
+
+`KnownCustomerBlock.tsx` está construido y funciona. Pero depende de Google
+OAuth, y esas credenciales no están cargadas. **Hoy toda clienta que vuelve
+es tratada como nueva.**
+
+El documento funcional preveía un camino alternativo sin login —doble
+coincidencia de WhatsApp normalizado + email— que **nunca se implementó**.
+
+**Recomendación: no implementarlo.** Razones concretas:
+
+1. La planilla muestra que los nombres de clientas no son identificadores:
+   581 nombres crudos que al unir los obvios bajan a 498. El 14% del padrón
+   es ambigüedad de tipeo. Un sistema de matching difuso sobre esos datos va
+   a equivocarse, y equivocarse acá significa mostrarle a una persona el
+   historial de otra.
+2. Cargar credenciales de Google es una tarde de trabajo administrativo.
+   Construir y auditar un matching sin login es varios bloques, con riesgo de
+   privacidad real.
+
+El camino corto es también el seguro.
+
+### El aviso de re-reserva, con el número que lo define
+
+Medido sobre 423 intervalos entre visitas de la planilla:
+
+| | |
+| --- | --- |
+| Mediana entre visita y visita | **27 días** |
+| Vuelve antes de 15 días | 28,8% |
+| Vuelve entre 15 y 30 días | 42,8% |
+| Vuelve entre 31 y 60 días | 24,6% |
+| Vuelve después de 60 días | **3,8%** |
+
+Siete de cada diez vuelven antes del mes. Pasados los 60 días, la clienta ya
+se perdió.
+
+**El umbral de «Sin venir hace tiempo» es 45 días.** Está después del ciclo
+normal —no molesta a quien iba a volver igual— y antes del punto de no
+retorno. No es un número elegido: es el percentil que separa a las que
+vuelven de las que no.
+
+Y el dato que justifica construir el módulo: **el 63% de la facturación viene
+de clientas que volvieron al menos una vez**, sin ninguna concentración
+peligrosa —las 10 que más gastan son el 6,6% del total—. El negocio se
+sostiene sobre la repetición, y hoy no hay nada en el sistema que la cuide.
+
+### Lo que NO se hace sin decidirlo con Sol
+
+Cargar el padrón de 498 clientas con su historial de consumo. Son personas
+reales que le dieron su nombre a una peluquera, no a un sistema. El
+repositorio ya tiene una migración de `consentimiento_datos_personales`, así
+que el tema está reconocido. **Esa decisión es de Sol.**
+
+---
+
+## 7. El plan, por bloques
+
+Ordenados por dependencia, no por gusto.
+
+| # | Bloque | Toca producción | Depende de |
+| --- | --- | --- | --- |
+| 1 | **Reconciliar el catálogo** — Sol marca qué queda, qué se renombra, qué se da de baja | No | Nada. La tabla ya está: `docs/sol-mai-catalogo-reconciliacion.md` |
+| 2 | **`services.kind` + cargar `price_addon`** | Migración aditiva | Bloque 1 |
+| 3 | **Cargar los precios reales como `sol_pricelist`** | Datos, no schema | Bloque 1 |
+| 4 | **Finanzas › Gastos** | Tabla nueva | Nada |
+| 5 | **Credenciales de Google OAuth** | Consola, no código | Nada |
+| 6 | **Clientas › Fichas y Sin venir hace tiempo (45 días)** | Pantallas nuevas | Bloques 3 y 5 |
+| 7 | **Agenda cerrada lunes y sábados** | Un valor de configuración | Confirmación de Sol |
+| 8 | **Devolver una seña sin revertir la ausencia** | Endpoint nuevo | Nada |
+
+El bloque 1 es el único que no se puede saltear: todo lo demás le pone
+números o pantallas a un catálogo que primero tiene que ser el correcto.
+
+---
+
+## 8. Las cinco preguntas para Sol
+
+Ninguna se contesta desde el archivo ni desde el código, y las cinco cambian
+qué se construye.
+
+1. **Maquillaje**: ¿se hace y no se anotó, o no se hace? Hoy está publicado y
+   reservable online con cero facturación en tres meses.
+2. **El bloque «TRATAMIENTOS MAS COLOR»**: ¿es una aplicación más chica
+   arriba del color, o el mismo tratamiento más barato? Define si son dos
+   servicios o uno con dos precios.
+3. **El +10%**: ¿es regla fija o se negocia? Si es regla, el sistema la
+   calcula solo.
+4. **Lunes y sábados**: ¿el salón abre alguna vez? En tres meses no pasó ni
+   una vez.
+5. **El padrón de clientas**: ¿se carga al sistema el historial de las 498?
+
+---
+
+## 9. Lo que esta reingeniería deliberadamente no toca
+
+| | Por qué |
+| --- | --- |
+| El motor de disponibilidad y capacidad | Funciona, está serializado con `pg_advisory_xact_lock` y probado contra PostgreSQL real |
+| ÁREA ≠ ESTACIÓN ≠ PERSONA | Es la abstracción correcta y ya está resuelta |
+| La autenticación del panel | Link de un solo uso al correo, con 401/403 distinguidos. Completo |
+| Los estados de reserva y la ventana de 10 minutos | Decisión de negocio ya tomada y documentada |
+| La navegación del panel | Recién rehecha (2026-09-11/12), una dirección por sección |
+| Los textos de la web pública | Ya dicen lo que tienen que decir sobre la seña, antes de decidir |
+| El modelo de productos | Ya está separado de servicios, que es lo que el principio exige |
+
+---
+
+## 10. Regla de mantenimiento
+
+Este documento se actualiza cuando un bloque de los de §7 se completa, o
+cuando Sol contesta una de las preguntas de §8. Las mediciones de la planilla
+(§2, §6) valen para marzo–mayo de 2026 y habría que rehacerlas con datos
+nuevos antes de usarlas para decidir dentro de un año.

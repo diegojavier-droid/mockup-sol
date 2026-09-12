@@ -42,3 +42,6 @@ dist-ssr
 # las fuentes, no la salida.
 diseno/**/*.html
 !diseno/**/*.dc.html
+
+# capturas de scripts/reserva-e2e.mjs
+reserva-e2e-fallo.png
