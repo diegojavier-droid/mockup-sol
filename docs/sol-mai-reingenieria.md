@@ -468,6 +468,63 @@ La reconciliación del catálogo **no está cerrada**. Falta una vuelta corta,
 de una palabra por servicio: *«Cuando hacés un babylights, ¿qué escribís en
 la planilla?»*.
 
+### 8.5 El emparejamiento propuesto (2026-09-12)
+
+A la repregunta —«cuando hacés un babylights, ¿qué escribís en la
+planilla?»— llegó una respuesta con **la definición de cada técnica**, no con
+la anotación. Sirve igual: con la definición y el vocabulario real de la
+planilla se puede proponer el emparejamiento, que después Sol confirma o
+corrige con un sí o un no.
+
+**Nada de esta tabla está confirmado.** Es una hipótesis construida a partir
+de la definición de cada técnica y de las palabras que aparecen en los 926
+cobros. La columna de confianza dice cuánto me la creo.
+
+| Nombre en la web | Cómo lo define Sol | Lo que probablemente escribe | Evidencia en los tickets | Confianza |
+| --- | --- | --- | ---: | --- |
+| **Baño de luz** | coloración semipermanente sin amoníaco, da brillo y reaviva el tono | `tono sobre tono` | tiene bloque propio en su lista (`TONO Well/tono sobre tono`); 9 tickets con la frase exacta, 48 con «tono» | **Alta** |
+| **Reparación** | restaurar el cabello dañado, sellado de cutículas | `mascara repair` | 95 tickets con «repair», 33 con «mascara» | **Alta** |
+| **Hidratación** | devuelve el agua y la humedad natural | `magic water` | 26 tickets con «magic», 30 con «agua»; el producto se llama literalmente agua | **Alta** |
+| **Reconstrucción** | deposita proteínas y queratina, rellena y fortalece | `karseell` y/o `shock de keratina` | 39 tickets con karsell/karseell, 18 con keratina | **Alta** |
+| **Recogido** | el pelo sujeto hacia arriba, moños | `peinados` | el bloque `peindaos 7/3` de §8.3, 6 clientas | **Alta** |
+| **Babylights** | mechas muy finas que imitan los reflejos del sol | `mechas` o `reflejos` | mechas 27, reflejos 46, balayage 21 | **Media** |
+| **Claritos** | mechas unos tonos más claras que la base | `mechas`, `iluminación`, `gorra` | iluminación 7, gorra 31 | **Media** |
+
+**El hallazgo estructural está en las dos últimas filas.** Babylights y
+Claritos caen sobre las mismas palabras —«mechas», «reflejos»—, y no hay en
+la planilla nada que las separe. O sea: **la web es más detallada que el
+registro del salón.** Distingue técnicas que Sol anota juntas.
+
+Eso es una decisión de producto, no un dato que falte:
+
+- **Agrupar en la web** bajo un nombre que la clienta entienda («Mechas y
+  reflejos», con la técnica conversada en el turno), o
+- **pedirle a Sol que empiece a distinguirlas** al anotar, para poder medir
+  cuál se pide más.
+
+La primera opción no le cambia el trabajo a nadie; la segunda le agrega
+trabajo a cambio de información. Corresponde que lo decida Sol con dirección
+de producto, no el sistema por defecto.
+
+**Maquillaje quedó afuera de la respuesta.** La lista de definiciones tiene
+siete técnicas y ninguna es de maquillaje. Sigue sin haber una sola fila con
+esa palabra en las tres hojas, ni en las columnas de peluquera. Es la única
+de las ocho que sigue entera sin resolver.
+
+### 8.6 Lo que hay que preguntar ahora
+
+Siete confirmaciones de una palabra, más una pregunta abierta:
+
+1. ¿Baño de luz es lo que anotás como **tono sobre tono**?
+2. ¿Reparación es la **máscara repair**?
+3. ¿Hidratación es el **magic water**?
+4. ¿Reconstrucción es el **karseell**, el **shock de keratina**, o los dos?
+5. ¿Recogido entra en lo que anotás como **peinados**?
+6. Cuando hacés **babylights** y cuando hacés **claritos**, ¿los dos los
+   anotás como «mechas»? ¿Los distinguís de alguna forma?
+7. **Maquillaje**: ¿lo hacés en el salón? Si sí, ¿dónde queda anotado,
+   porque en estas planillas no aparece?
+
 ## 9. Lo que esta reingeniería deliberadamente no toca
 
 | | Por qué |
