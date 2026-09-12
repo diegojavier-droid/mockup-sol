@@ -617,6 +617,71 @@ Mientras tanto, **los cinco servicios de maquillaje no deberían seguir
 reservables online**: prometen un turno con alguien cuya agenda el salón no
 tiene. Anotarlos sí; venderlos online, todavía no.
 
+### 8.9 Maquillaje, resuelto (2026-09-12)
+
+Sol contestó las tres preguntas de §8.8:
+
+> La clienta le paga al salón y el salón le paga a ella.
+> Se reserva online en el salón.
+> Viene cuando hay turno.
+
+**Esto deja sin efecto la recomendación de §8.8** de sacar maquillaje de la
+reserva online: Sol quiere que se reserve online. Lo que hace falta es que se
+pueda hacer sin prometer lo que el salón no controla.
+
+#### Lo que ya está resuelto y no hace falta construir
+
+| Qué | Estado en producción |
+| --- | --- |
+| **El área** | `areas.maquillaje` existe: capacidad 1, una estación activa, `is_bookable_online = true`. No consume sillones de peluquería |
+| **El dinero que entra** | La clienta le paga al salón, así que es ingreso normal: cierre de atención y seña del 20% como cualquier servicio. Nada especial |
+| **El dinero que sale** | Lo que el salón le paga a la maquilladora es un **costo de esa atención**, y `service_execution_records.cost_amount` ya existe para eso |
+
+Sobre lo último, vale anotarlo: **es el primer uso real del campo de costo.**
+Hoy está vacío en todas las atenciones, y por eso el dashboard informa el
+margen como NO DISPONIBLE. El maquillaje tercerizado es justamente el caso
+donde el costo se conoce con exactitud, porque es una factura.
+
+#### El hueco: «viene cuando hay turno» contra la confirmación automática
+
+Este es el problema real, y no es de catálogo ni de dinero.
+
+Hoy el recorrido es: la clienta reserva, paga la seña dentro de los 10
+minutos, y la reserva pasa a `confirmed`. Automático, sin que intervenga
+nadie. Con la anticipación mínima actual —`min_advance_hours = 2`— eso
+significa que **una clienta puede tener un maquillaje confirmado para dentro
+de dos horas sin que nadie le haya preguntado a la maquilladora si puede
+venir.**
+
+Un turno confirmado que el salón no puede cumplir es peor que no ofrecerlo.
+
+**La corrección mínima: anticipación por área.** Con un plazo suficiente, el
+salón tiene tiempo de arreglar con ella antes de la fecha, y el turno deja de
+ser una promesa en falso.
+
+El obstáculo es que `min_advance_hours` **es un único valor global**: vive en
+`business_settings` y `server/src/lib/availability/repository.ts` lo lee como
+uno solo. Subirlo para maquillaje lo subiría también para un corte, que se
+reserva de un día para el otro sin problema.
+
+Lo que corresponde es una columna `min_advance_hours` en `areas`, que acepte
+nulo y caiga al valor global cuando no esté puesta. Es una migración aditiva:
+ninguna área existente cambia de comportamiento.
+
+**Falta el número, y lo pone Sol:** ¿con cuánta anticipación hay que avisarle
+a la maquilladora? No se inventa. La capacidad técnica se puede construir
+igual —la columna nula significa «como el resto del salón»— y el valor se
+carga cuando Sol lo diga.
+
+#### Lo que queda fuera de alcance a propósito
+
+Que la reserva de maquillaje **no se confirme sola** —que quede como pedido
+hasta que el salón diga que sí— sería la solución completa, pero exige un
+estado nuevo en el ciclo de la reserva. Conviene no construirlo todavía: si
+la anticipación alcanza para arreglar con ella, el estado nuevo no hace
+falta, y agregarlo toca el motor de reservas, que hoy funciona y está
+probado.
+
 ## 9. Lo que esta reingeniería deliberadamente no toca
 
 | | Por qué |

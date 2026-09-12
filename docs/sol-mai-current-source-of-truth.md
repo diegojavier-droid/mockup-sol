@@ -266,12 +266,17 @@ Hallazgos que estos documentos incorporan y que antes no estaban medidos:
   «Hidratación profunda (Magic Water)». El genérico orienta a quien no
   conoce; el de marca es el que pide la clienta habitual, y el 63% de la
   facturación viene de clientas que vuelven.
-- **Maquillaje lo hace una experta tercerizada** dentro del salón. Por eso no
-  aparece en la planilla: esa plata no pasa por la caja. Sol quiere registro
-  en el sistema, y eso **rompe tres supuestos del modelo** —quién cobra, qué
-  capacidad ocupa y quién define la disponibilidad—. No se construye hasta
-  contestar las tres preguntas de §8.8, y mientras tanto los cinco servicios
-  de maquillaje **no deberían seguir reservables online**.
+- **Maquillaje lo hace una experta tercerizada** dentro del salón, y por eso
+  no aparece en la planilla de cobros. Resuelto en §8.9: **la clienta le paga
+  al salón y el salón le paga a ella**, así que el ingreso es normal y lo que
+  se le paga es el `cost_amount` de esa atención —el primer uso real de ese
+  campo, que es el insumo que le falta al margen del dashboard—. El área
+  `maquillaje` ya existe con capacidad 1 y reserva online.
+- **Queda un hueco por resolver:** la maquilladora «viene cuando hay turno» y
+  la reserva se confirma sola al pagar la seña, con una anticipación mínima
+  global de 2 horas. Hace falta `min_advance_hours` por área —columna
+  aditiva, nula = valor global—, y **el número lo pone Sol**: con cuánta
+  anticipación hay que avisarle.
 
 ## Regla de mantenimiento
 
