@@ -67,7 +67,7 @@ export const ARBOL: ModuloDef[] = [
       seccion("manana", "Mañana", true),
       seccion("semana", "Semana", true),
       seccion("mes", "Mes", true),
-      seccion("anio", "Año"),
+      seccion("anio", "Año", true),
     ],
   },
   {

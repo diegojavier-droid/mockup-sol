@@ -68,6 +68,11 @@ export const Route = createFileRoute("/panel/$modulo/$seccion")({
   component: SeccionRoute,
 });
 
+/** Hoy en el salón (UTC-3), no en el dispositivo de quien mira. */
+function hoyEnElSalon(): string {
+  return new Date(Date.now() - 180 * 60_000).toISOString().slice(0, 10);
+}
+
 function SeccionRoute() {
   const params = Route.useParams();
   const { mes, dia } = Route.useSearch();
@@ -97,8 +102,9 @@ function SeccionRoute() {
     que === "adelante"
       ? contenidoDe(modulo.slug, seccion.slug, {
           // Sin `?mes=`, el mes que se mira es el de hoy en el salón.
-          mes: mes ?? new Date(Date.now() - 180 * 60_000).toISOString().slice(0, 7),
+          mes: mes ?? hoyEnElSalon().slice(0, 7),
           dia,
+          anio: Number((mes ?? hoyEnElSalon()).slice(0, 4)),
           // La ruta se nombra entera y no con «.»: el destino es esta
           // misma sección con otra búsqueda, y `to: "."` necesita saber
           // desde dónde sale para resolverse.
@@ -113,6 +119,21 @@ function SeccionRoute() {
               to: "/panel/$modulo/$seccion",
               params: { modulo: modulo.slug, seccion: seccion.slug },
               search: { mes, dia: d },
+            }),
+          // El año se guarda en `?mes=` con enero: una sola clave para
+          // «qué período se mira», en vez de dos que se contradigan.
+          irAlAnio: (a) =>
+            void navigate({
+              to: "/panel/$modulo/$seccion",
+              params: { modulo: modulo.slug, seccion: seccion.slug },
+              search: { mes: `${a}-01` },
+            }),
+          // Tocar un mes en Año cambia de sección, no sólo de búsqueda.
+          verElMes: (m) =>
+            void navigate({
+              to: "/panel/$modulo/$seccion",
+              params: { modulo: modulo.slug, seccion: "mes" },
+              search: { mes: m },
             }),
         })
       : null;

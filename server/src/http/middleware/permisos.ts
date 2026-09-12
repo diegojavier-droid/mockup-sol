@@ -89,6 +89,9 @@ export const SIN_MODULO = new Set<string>(["GET /me"]);
 export const PERMISOS: Record<string, Permiso> = {
   // ---------------------------------------------------------- calendario
   "GET /agenda": { modulo: "calendario", nivel: "view" },
+  // Devuelve cuántos turnos por día, no los turnos. Mismo módulo y mismo
+  // nivel que la agenda: es la agenda contada.
+  "GET /agenda/resumen": { modulo: "calendario", nivel: "view" },
   "GET /bookings/:id": { modulo: "calendario", nivel: "view" },
   "GET /capacity": { modulo: "calendario", nivel: "view" },
   "GET /stations": { modulo: "calendario", nivel: "view" },

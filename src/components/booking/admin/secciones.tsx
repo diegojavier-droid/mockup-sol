@@ -21,6 +21,7 @@ import { useCashRegister, usePendingRefunds, useStaffIdentity } from "@/lib/api/
 import { puede } from "@/lib/staff-session";
 import { AgendaScreen } from "./AgendaScreen";
 import { MesScreen } from "./MesScreen";
+import { AnioScreen } from "./AnioScreen";
 import { CashRegisterPanel } from "./CashRegisterPanel";
 import { PendingRefundsPanel } from "./PendingRefundsPanel";
 import { InvoicingScreen } from "./InvoicingScreen";
@@ -172,8 +173,11 @@ export function contenidoDe(
   nav?: {
     mes: string;
     dia?: string;
+    anio: number;
     irAlMes: (mes: string) => void;
     irAlDia: (dia: string | undefined) => void;
+    irAlAnio: (anio: number) => void;
+    verElMes: (mes: string) => void;
   },
 ): React.ReactNode | null {
   switch (`${modulo}/${seccion}`) {
@@ -187,6 +191,8 @@ export function contenidoDe(
       return nav ? (
         <Mes mes={nav.mes} dia={nav.dia} irAlMes={nav.irAlMes} irAlDia={nav.irAlDia} />
       ) : null;
+    case "agenda/anio":
+      return nav ? <AnioScreen anio={nav.anio} onAnio={nav.irAlAnio} onMes={nav.verElMes} /> : null;
 
     case "finanzas/caja":
       return <Caja />;
