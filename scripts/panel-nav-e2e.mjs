@@ -266,7 +266,9 @@ console.log("\n── Los rótulos de grupo se fueron, el orden se queda");
   );
   ok(
     "y los nueve módulos siguen en orden de frecuencia",
-    lateral.includes("AgendaClientasFinanzasInventarioServiciosPersonalComprasUsuarios y roles"),
+    lateral.includes(
+      "AgendaClientasFinanzasInventarioServiciosPuestos de trabajoPersonalComprasUsuarios y roles",
+    ),
     lateral,
   );
   ok("el módulo de los turnos se llama Agenda", !lateral.includes("Calendario"), lateral);
@@ -387,6 +389,31 @@ console.log("\n── Mientras no se sabe quién sos, no se dice que no");
     "y cuando llega la identidad, abre la sección",
     /la caja de hoy|todavía no entró plata/i.test(fin),
     fin.slice(0, 90),
+  );
+  await ctx.close();
+}
+
+console.log("\n── Los puestos viven en un solo módulo");
+{
+  const { ctx, page } = await abrir();
+
+  // El alta y baja, y los bloqueos: dos secciones del mismo módulo.
+  const tl = await ver(page, "/panel/puestos/listado");
+  ok("Puestos › Listado da de alta y de baja", /puestos de trabajo/i.test(tl));
+  const tb = await ver(page, "/panel/puestos/bloqueos");
+  ok("Puestos › Fuera de servicio saca un puesto roto", /fuera de servicio/i.test(tb));
+
+  // Y la Agenda ya no tiene su propio cuadro de puestos.
+  const ta = await ver(page, "/panel/agenda/hoy");
+  ok("la Agenda ya no tiene el cuadro «Estaciones»", !/estaciones/i.test(ta), ta.slice(0, 120));
+
+  // Servicios tampoco los tiene: la dirección vieja lleva a la nueva.
+  await page.goto(`${BASE}/panel/servicios/puestos`, { waitUntil: "commit", timeout: 20000 });
+  await page.waitForSelector('nav[aria-label="Dónde estás"]', { timeout: 20000 });
+  ok(
+    "la dirección vieja de Puestos lleva a la nueva",
+    page.url().endsWith("/panel/puestos/listado"),
+    page.url(),
   );
   await ctx.close();
 }

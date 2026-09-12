@@ -12,17 +12,44 @@
  * contra el árbol y se decide qué pasa cuando no cierra.
  */
 
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect, useNavigate } from "@tanstack/react-router";
 import { PanelShell } from "@/components/booking/admin/PanelShell";
 import { contenidoDe } from "@/components/booking/admin/secciones";
-import { buscarModulo, buscarSeccion } from "@/lib/panel-nav";
+import { MUDANZAS, buscarModulo, buscarSeccion } from "@/lib/panel-nav";
 import { queMostrar, useSesionPanel } from "@/lib/panel-sesion";
 
 export const Route = createFileRoute("/panel/$modulo/$seccion")({
+  /**
+   * Qué mes se mira y, si se abrió uno, qué día.
+   *
+   * Van en la dirección y no en un `useState` por lo mismo que las
+   * secciones: así `?mes=2026-10&dia=2026-10-15` se puede mandar por
+   * mensaje, y el botón «atrás» vuelve al mes en vez de salirse de la
+   * pantalla. Lo que no tenga la forma esperada se descarta en vez de
+   * romper: la dirección la escribe cualquiera.
+   */
+  validateSearch: (busqueda: Record<string, unknown>): { mes?: string; dia?: string } => ({
+    mes:
+      typeof busqueda.mes === "string" && /^\d{4}-\d{2}$/.test(busqueda.mes)
+        ? busqueda.mes
+        : undefined,
+    dia:
+      typeof busqueda.dia === "string" && /^\d{4}-\d{2}-\d{2}$/.test(busqueda.dia)
+        ? busqueda.dia
+        : undefined,
+  }),
   // Una dirección que no existe en el árbol es un 404 antes de dibujar
   // nada. Sin esto, `/panel/inventado/cosa` mostraría el armazón vacío,
   // que es peor que decir que no está.
   beforeLoad: ({ params }) => {
+    // Una dirección que se mudó lleva a donde fue, no a un 404.
+    const mudanza = MUDANZAS[`${params.modulo}/${params.seccion}`];
+    if (mudanza) {
+      throw redirect({
+        to: "/panel/$modulo/$seccion",
+        params: { modulo: mudanza.modulo, seccion: mudanza.seccion },
+      });
+    }
     const modulo = buscarModulo(params.modulo);
     if (!modulo || !buscarSeccion(modulo, params.seccion)) throw notFound();
   },
@@ -43,6 +70,8 @@ export const Route = createFileRoute("/panel/$modulo/$seccion")({
 
 function SeccionRoute() {
   const params = Route.useParams();
+  const { mes, dia } = Route.useSearch();
+  const navigate = useNavigate();
   const { identidad, cargando, cerrar } = useSesionPanel();
 
   const modulo = buscarModulo(params.modulo)!;
@@ -64,7 +93,29 @@ function SeccionRoute() {
   // pida acceso a quien administra el panel, y quien administra el panel
   // es ella.
   const que = queMostrar({ identidad, cargando }, modulo.permiso);
-  const contenido = que === "adelante" ? contenidoDe(modulo.slug, seccion.slug) : null;
+  const contenido =
+    que === "adelante"
+      ? contenidoDe(modulo.slug, seccion.slug, {
+          // Sin `?mes=`, el mes que se mira es el de hoy en el salón.
+          mes: mes ?? new Date(Date.now() - 180 * 60_000).toISOString().slice(0, 7),
+          dia,
+          // La ruta se nombra entera y no con «.»: el destino es esta
+          // misma sección con otra búsqueda, y `to: "."` necesita saber
+          // desde dónde sale para resolverse.
+          irAlMes: (m) =>
+            void navigate({
+              to: "/panel/$modulo/$seccion",
+              params: { modulo: modulo.slug, seccion: seccion.slug },
+              search: { mes: m },
+            }),
+          irAlDia: (d) =>
+            void navigate({
+              to: "/panel/$modulo/$seccion",
+              params: { modulo: modulo.slug, seccion: seccion.slug },
+              search: { mes, dia: d },
+            }),
+        })
+      : null;
 
   return (
     <PanelShell modulo={modulo} seccion={seccion} identidad={identidad} onSalir={cerrar}>

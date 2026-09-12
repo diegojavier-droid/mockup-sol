@@ -70,9 +70,14 @@ export function NewBookingDialog({
     .filter((t): t is LengthTier => Boolean(t) && t !== "unico");
   const needsLength = lengthOptions.length > 1;
 
-  const services = categories.flatMap((c) =>
-    (servicesByCategory[c.id] ?? []).map((s) => ({ slug: s.id, name: s.name, area: c.name })),
-  );
+  // Agrupados por categoría, no en una lista plana de cuarenta y tres.
+  // Suelta obligaba a recorrerla entera hasta encontrar lo que se
+  // buscaba, y cada renglón repetía la categoría al final —«Corte
+  // femenino · Peluquería»— para compensar que no se sabía dónde estabas.
+  // Con los grupos, el nombre de la categoría se dice una vez y arriba.
+  const porCategoria = categories
+    .map((c) => ({ nombre: c.name, items: servicesByCategory[c.id] ?? [] }))
+    .filter((g) => g.items.length > 0);
 
   const canSubmit =
     serviceSlug && firstName.trim() && phone.trim() && when && (!needsLength || lengthTier);
@@ -189,10 +194,14 @@ export function NewBookingDialog({
             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="">Elegir…</option>
-            {services.map((s) => (
-              <option key={s.slug} value={s.slug}>
-                {s.name} · {s.area}
-              </option>
+            {porCategoria.map((g) => (
+              <optgroup key={g.nombre} label={g.nombre}>
+                {g.items.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </Field>

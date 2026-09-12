@@ -1,13 +1,21 @@
 /**
- * Las estaciones del salón.
+ * Puestos de trabajo › Fuera de servicio.
  *
  * Sirve para una cosa concreta: sacar un puesto de servicio cuando se
  * rompe o está en reparación, y que la disponibilidad lo refleje sin
  * que nadie tenga que acordarse de no dar turnos ahí.
  *
- * Los turnos que ya estaban en esa estación NO se cancelan: quedan sin
- * estación y siguen en la agenda. La clienta viene igual; hay que
+ * Los turnos que ya estaban en ese puesto NO se cancelan: quedan sin
+ * puesto y siguen en la agenda. La clienta viene igual; hay que
  * reubicarla, no darla de baja.
+ *
+ * ERA UN CUADRO DENTRO DE LA AGENDA, LLAMADO «ESTACIONES»
+ *
+ * Y al lado vivía «Puestos de trabajo», una sección de Servicios que
+ * daba de alta y de baja. Dos nombres parecidos para dos cosas
+ * distintas: parecía lo mismo repetido y no lo era. Desde el 2026-09-12
+ * las dos son secciones del módulo Puestos de trabajo, cada una
+ * llamada por lo que hace.
  */
 
 import { useMemo, useState } from "react";
@@ -23,7 +31,7 @@ function salonDayLabel(iso: string): string {
   return `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-export function StationsDialog({ onClose }: { onClose: () => void }) {
+export function PuestosFueraScreen() {
   const stations = useStations();
   const block = useBlockStation();
   const unblock = useUnblockStation();
@@ -48,18 +56,13 @@ export function StationsDialog({ onClose }: { onClose: () => void }) {
   const canSubmit = target !== null && reason.trim().length > 0 && to > from;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/30 p-0 sm:items-center sm:p-4">
-      <div className="max-h-[90svh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-champagne-deep/20 bg-card p-5 sm:rounded-3xl">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="font-serif text-lg text-foreground">Estaciones</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-          >
-            Cerrar
-          </button>
-        </div>
+    <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+      <div>
+        <h2 className="font-serif text-xl text-foreground">Fuera de servicio</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Sacar un puesto mientras está roto o en reparación. Los turnos que ya estaban ahí no se
+          cancelan: quedan sin puesto y hay que reubicarlos.
+        </p>
 
         {feedback && (
           <p className="mt-3 rounded-2xl border border-champagne-deep/30 bg-champagne/20 px-4 py-3 text-sm text-foreground">
@@ -73,7 +76,7 @@ export function StationsDialog({ onClose }: { onClose: () => void }) {
         )}
 
         {stations.isPending && (
-          <p className="mt-4 text-sm text-muted-foreground">Buscando estaciones…</p>
+          <p className="mt-4 text-sm text-muted-foreground">Buscando los puestos…</p>
         )}
 
         <div className="mt-4 space-y-4">
@@ -167,7 +170,7 @@ export function StationsDialog({ onClose }: { onClose: () => void }) {
                       setTarget(null);
                       setReason("");
                       setFeedback(
-                        r.message ?? "Listo: esa estación no cuenta para la disponibilidad.",
+                        r.message ?? "Listo: ese puesto no cuenta para la disponibilidad.",
                       );
                     },
                     onError: (e) => setError((e as Error).message),
@@ -179,15 +182,15 @@ export function StationsDialog({ onClose }: { onClose: () => void }) {
               {block.isPending ? "Guardando…" : "Sacar de servicio"}
             </button>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Los turnos que ya estaban ahí no se cancelan: quedan sin estación y siguen en la
-              agenda para reubicarlos.
+              Los turnos que ya estaban ahí no se cancelan: quedan sin puesto y siguen en la agenda
+              para reubicarlos.
             </p>
           </div>
         )}
 
         <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
-          La capacidad de cada área sale de sus estaciones activas. Para cambiarla, agregá o sacá
-          estaciones — no hay un número suelto que editar.
+          La capacidad de cada área sale de sus puestos activos. Para cambiarla, agregá o sacá
+          puestos en el listado — no hay un número suelto que editar.
         </p>
         {unblock.isPending && <p className="mt-2 text-xs text-muted-foreground">Actualizando…</p>}
       </div>

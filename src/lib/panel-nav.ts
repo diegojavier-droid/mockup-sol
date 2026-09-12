@@ -66,7 +66,7 @@ export const ARBOL: ModuloDef[] = [
       seccion("hoy", "Hoy", true),
       seccion("manana", "Mañana", true),
       seccion("semana", "Semana", true),
-      seccion("mes", "Mes"),
+      seccion("mes", "Mes", true),
       seccion("anio", "Año"),
     ],
   },
@@ -111,8 +111,37 @@ export const ARBOL: ModuloDef[] = [
     secciones: [
       seccion("precios", "Precios y tiempos", true),
       seccion("areas", "Áreas"),
-      seccion("puestos", "Puestos de trabajo", true),
       seccion("horarios", "Horarios", true),
+    ],
+  },
+  {
+    /**
+     * Todo lo de los puestos, en un solo lugar (2026-09-12).
+     *
+     * Estaba partido en dos con nombres parecidos y funciones distintas:
+     * «Estaciones», un cuadro dentro de la Agenda para sacar de servicio
+     * un puesto roto, y «Puestos de trabajo», una sección de Servicios
+     * para dar de alta y de baja. Parecían lo mismo repetido y no lo
+     * eran, que es peor: obligaba a acordarse de cuál de las dos hacía
+     * qué.
+     *
+     * EL PERMISO ES `servicios`, NO UNO PROPIO
+     *
+     * Los nueve nombres de `Modulo` son el contrato con la matriz de la
+     * base y con `/me`: agregar uno décimo es una migración de datos, no
+     * de navegación. Se usa el permiso que ya gobernaba estas dos
+     * pantallas. Queda como deuda, igual que Agenda con `calendario`.
+     *
+     * Consecuencia a la vista: sacar un puesto de servicio pasa a exigir
+     * permiso de Servicios. Quien atiende el mostrador podía hacerlo
+     * desde la Agenda y ya no.
+     */
+    slug: "puestos",
+    label: "Puestos de trabajo",
+    permiso: "servicios",
+    secciones: [
+      seccion("listado", "Listado", true),
+      seccion("bloqueos", "Fuera de servicio", true),
     ],
   },
   {
@@ -168,6 +197,17 @@ export const BARRA_TELEFONO = ["agenda", "clientas", "finanzas"] as const;
 
 /** Dónde entra quien abre el panel sin pedir nada en particular. */
 export const ENTRADA = "/panel/agenda/hoy";
+
+/**
+ * Direcciones que existieron y se mudaron.
+ *
+ * `/panel/servicios/puestos` vivió poco —un día— pero es una dirección
+ * que ya circuló, y una dirección que alguna vez anduvo no se devuelve
+ * como 404 si sabemos a dónde fue.
+ */
+export const MUDANZAS: Record<string, { modulo: string; seccion: string }> = {
+  "servicios/puestos": { modulo: "puestos", seccion: "listado" },
+};
 
 export function buscarModulo(slug: string | undefined): ModuloDef | undefined {
   return ARBOL.find((m) => m.slug === slug);

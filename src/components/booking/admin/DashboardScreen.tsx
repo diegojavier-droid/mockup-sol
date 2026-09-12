@@ -150,9 +150,9 @@ function Summary({ data }: { data: DashboardSummary }) {
           hint={
             data.occupancy.rate_pct === null
               ? "El salón no abrió en este período."
-              : `Sobre estaciones. ${Math.round(data.occupancy.sold_minutes / 60)} de ${Math.round(
+              : `Sobre los puestos. ${Math.round(data.occupancy.sold_minutes / 60)} de ${Math.round(
                   data.occupancy.capacity_minutes / 60,
-                )} horas-estación.`
+                )} horas de puesto.`
           }
         />
       </div>
