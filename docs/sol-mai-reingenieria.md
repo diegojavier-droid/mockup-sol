@@ -689,12 +689,19 @@ así que la forma del arreglo decide cuánto trabajo es:
 3. **Un alquiler o fijo mensual.** Entonces no es costo por atención: es un
    gasto del salón y va a Finanzas › Gastos.
 
-**La pregunta para Sol es una sola:** ¿el arreglo es un monto fijo por
-maquillaje, un porcentaje, o algo mensual?
+**Contestado (2026-09-12): «se le paga un fijo por maquillaje».** Es el
+primero de los tres casos, el que no necesita construir nada:
+`service_parameters.standard_cost_amount` por cada servicio de maquillaje, y
+el cierre de atención lo precarga solo.
 
-Cualquiera de las tres funciona; la primera es la que no necesita construir
-nada. Y en los tres casos **el maquillaje ya se puede reservar online hoy**:
-esto define cómo se registra lo que sale, no si el servicio anda.
+Falta **el monto**, que lo pone Sol y no se inventa. Junto con el precio de
+venta, porque los cinco servicios de maquillaje siguen con precios
+`industry_baseline`. Son dos números por servicio: cuánto cobra el salón y
+cuánto le queda a la maquilladora.
+
+Y vale subrayar lo que esto habilita: **es el primer servicio del salón que
+va a tener margen real calculado**, porque es el único donde el costo se
+conoce con exactitud en vez de estimarse.
 
 ## 9. Lo que esta reingeniería deliberadamente no toca
 
