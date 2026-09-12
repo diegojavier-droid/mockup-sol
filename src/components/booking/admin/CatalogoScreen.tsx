@@ -39,6 +39,7 @@ import {
   useSetPromocionActiva,
   useSetServiceCost,
   type CatalogRow,
+  type CategoryRow,
   type PromotionRow,
   type ServiceKind,
 } from "@/lib/api/admin-hooks";
@@ -63,6 +64,20 @@ const KIND_AYUDA: Record<ServiceKind, string> = {
 };
 
 const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
+
+/**
+ * Para buscar: sin acentos y en minúsculas.
+ *
+ * Sol escribe «nutricion» y el servicio se llama «Alisado + nutrición». Una
+ * búsqueda que distingue el acento no encuentra nada y parece rota.
+ */
+function normalizar(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
 
 /** Sin acentos ni mayúsculas: es lo que va en la dirección. */
 function slugificar(texto: string): string {
@@ -122,9 +137,31 @@ export function TratamientosScreen() {
   return <Catalogo modo="tratamientos" />;
 }
 
+/**
+ * El catálogo, agrupado por área.
+ *
+ * POR QUÉ AGRUPADO Y NO UNA LISTA SOLA
+ *
+ * Son 37 servicios y 22 tratamientos, y no están repartidos parejo: de los
+ * 59, 44 son de Peluquería. Una sola lista alfabética mezcla «Alisado +
+ * corte» con «Cera de cejas» y «Esmaltado semipermanente», y encontrar algo
+ * pasa a ser cuestión de scrollear hasta verlo.
+ *
+ * La pantalla de Precios y tiempos ya agrupaba por área desde antes. Ésta
+ * nació sin hacerlo y quedó desalineada de la que Sol ya usa todos los días.
+ *
+ * EL ORDEN DE LAS ÁREAS SALE DE LA BASE, NO DE ACÁ
+ *
+ * `categories.sort_order` ya dice que Peluquería va primero. Escribir el
+ * orden en el código sería la tercera copia de un dato que ya existe, y la
+ * que se olvidaría de actualizar el día que Sol agregue un área.
+ */
 function Catalogo({ modo }: { modo: "servicios" | "tratamientos" }) {
   const { setAviso, barra } = useAviso();
   const catalogo = useCatalogo(true);
+  const categorias = useCategorias(true);
+  const [busqueda, setBusqueda] = useState("");
+  const [abriendoAlta, setAbriendoAlta] = useState(false);
   const esTratamiento = modo === "tratamientos";
 
   const filas = useMemo(
@@ -134,6 +171,47 @@ function Catalogo({ modo }: { modo: "servicios" | "tratamientos" }) {
       ),
     [catalogo.data, esTratamiento],
   );
+
+  const buscado = normalizar(busqueda);
+  const visibles = useMemo(
+    () =>
+      buscado === ""
+        ? filas
+        : filas.filter((f) => normalizar(f.name).includes(buscado) || f.slug.includes(buscado)),
+    [filas, buscado],
+  );
+
+  /**
+   * Un grupo por área, en el orden de la base.
+   *
+   * Los que no se ofrecen van al final de su área en vez de mezclarse por
+   * orden alfabético: si babylights aparece entre dos servicios activos, hay
+   * que leer la etiqueta de cada fila para saber cuáles están vivos.
+   */
+  const grupos = useMemo(() => {
+    const orden = (categorias.data ?? []).map((c) => c.slug);
+    const nombre = new Map((categorias.data ?? []).map((c) => [c.slug, c.name]));
+    const porArea = new Map<string, CatalogRow[]>();
+    for (const f of visibles) {
+      if (!porArea.has(f.category)) porArea.set(f.category, []);
+      porArea.get(f.category)!.push(f);
+    }
+    return [...porArea.entries()]
+      .sort((a, b) => {
+        const ia = orden.indexOf(a[0]);
+        const ib = orden.indexOf(b[0]);
+        // Un área que todavía no llegó en la consulta de categorías va al
+        // final, no al principio: `indexOf` devuelve -1 y ordenaría al revés.
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      })
+      .map(([slug, lista]) => ({
+        slug,
+        nombre: nombre.get(slug) ?? slug,
+        lista: [...lista].sort(
+          (a, b) => Number(b.isActive) - Number(a.isActive) || a.name.localeCompare(b.name, "es"),
+        ),
+      }));
+  }, [visibles, categorias.data]);
 
   return (
     <div className="space-y-6">
@@ -146,10 +224,51 @@ function Catalogo({ modo }: { modo: "servicios" | "tratamientos" }) {
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           {esTratamiento
             ? "Lo que se suma a otro trabajo: hidratación, keratina, botox. Con un color pueden salir menos, y eso lo decide la promoción."
-            : "Lo principal del turno: corte, color, mechas, balayage. Marcá «Color» a los que tengan que disparar las promociones de tratamientos."}
+            : "Lo principal del turno: corte, color, mechas, balayage."}
         </p>
 
-        <Alta modo={modo} onAviso={setAviso} />
+        {/*
+          Las dos aclaraciones que antes se repetían en cada fila. Dichas
+          treinta y siete veces dejan de leerse y se vuelven ruido; dichas
+          una vez, arriba, siguen estando cuando hacen falta.
+        */}
+        <ul className="mt-3 max-w-2xl space-y-1 text-xs text-muted-foreground">
+          <li>
+            <span className="text-foreground/70">La clase</span> decide el precio cuando hay varias
+            cosas en el mismo turno: un <b>color</b> activa las promociones sobre los tratamientos,
+            y un <b>tratamiento</b> con un color puede salir menos. Lo demás vale lo mismo vaya solo
+            o acompañado.
+          </li>
+          <li>
+            <span className="text-foreground/70">Nos cuesta</span> es lo que el salón paga por
+            prestarlo. Vacío quiere decir «no sabemos» y deja el margen sin calcular: no es cero.
+          </li>
+        </ul>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button className={BOTON} onClick={() => setAbriendoAlta((v) => !v)} type="button">
+            {esTratamiento ? "Agregar un tratamiento" : "Agregar un servicio"}
+          </button>
+          <input
+            aria-label="Buscar en el catálogo"
+            className={`${CAMPO} w-56`}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar…"
+            type="search"
+            value={busqueda}
+          />
+          {busqueda.trim() !== "" && (
+            <span className="text-xs text-muted-foreground">
+              {visibles.length === 0
+                ? "Nada con ese nombre."
+                : `${visibles.length} de ${filas.length}`}
+            </span>
+          )}
+        </div>
+
+        {abriendoAlta && (
+          <Alta modo={modo} onAviso={setAviso} onCerrar={() => setAbriendoAlta(false)} />
+        )}
 
         {catalogo.isLoading && <p className="mt-4 text-sm text-muted-foreground">Cargando…</p>}
         {catalogo.isError && (
@@ -166,22 +285,34 @@ function Catalogo({ modo }: { modo: "servicios" | "tratamientos" }) {
               {esTratamiento ? "Todavía no hay tratamientos" : "Todavía no hay servicios"}
             </p>
             <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-              Agregá el primero con el formulario de arriba.
+              Agregá el primero con el botón de arriba.
             </p>
           </div>
         )}
 
-        <div className="mt-4 space-y-3">
-          {filas.map((f) => (
-            <FilaCatalogo
-              key={`${f.slug}-${f.kind}-${f.standardCost}`}
-              fila={f}
-              onAviso={setAviso}
-            />
-          ))}
-        </div>
+        {grupos.map((g) => (
+          <div className="mt-8" key={g.slug}>
+            <h3 className="flex items-baseline gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              {g.nombre}
+              <span className="tracking-normal normal-case">· {g.lista.length}</span>
+            </h3>
+            <div className="mt-2 divide-y divide-border rounded-2xl border border-border bg-card">
+              {g.lista.map((f) => (
+                <FilaCatalogo
+                  // El valor va en la clave a propósito: cuando el servidor
+                  // devuelve otro —al deshacer, por ejemplo— la fila se vuelve
+                  // a montar con el dato correcto en vez de mostrar el viejo.
+                  key={`${f.slug}-${f.kind}-${f.standardCost}-${f.name}`}
+                  categorias={categorias.data ?? []}
+                  fila={f}
+                  onAviso={setAviso}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
 
-        <p className="mt-4 text-xs text-muted-foreground">
+        <p className="mt-6 text-xs text-muted-foreground">
           El precio y la duración por largo se cambian en{" "}
           <span className="text-foreground/70">Precios y tiempos</span>. Acá se decide qué existe y
           de qué clase es.
@@ -192,17 +323,35 @@ function Catalogo({ modo }: { modo: "servicios" | "tratamientos" }) {
 }
 
 /**
- * Un servicio, editable donde se ve.
+ * Un servicio, en dos renglones.
  *
- * El nombre corto —el que va en la dirección— no se edita nunca. Cambiarlo
- * rompería los turnos viejos que lo nombran, y renombrar lo que se lee es
- * lo que hace falta el 100% de las veces.
+ * Antes eran seis, con las mismas dos aclaraciones repetidas en cada uno y
+ * tres botones para elegir la clase. Con treinta y siete filas eso son más
+ * de trescientos controles en una pantalla, y la lista deja de poder leerse.
+ *
+ * POR QUÉ LA CLASE ES UNA LISTA Y NO TRES BOTONES
+ *
+ * Tres botones se leen como tres cosas que podés hacer; una lista desplegable
+ * se lee como una sola cosa que está en un estado. Es lo segundo: un servicio
+ * tiene una clase, no tres. Además es el mismo control que ya usa la
+ * categoría dos casilleros más allá.
+ *
+ * El nombre corto —el que va en la dirección— no se edita nunca: cambiarlo
+ * rompería los turnos viejos que lo nombran, y renombrar lo que se lee es lo
+ * que hace falta el 100% de las veces.
  */
-function FilaCatalogo({ fila, onAviso }: { fila: CatalogRow; onAviso: Aviso }) {
+function FilaCatalogo({
+  fila,
+  categorias,
+  onAviso,
+}: {
+  fila: CatalogRow;
+  categorias: CategoryRow[];
+  onAviso: Aviso;
+}) {
   const editar = useEditarServicio();
   const costo = useSetServiceCost();
   const baja = useBajaDeServicio();
-  const categorias = useCategorias(true);
 
   const [nombre, setNombre] = useState(fila.name);
   const [costoTexto, setCostoTexto] = useState(
@@ -212,23 +361,16 @@ function FilaCatalogo({ fila, onAviso }: { fila: CatalogRow; onAviso: Aviso }) {
   const fallo = (e: unknown) =>
     onAviso({ texto: e instanceof Error ? e.message : "No se pudo guardar." });
 
-  const cambiarClase = (kind: ServiceKind) => {
-    if (kind === fila.kind) return;
-    const antes = fila.kind;
-    editar.mutate(
-      { slug: fila.slug, kind },
-      {
-        onSuccess: () =>
-          onAviso({
-            texto:
-              `${fila.name}: ${KIND_LABEL[antes]} → ${KIND_LABEL[kind]}.` +
-              (kind === "tratamiento" || antes === "tratamiento" ? " Cambió de pantalla." : ""),
-            deshacer: () => editar.mutate({ slug: fila.slug, kind: antes }),
-          }),
-        onError: fallo,
-      },
-    );
-  };
+  /** Cambiar algo y poder volver atrás con el mismo gesto. */
+  const cambiar = (
+    campos: Parameters<typeof editar.mutate>[0],
+    texto: string,
+    volver: Parameters<typeof editar.mutate>[0],
+  ) =>
+    editar.mutate(campos, {
+      onSuccess: () => onAviso({ texto, deshacer: () => editar.mutate(volver) }),
+      onError: fallo,
+    });
 
   const guardarCosto = () => {
     const limpio = costoTexto.trim();
@@ -244,7 +386,7 @@ function FilaCatalogo({ fila, onAviso }: { fila: CatalogRow; onAviso: Aviso }) {
       {
         onSuccess: () =>
           onAviso({
-            texto: `${fila.name} · costo: ${antes === null ? "sin dato" : pesos(antes)} → ${
+            texto: `${fila.name} · nos cuesta: ${antes === null ? "sin dato" : pesos(antes)} → ${
               valor === null ? "sin dato" : pesos(valor)
             }`,
             deshacer: () => costo.mutate({ slug: fila.slug, amount: antes }),
@@ -257,83 +399,72 @@ function FilaCatalogo({ fila, onAviso }: { fila: CatalogRow; onAviso: Aviso }) {
   const margen = fila.standardCost === null ? null : fila.priceAmount - fila.standardCost;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <input
-            aria-label={`Nombre de ${fila.name}`}
-            className={`${CAMPO} w-full font-serif text-base`}
-            onBlur={() => {
-              const limpio = nombre.trim();
-              if (limpio === "" || limpio === fila.name) {
-                setNombre(fila.name);
-                return;
-              }
-              const antes = fila.name;
-              editar.mutate(
-                { slug: fila.slug, name: limpio },
-                {
-                  onSuccess: () =>
-                    onAviso({
-                      texto: `«${antes}» → «${limpio}»`,
-                      deshacer: () => editar.mutate({ slug: fila.slug, name: antes }),
-                    }),
-                  onError: fallo,
-                },
-              );
-            }}
-            onChange={(e) => setNombre(e.target.value)}
-            value={nombre}
-          />
-          <p className="mt-1 text-xs text-muted-foreground">
-            {fila.slug} · {fila.category} · {fila.durationMin} min · {pesos(fila.priceAmount)}
-          </p>
-        </div>
+    <div className={`px-4 py-3 ${fila.isActive ? "" : "bg-muted/20"}`}>
+      {/* Renglón 1: qué es y cuánto sale. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <input
+          aria-label={`Nombre de ${fila.name}`}
+          className={`min-w-0 flex-1 basis-48 rounded-lg border border-transparent bg-transparent px-2 py-1 font-serif text-base text-foreground hover:border-border focus-visible:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            fila.isActive ? "" : "text-muted-foreground line-through decoration-1"
+          }`}
+          onBlur={() => {
+            const limpio = nombre.trim();
+            if (limpio === "" || limpio === fila.name) {
+              setNombre(fila.name);
+              return;
+            }
+            cambiar({ slug: fila.slug, name: limpio }, `«${fila.name}» → «${limpio}»`, {
+              slug: fila.slug,
+              name: fila.name,
+            });
+          }}
+          onChange={(e) => setNombre(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+          value={nombre}
+        />
 
-        <button
-          className={`${CHIP} ${fila.isActive ? "" : "opacity-60"}`}
-          onClick={() => {
-            const antes = fila.isActive;
-            editar.mutate(
-              { slug: fila.slug, isActive: !antes },
-              {
-                onSuccess: () =>
-                  onAviso({
-                    texto: `${fila.name}: ${antes ? "ya no se ofrece" : "vuelve a ofrecerse"}.`,
-                    deshacer: () => editar.mutate({ slug: fila.slug, isActive: antes }),
-                  }),
-                onError: fallo,
-              },
+        <select
+          aria-label={`Clase de ${fila.name}`}
+          className={`${CAMPO} w-32 shrink-0 py-1 text-xs ${
+            fila.kind === "servicio" ? "text-muted-foreground" : "text-foreground"
+          }`}
+          onChange={(e) => {
+            const kind = e.target.value as ServiceKind;
+            const antes = fila.kind;
+            cambiar(
+              { slug: fila.slug, kind },
+              `${fila.name}: ${KIND_LABEL[antes]} → ${KIND_LABEL[kind]}.` +
+                (kind === "tratamiento" || antes === "tratamiento" ? " Cambió de pestaña." : ""),
+              { slug: fila.slug, kind: antes },
             );
           }}
-          type="button"
+          value={fila.kind}
         >
-          {fila.isActive ? "Se ofrece" : "Guardado"}
-        </button>
+          {(["servicio", "color", "tratamiento"] as ServiceKind[]).map((k) => (
+            <option key={k} value={k}>
+              {KIND_LABEL[k]}
+            </option>
+          ))}
+        </select>
+
+        <span className="shrink-0 text-sm tabular-nums text-foreground/80">
+          {fila.durationMin} min · {pesos(fila.priceAmount)}
+        </span>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {(["servicio", "color", "tratamiento"] as ServiceKind[]).map((k) => (
-          <button
-            className={`${CHIP} ${
-              fila.kind === k ? "border-foreground bg-foreground text-background" : ""
-            }`}
-            key={k}
-            onClick={() => cambiarClase(k)}
-            title={KIND_AYUDA[k]}
-            type="button"
-          >
-            {KIND_LABEL[k]}
-          </button>
-        ))}
-        <span className="text-xs text-muted-foreground">{KIND_AYUDA[fila.kind]}</span>
-      </div>
+      {/* Renglón 2: lo de adentro, en voz baja. */}
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2 pl-2 text-xs text-muted-foreground">
+        <span className="w-36 shrink-0 truncate font-mono" title={fila.slug}>
+          {fila.slug}
+        </span>
 
-      <div className="mt-3 flex flex-wrap items-end gap-3">
-        <label className="text-xs text-muted-foreground">
-          <span className="block">Nos cuesta</span>
+        <span className="flex items-center gap-1.5">
+          Nos cuesta
           <input
-            className={`${CAMPO} mt-1 w-32`}
+            aria-label={`Costo de ${fila.name}`}
+            className={`${CAMPO} w-28 py-0.5 text-xs`}
             inputMode="numeric"
             onBlur={guardarCosto}
             onChange={(e) => setCostoTexto(e.target.value)}
@@ -343,66 +474,63 @@ function FilaCatalogo({ fila, onAviso }: { fila: CatalogRow; onAviso: Aviso }) {
             placeholder="No sabemos"
             value={costoTexto}
           />
-        </label>
+          <span className="w-24 tabular-nums">
+            {margen === null ? "" : `queda ${pesos(margen)}`}
+          </span>
+        </span>
 
-        <p className="pb-2 text-xs text-muted-foreground">
-          {margen === null
-            ? "Sin el costo, el margen queda sin calcular. Vacío no es cero."
-            : `Queda ${pesos(margen)} por cada uno.`}
-        </p>
+        <select
+          aria-label={`Área de ${fila.name}`}
+          className={`${CAMPO} w-32 shrink-0 py-0.5 text-xs`}
+          onChange={(e) =>
+            cambiar(
+              { slug: fila.slug, category: e.target.value },
+              `${fila.name} se movió a ${
+                categorias.find((c) => c.slug === e.target.value)?.name ?? e.target.value
+              }.`,
+              { slug: fila.slug, category: fila.category },
+            )
+          }
+          value={fila.category}
+        >
+          {categorias.map((c) => (
+            <option key={c.slug} value={c.slug}>
+              {c.name}
+            </option>
+          ))}
+        </select>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <button
-            className={`${CHIP} ${fila.isPublic ? "border-foreground" : ""}`}
-            onClick={() => {
-              const antes = fila.isPublic;
-              editar.mutate(
-                { slug: fila.slug, isPublic: !antes },
-                {
-                  onSuccess: () =>
-                    onAviso({
-                      texto: `${fila.name}: ${
-                        antes ? "ya no se ve en la web" : "ahora se ve en la web"
-                      }.`,
-                      deshacer: () => editar.mutate({ slug: fila.slug, isPublic: antes }),
-                    }),
-                  onError: fallo,
-                },
-              );
-            }}
+            className={`${CHIP} ${fila.isActive ? "border-foreground/40 text-foreground" : ""}`}
+            onClick={() =>
+              cambiar(
+                { slug: fila.slug, isActive: !fila.isActive },
+                `${fila.name}: ${fila.isActive ? "ya no se ofrece" : "vuelve a ofrecerse"}.`,
+                { slug: fila.slug, isActive: fila.isActive },
+              )
+            }
+            type="button"
+          >
+            {fila.isActive ? "Se ofrece" : "Guardado"}
+          </button>
+
+          <button
+            className={`${CHIP} ${fila.isPublic ? "border-foreground/40 text-foreground" : ""}`}
+            onClick={() =>
+              cambiar(
+                { slug: fila.slug, isPublic: !fila.isPublic },
+                `${fila.name}: ${fila.isPublic ? "ya no se ve en la web" : "ahora se ve en la web"}.`,
+                { slug: fila.slug, isPublic: fila.isPublic },
+              )
+            }
             type="button"
           >
             {fila.isPublic ? "En la web" : "Sólo adentro"}
           </button>
 
-          <select
-            aria-label={`Categoría de ${fila.name}`}
-            className={`${CAMPO} py-1 text-xs`}
-            onChange={(e) => {
-              const antes = fila.category;
-              editar.mutate(
-                { slug: fila.slug, category: e.target.value },
-                {
-                  onSuccess: () =>
-                    onAviso({
-                      texto: `${fila.name}: ${antes} → ${e.target.value}`,
-                      deshacer: () => editar.mutate({ slug: fila.slug, category: antes }),
-                    }),
-                  onError: fallo,
-                },
-              );
-            }}
-            value={fila.category}
-          >
-            {(categorias.data ?? []).map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-
           <button
-            className={`${CHIP} text-muted-foreground`}
+            className={CHIP}
             onClick={() =>
               baja.mutate(fila.slug, {
                 onSuccess: () =>
@@ -422,20 +550,17 @@ function FilaCatalogo({ fila, onAviso }: { fila: CatalogRow; onAviso: Aviso }) {
   );
 }
 
-/**
- * El alta.
- *
- * Nace con un precio y una duración para los cuatro largos: un servicio
- * sin precio no se puede cotizar, y uno que nace roto es peor que uno que
- * no existe. Los cuatro largos se afinan después en Precios y tiempos.
- *
- * Nace además sin publicar. Publicar algo cuya duración nadie confirmó es
- * ofrecer un turno de una duración inventada.
- */
-function Alta({ modo, onAviso }: { modo: "servicios" | "tratamientos"; onAviso: Aviso }) {
+function Alta({
+  modo,
+  onAviso,
+  onCerrar,
+}: {
+  modo: "servicios" | "tratamientos";
+  onAviso: Aviso;
+  onCerrar: () => void;
+}) {
   const crear = useCrearServicio();
   const categorias = useCategorias(true);
-  const [abierto, setAbierto] = useState(false);
   const [nombre, setNombre] = useState("");
   const [categoria, setCategoria] = useState("");
   const [kind, setKind] = useState<ServiceKind>(
@@ -454,16 +579,8 @@ function Alta({ modo, onAviso }: { modo: "servicios" | "tratamientos"; onAviso: 
     Number.isInteger(Number(precio)) &&
     Number(precio) >= 0;
 
-  if (!abierto) {
-    return (
-      <button className={`${BOTON} mt-4`} onClick={() => setAbierto(true)} type="button">
-        {modo === "tratamientos" ? "Agregar un tratamiento" : "Agregar un servicio"}
-      </button>
-    );
-  }
-
   return (
-    <div className="mt-4 rounded-2xl border border-champagne-deep/30 bg-cream/40 p-4">
+    <div className="mt-3 rounded-2xl border border-champagne-deep/30 bg-cream/40 p-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs text-muted-foreground">
           <span className="block">Cómo se llama</span>
@@ -515,16 +632,21 @@ function Alta({ modo, onAviso }: { modo: "servicios" | "tratamientos"; onAviso: 
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {(["servicio", "color", "tratamiento"] as ServiceKind[]).map((k) => (
-          <button
-            className={`${CHIP} ${kind === k ? "border-foreground bg-foreground text-background" : ""}`}
-            key={k}
-            onClick={() => setKind(k)}
-            type="button"
-          >
-            {KIND_LABEL[k]}
-          </button>
-        ))}
+        <label className="text-xs text-muted-foreground" htmlFor="alta-clase">
+          Clase
+        </label>
+        <select
+          className={`${CAMPO} py-1 text-xs`}
+          id="alta-clase"
+          onChange={(e) => setKind(e.target.value as ServiceKind)}
+          value={kind}
+        >
+          {(["servicio", "color", "tratamiento"] as ServiceKind[]).map((k) => (
+            <option key={k} value={k}>
+              {KIND_LABEL[k]}
+            </option>
+          ))}
+        </select>
         <span className="text-xs text-muted-foreground">{KIND_AYUDA[kind]}</span>
       </div>
 
@@ -552,7 +674,7 @@ function Alta({ modo, onAviso }: { modo: "servicios" | "tratamientos"; onAviso: 
                   onAviso({ texto: `«${nombre.trim()}» quedó en la lista, sin publicar.` });
                   setNombre("");
                   setPrecio("");
-                  setAbierto(false);
+                  onCerrar();
                 },
                 onError: (e) =>
                   onAviso({ texto: e instanceof Error ? e.message : "No se pudo crear." }),
@@ -563,7 +685,7 @@ function Alta({ modo, onAviso }: { modo: "servicios" | "tratamientos"; onAviso: 
         >
           {crear.isPending ? "Guardando…" : "Agregar"}
         </button>
-        <button className={CHIP} onClick={() => setAbierto(false)} type="button">
+        <button className={CHIP} onClick={onCerrar} type="button">
           Cancelar
         </button>
       </div>

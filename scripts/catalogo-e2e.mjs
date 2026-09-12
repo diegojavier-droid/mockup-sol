@@ -47,9 +47,12 @@ const IDENTIDAD = {
   },
 };
 
+// Tres áreas y no dos: con dos no se puede distinguir el orden de la base
+// del alfabético, que es justamente lo que hay que comprobar.
 const CATEGORIAS = [
   { slug: "peluqueria", name: "Peluquería", isPublic: true },
   { slug: "maquillaje", name: "Maquillaje", isPublic: true },
+  { slug: "unas", name: "Uñas", isPublic: true },
 ];
 
 // Un catálogo chico con las tres clases representadas, para que las dos
@@ -101,6 +104,18 @@ const CATALOGO = [
     priceAmount: 23000,
     standardCost: null,
     isPublic: false,
+    isActive: true,
+  },
+  {
+    slug: "semi",
+    name: "Esmaltado semipermanente",
+    description: null,
+    category: "unas",
+    kind: "servicio",
+    durationMin: 60,
+    priceAmount: 17000,
+    standardCost: null,
+    isPublic: true,
     isActive: true,
   },
   {
@@ -226,7 +241,15 @@ const texto = () => pagina.locator("body").innerText();
 const esperar = () => pagina.waitForTimeout(700);
 const ir = async (seccion) => {
   await pagina.goto(`${BASE}/panel/servicios/${seccion}`, { waitUntil: "domcontentloaded" });
-  await pagina.waitForTimeout(1800);
+  // Se espera a que haya algo dibujado, no un rato fijo: la primera
+  // navegación después de arrancar Vite compila y tarda mucho más que las
+  // siguientes, y un tiempo fijo hace fallar comprobaciones sanas.
+  await pagina
+    .locator("input[aria-label^='Nombre de'], [class*='border-dashed'], h3")
+    .first()
+    .waitFor({ timeout: 20000 })
+    .catch(() => {});
+  await pagina.waitForTimeout(500);
 };
 
 console.log(`\nRecorriendo el panel de ${BASE}\n`);
@@ -245,10 +268,7 @@ const nombresVisibles = () =>
 check("Servicios tiene su propia dirección", enServicios.includes("Servicios"));
 check("muestra los que no son tratamiento", (await nombresVisibles()).includes("Mechas"));
 check("y deja los tratamientos afuera", !(await nombresVisibles()).includes("Karseell"));
-check(
-  "explica para qué sirve marcar «Color»",
-  /promociones de tratamientos|dispare/i.test(enServicios),
-);
+check("explica para qué sirve marcar «Color»", /activa las promociones/i.test(enServicios));
 
 await ir("tratamientos");
 const enTratamientos = await texto();
@@ -264,6 +284,48 @@ check("Promociones tiene su propia dirección", enPromos.includes("Tratamiento c
 check("dice con qué se activa", /se activa con/i.test(enPromos));
 check("y qué abarata", /abarata/i.test(enPromos));
 
+// ── 1 bis. Agrupado por área, no una lista sola ─────────────────────────
+console.log("1 bis. El orden de la lista");
+await ir("catalogo");
+const encabezados = () =>
+  pagina.locator("h3").evaluateAll((hs) => hs.map((h) => h.innerText.trim()));
+
+const areas = await encabezados();
+check("cada área tiene su encabezado", areas.length >= 2);
+check("Peluquería va primero, que es lo principal del salón", /PELUQUER/i.test(areas[0] ?? ""));
+check("el encabezado dice cuántos hay", /·\s*\d+/.test(areas[0] ?? ""));
+check(
+  "las áreas siguen el orden de la base, no el alfabético",
+  areas.findIndex((a) => /MAQUILLAJE/i.test(a)) < areas.findIndex((a) => /U\u00d1AS|UNAS/i.test(a)),
+);
+
+// Las dos aclaraciones vivían repetidas en cada fila. Con 37 servicios eso
+// era ruido: si se repiten, vuelven.
+const cuantasVeces = (t, frase) => t.split(frase).length - 1;
+const textoServicios = await texto();
+check(
+  "la aclaración de la clase se dice una vez, no en cada fila",
+  cuantasVeces(textoServicios, "vale lo mismo vaya solo o acompañado") <= 1,
+);
+check(
+  "la aclaración del costo se dice una vez, no en cada fila",
+  cuantasVeces(textoServicios, "no es cero") <= 1,
+);
+
+// ── 1 ter. Buscar, porque scrollear 37 filas no es encontrar ────────────
+console.log("1 ter. La búsqueda");
+const buscador = pagina.getByLabel("Buscar en el catálogo");
+await buscador.fill("raices");
+await esperar();
+const trasBuscar = await nombresVisibles();
+check(
+  "encontrar sin poner el acento funciona",
+  trasBuscar.some((n) => /ra\u00edces/i.test(n)),
+);
+check("y deja afuera lo que no coincide", !trasBuscar.includes("Mechas"));
+await buscador.fill("");
+await esperar();
+
 // ── 2. La palabra es «promoción» ────────────────────────────────────────
 console.log("2. La palabra");
 const todoElTexto = enServicios + enTratamientos + enPromos;
@@ -276,11 +338,7 @@ const filaMechas = pagina
   .locator("div")
   .filter({ hasText: /^Mechas/ })
   .first();
-await pagina
-  .locator("div.rounded-2xl")
-  .filter({ has: pagina.locator('input[value="Mechas"]') })
-  .getByRole("button", { name: "Color", exact: true })
-  .click();
+await pagina.getByLabel("Clase de Mechas").selectOption("color");
 await esperar();
 const cambioDeClase = escrituras.find((e) => e.ruta === "/salon/catalog/mechas");
 check("manda un PATCH al servicio", cambioDeClase?.metodo === "PATCH");
@@ -293,12 +351,9 @@ void filaMechas;
 
 // ── 4. El caso de la maquilladora: el costo es un campo ─────────────────
 console.log("4. El costo de la maquilladora");
-const campoCosto = pagina
-  .locator("div.rounded-2xl")
-  .filter({ has: pagina.locator('input[value="Maquillaje social"]') })
-  .locator('input[placeholder="No sabemos"]');
+const campoCosto = pagina.getByLabel("Costo de Maquillaje social");
 check("el costo vacío dice «No sabemos», no cero", (await campoCosto.inputValue()) === "");
-check("y avisa que sin el dato no hay margen", (await texto()).includes("Vacío no es cero"));
+check("y avisa que sin el dato no hay margen", (await texto()).includes("no es cero"));
 await campoCosto.fill("12000");
 await campoCosto.blur();
 await esperar();
@@ -322,11 +377,7 @@ await pagina.getByPlaceholder("Raíz Exiline").fill("Raíz Exiline");
 await esperar();
 check("propone el nombre corto solo, sin acentos", (await texto()).includes("raiz-exiline"));
 await pagina.getByPlaceholder("28000").fill("28000");
-await pagina
-  .locator("div.rounded-2xl")
-  .filter({ has: pagina.getByPlaceholder("Raíz Exiline") })
-  .getByRole("button", { name: "Color", exact: true })
-  .click();
+await pagina.getByLabel("Clase", { exact: true }).selectOption("color");
 check("avisa que entra sin publicar", /sin publicar en la web/i.test(await texto()));
 await pagina.getByRole("button", { name: "Agregar", exact: true }).click();
 await esperar();
