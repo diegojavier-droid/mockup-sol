@@ -272,11 +272,17 @@ Hallazgos que estos documentos incorporan y que antes no estaban medidos:
   se le paga es el `cost_amount` de esa atención —el primer uso real de ese
   campo, que es el insumo que le falta al margen del dashboard—. El área
   `maquillaje` ya existe con capacidad 1 y reserva online.
-- **Queda un hueco por resolver:** la maquilladora «viene cuando hay turno» y
-  la reserva se confirma sola al pagar la seña, con una anticipación mínima
-  global de 2 horas. Hace falta `min_advance_hours` por área —columna
-  aditiva, nula = valor global—, y **el número lo pone Sol**: con cuánta
-  anticipación hay que avisarle.
+- **La maquilladora siempre está disponible**: «tercerizada» describe cómo se
+  le paga, no cuándo aparece. Por eso **maquillaje es un servicio normal** —se
+  reserva online con la anticipación de siempre, ocupa el área `maquillaje`
+  que ya existe y se confirma sola al pagar la seña—. Se retira la propuesta
+  de `min_advance_hours` por área: no hace falta.
+- **Lo único abierto de maquillaje es la forma del arreglo comercial.** El
+  esquema sólo soporta costos de monto fijo (`standard_cost_amount` y
+  `cost_amount`); no hay concepto de porcentaje. Si el arreglo es un fijo por
+  servicio, se carga una vez y no se construye nada; si es un porcentaje, hay
+  que escribirlo a mano en cada cierre o agregar el concepto; si es mensual,
+  no es costo por atención sino un gasto del salón.
 
 ## Regla de mantenimiento
 

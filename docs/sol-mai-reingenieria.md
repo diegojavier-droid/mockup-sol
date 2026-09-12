@@ -642,45 +642,59 @@ Hoy está vacío en todas las atenciones, y por eso el dashboard informa el
 margen como NO DISPONIBLE. El maquillaje tercerizado es justamente el caso
 donde el costo se conoce con exactitud, porque es una factura.
 
-#### El hueco: «viene cuando hay turno» contra la confirmación automática
+#### El hueco que parecía haber, y no hay
 
-Este es el problema real, y no es de catálogo ni de dinero.
+§8.9 planteaba un problema: si la maquilladora «viene cuando hay turno», una
+clienta podía tener un maquillaje confirmado para dentro de dos horas sin que
+nadie le hubiera preguntado si podía venir. La corrección propuesta era una
+anticipación mínima por área, con una columna nueva en `areas`.
 
-Hoy el recorrido es: la clienta reserva, paga la seña dentro de los 10
-minutos, y la reserva pasa a `confirmed`. Automático, sin que intervenga
-nadie. Con la anticipación mínima actual —`min_advance_hours = 2`— eso
-significa que **una clienta puede tener un maquillaje confirmado para dentro
-de dos horas sin que nadie le haya preguntado a la maquilladora si puede
-venir.**
+**Sol lo aclaró y el problema desaparece:**
 
-Un turno confirmado que el salón no puede cumplir es peor que no ofrecerlo.
+> La maquilladora siempre está disponible. Solamente tiene un arreglo
+> comercial con Sol.
 
-**La corrección mínima: anticipación por área.** Con un plazo suficiente, el
-salón tiene tiempo de arreglar con ella antes de la fecha, y el turno deja de
-ser una promesa en falso.
+No es un tercero con agenda propia que haya que consultar: **es alguien que
+está en el salón**, y lo de «tercerizada» describe cómo se le paga, no cuándo
+aparece.
 
-El obstáculo es que `min_advance_hours` **es un único valor global**: vive en
-`business_settings` y `server/src/lib/availability/repository.ts` lo lee como
-uno solo. Subirlo para maquillaje lo subiría también para un corte, que se
-reserva de un día para el otro sin problema.
+Con eso, **maquillaje es un servicio normal**:
 
-Lo que corresponde es una columna `min_advance_hours` en `areas`, que acepte
-nulo y caiga al valor global cuando no esté puesta. Es una migración aditiva:
-ninguna área existente cambia de comportamiento.
+- Se reserva online con la misma anticipación que todo lo demás.
+- Ocupa el área `maquillaje`, que ya existe con capacidad 1.
+- Se confirma sola al pagar la seña, como cualquier turno.
 
-**Falta el número, y lo pone Sol:** ¿con cuánta anticipación hay que avisarle
-a la maquilladora? No se inventa. La capacidad técnica se puede construir
-igual —la columna nula significa «como el resto del salón»— y el valor se
-carga cuando Sol lo diga.
+**No hace falta la columna `min_advance_hours` en `areas`**, ni pedirle un
+número a Sol, ni tocar el motor de disponibilidad. Queda anotado porque la
+recomendación llegó a escribirse acá: se retira.
 
-#### Lo que queda fuera de alcance a propósito
+#### Lo único que queda por definir: la forma del arreglo
 
-Que la reserva de maquillaje **no se confirme sola** —que quede como pedido
-hasta que el salón diga que sí— sería la solución completa, pero exige un
-estado nuevo en el ciclo de la reserva. Conviene no construirlo todavía: si
-la anticipación alcanza para arreglar con ella, el estado nuevo no hace
-falta, y agregarlo toca el motor de reservas, que hoy funciona y está
-probado.
+Lo que el salón le paga es el **costo de esa atención**, y el esquema tiene
+dos lugares para eso, los dos de **monto fijo**:
+
+| Campo | Qué es |
+| --- | --- |
+| `service_parameters.standard_cost_amount` | El costo esperado de ese servicio. Se precarga al cerrar la atención |
+| `service_execution_records.cost_amount` | El costo real de esa atención. Prevalece sobre el estándar |
+
+**No existe ningún costo por porcentaje en el esquema** —se buscó y no hay—,
+así que la forma del arreglo decide cuánto trabajo es:
+
+1. **Monto fijo por servicio** (por ejemplo, tanto por un maquillaje social).
+   Se carga una vez en `standard_cost_amount` y el cierre lo precarga solo.
+   **Cero código.**
+2. **Un porcentaje del precio.** No hay dónde guardarlo: habría que escribir
+   el monto a mano en cada cierre, o agregar el concepto de comisión.
+3. **Un alquiler o fijo mensual.** Entonces no es costo por atención: es un
+   gasto del salón y va a Finanzas › Gastos.
+
+**La pregunta para Sol es una sola:** ¿el arreglo es un monto fijo por
+maquillaje, un porcentaje, o algo mensual?
+
+Cualquiera de las tres funciona; la primera es la que no necesita construir
+nada. Y en los tres casos **el maquillaje ya se puede reservar online hoy**:
+esto define cómo se registra lo que sale, no si el servicio anda.
 
 ## 9. Lo que esta reingeniería deliberadamente no toca
 
