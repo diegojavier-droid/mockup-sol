@@ -132,11 +132,11 @@ jobs:
           business_hours=4
           categories=4
           extras=13
-          personalization_fields=14
-          personalization_options=49
-          service_personalization_option_modifiers=192
-          service_personalization_rules=209
-          services=86
+          personalization_fields=15
+          personalization_options=52
+          service_personalization_option_modifiers=201
+          service_personalization_rules=212
+          services=87
           EOF
 
           echo "Counts after clean rebuild:"
@@ -200,14 +200,14 @@ jobs:
             select count(*) into n from public.categories;
             if n <> 4 then raise exception 'anon categories expected 4, got %', n; end if;
 
-            -- 49: 37 de peluquería, 5 de maquillaje, 3 de uñas y 4 de
+            -- 50: 37 de peluquería, 5 de maquillaje, 4 de uñas y 4 de
             -- depilación. Todos salen de la planilla de Sol menos los 5 de
             -- maquillaje, que es la única área que ella no lista porque la
             -- maneja su socia. Los 19 inventados de peluquería y uñas se
             -- retiraron. Los 16 tratamientos de la planilla siguen sin
             -- publicar hasta que Sol diga qué hace cada uno.
             select count(*) into n from public.services;
-            if n <> 49 then raise exception 'anon services expected 49, got %', n; end if;
+            if n <> 50 then raise exception 'anon services expected 50, got %', n; end if;
 
             -- Lo que el número de arriba solo no prueba: hasta ahora todos
             -- los servicios eran públicos, así que un RLS roto habría dado
@@ -270,12 +270,12 @@ jobs:
           declare
             n integer;
           begin
-            -- 12: los 5 de maquillaje, los 3 de uñas y los 4 de
+            -- 13: los 5 de maquillaje, los 4 de uñas y los 4 de
             -- depilación. Los 37 de peluquería tienen que desaparecer con
             -- su área, que es lo que este paso prueba.
             select count(*) into n from public.services;
-            if n <> 12 then
-              raise exception 'expected 12 visible services after hiding peluqueria, got %', n;
+            if n <> 13 then
+              raise exception 'expected 13 visible services after hiding peluqueria, got %', n;
             end if;
           end
           $$;
@@ -727,18 +727,18 @@ jobs:
             -- y el sistema no: las cuatro líneas de coloración, los de
             -- mechones, los peinados de fiesta y los servicios sueltos.
             select count(*) into n from public.service_parameters;
-            if n <> 86 then raise exception 'service_parameters expected 86, got %', n; end if;
-            -- 299 = 191 + 108 filas nuevas: 27 servicios por cuatro largos,
-            -- menos los que usan tramo único.
+            if n <> 87 then raise exception 'service_parameters expected 87, got %', n; end if;
+            -- 300 = 191 + 108 de los 27 de la planilla + 1 de la
+            -- reconstrucción de uña, que usa tramo único.
             select count(*) into n from public.service_price_tiers;
-            if n <> 299 then raise exception 'service_price_tiers expected 299, got %', n; end if;
+            if n <> 300 then raise exception 'service_price_tiers expected 300, got %', n; end if;
 
             -- La lista de Sol entró como sol_pricelist, NUNCA como
             -- sol_validated: son sus precios, pero ella todavía no los
             -- confirmó, y /admin/pending-values filtra por eso.
             select count(*) into n from public.service_price_tiers
              where source = 'sol_pricelist' and confidence = 'medium';
-            if n <> 207 then raise exception 'tiers de la lista de Sol expected 207, got %', n; end if;
+            if n <> 208 then raise exception 'tiers de la lista de Sol expected 208, got %', n; end if;
 
             -- price_addon es la oferta por llevarse color y tratamiento
             -- juntos. Sólo la tienen tratamientos: un corte vale lo mismo
