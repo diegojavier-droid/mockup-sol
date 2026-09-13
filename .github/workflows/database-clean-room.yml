@@ -558,6 +558,46 @@ jobs:
           end $$;
           SQL
 
+      - name: Verify the catalogue never explains the craft
+        run: |
+          set -euo pipefail
+
+          # El archivo que carga las descripciones ya se comprueba a sí
+          # mismo, pero eso corre una sola vez, al aplicarlo. Esto vuelve
+          # a mirar el estado FINAL, después de todas las migraciones:
+          # si mañana una migración nueva explica la técnica en una
+          # descripción, se frena acá.
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            n integer;
+            v_jerga text;
+          begin
+            foreach v_jerga in array array['gorra','gorro','aluminio','balayage',
+                                           'emulsion','bandas termicas'] loop
+              select count(*) into n from public.services
+               where description is not null
+                 and lower(public.unaccent_simple(description)) like '%' || v_jerga || '%';
+              if n <> 0 then
+                raise exception 'la descripcion de % servicios nombra la tecnica: %', n, v_jerga;
+              end if;
+            end loop;
+
+            -- Lo que la clienta ve tiene que estar descrito. Un servicio
+            -- publicado sin descripcion es un nombre y un precio, y con
+            -- eso no se decide una seña del 20%.
+            select count(*) into n from public.services s
+             where s.is_public and s.is_active and s.deleted_at is null
+               and coalesce(btrim(s.description), '') = ''
+               and s.slug not in ('lavado', 'trenzas');
+            if n <> 0 then
+              raise exception '% servicios publicados no tienen descripcion', n;
+            end if;
+
+            raise notice 'EL CATALOGO NO EXPLICA LA TECNICA: pasa';
+          end $$;
+          SQL
+
       - name: Verify Sol confirms the price and the time separately
         run: |
           set -euo pipefail
