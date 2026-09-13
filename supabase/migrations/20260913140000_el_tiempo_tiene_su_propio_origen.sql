@@ -20,6 +20,35 @@
 -- Asi que el origen se parte en dos: `source` pasa a hablar solo del
 -- precio y `duration_source` habla del tiempo.
 --
+-- LAS TECNICAS DE MECHONES NO SON INTERCAMBIABLES
+--
+-- El catalogo tiene varias lineas de mechones y la diferencia de precio
+-- responde a la tecnica, no a un capricho. Importa para estimar tiempos:
+--
+--   * GORRA: se sacan mechones finos por los agujeros de un gorro. El
+--     gorro aisla fisicamente lo extraido del resto, asi que el producto
+--     se puede dejar solo en el crecimiento nuevo (raices) o correrlo
+--     hasta las puntas (total). Por eso hay DOS lineas de gorra.
+--
+--   * PAPEL: se apoya la seccion sobre aluminio y se envuelve de la base
+--     a la punta. No hay linea de "papel raices" y no es un olvido de la
+--     planilla: el papel se monta desde el cuero cabelludo y cubre todo
+--     el largo; aislar solo unos milimetros no se sostiene y el producto
+--     filtraria al pelo limpio. La tecnica no lo permite.
+--
+--   * ILUMINACION: aclara secciones puntuales de forma sutil, sin
+--     cambiar el tono base. Menos mechones que unos reflejos, y por eso
+--     Sol la cobra menos y lleva menos tiempo.
+--
+--   * CALIFORNIANAS: decolorante concentrado de medios a puntas, con
+--     contraste marcado y division visible entre raiz y puntas. NO es
+--     balayage: el balayage barre a mano alzada buscando un degradado
+--     difuminado sin linea de transicion. Son dos servicios distintos,
+--     con precios distintos, y el salon ofrece los dos.
+--
+--   * CONTORNO: enmarca el rostro. Solo los mechones del nacimiento del
+--     pelo y los laterales; el resto de la melena no se toca.
+--
 -- DE DONDE SALEN LOS MINUTOS
 --
 -- De tiempos de referencia del oficio, no de la operacion de Sol:
@@ -29,7 +58,9 @@
 --   * color total: ~30 min de aplicacion y ahi si pesa el largo;
 --   * gorra: tecnica parcial, mas rapida que el papel;
 --   * papel cabeza entera: la referencia da 2 a 4 horas;
---   * californianas (balayage): 2.5 a 3 horas;
+--   * californianas: 1.5 a 3 horas, y MENOS que las mechas tradicionales
+--     con papel;
+--   * contorno: ~1h45 de techo con matizado, menos si son pocos mechones;
 --   * brushing: ~45 min, sube a 60/90 en pelo largo o abundante;
 --   * lavado: 10 a 15 min.
 --
@@ -735,8 +766,8 @@ update public.service_price_tiers t
 
 -- californianas
 update public.service_price_tiers t
-   set duration_main_min = 150,
-       process_min = 45,
+   set duration_main_min = 105,
+       process_min = 35,
        duration_source = 'industry_baseline',
        duration_confidence = 'low',
        source_ref = coalesce(nullif(source_ref, ''), '') ||
@@ -745,8 +776,8 @@ update public.service_price_tiers t
  where s.id = t.service_id and s.slug = 'californianas'
    and t.length_tier = 'corto';
 update public.service_price_tiers t
-   set duration_main_min = 165,
-       process_min = 45,
+   set duration_main_min = 120,
+       process_min = 35,
        duration_source = 'industry_baseline',
        duration_confidence = 'low',
        source_ref = coalesce(nullif(source_ref, ''), '') ||
@@ -755,8 +786,8 @@ update public.service_price_tiers t
  where s.id = t.service_id and s.slug = 'californianas'
    and t.length_tier = 'medio';
 update public.service_price_tiers t
-   set duration_main_min = 180,
-       process_min = 45,
+   set duration_main_min = 135,
+       process_min = 35,
        duration_source = 'industry_baseline',
        duration_confidence = 'low',
        source_ref = coalesce(nullif(source_ref, ''), '') ||
@@ -765,8 +796,8 @@ update public.service_price_tiers t
  where s.id = t.service_id and s.slug = 'californianas'
    and t.length_tier = 'largo';
 update public.service_price_tiers t
-   set duration_main_min = 195,
-       process_min = 45,
+   set duration_main_min = 150,
+       process_min = 35,
        duration_source = 'industry_baseline',
        duration_confidence = 'low',
        source_ref = coalesce(nullif(source_ref, ''), '') ||
@@ -777,8 +808,8 @@ update public.service_price_tiers t
 
 -- contorno
 update public.service_price_tiers t
-   set duration_main_min = 90,
-       process_min = 40,
+   set duration_main_min = 70,
+       process_min = 30,
        duration_source = 'industry_baseline',
        duration_confidence = 'low',
        source_ref = coalesce(nullif(source_ref, ''), '') ||
@@ -787,8 +818,8 @@ update public.service_price_tiers t
  where s.id = t.service_id and s.slug = 'contorno'
    and t.length_tier = 'corto';
 update public.service_price_tiers t
-   set duration_main_min = 105,
-       process_min = 40,
+   set duration_main_min = 80,
+       process_min = 30,
        duration_source = 'industry_baseline',
        duration_confidence = 'low',
        source_ref = coalesce(nullif(source_ref, ''), '') ||
@@ -797,8 +828,8 @@ update public.service_price_tiers t
  where s.id = t.service_id and s.slug = 'contorno'
    and t.length_tier = 'medio';
 update public.service_price_tiers t
-   set duration_main_min = 120,
-       process_min = 40,
+   set duration_main_min = 90,
+       process_min = 30,
        duration_source = 'industry_baseline',
        duration_confidence = 'low',
        source_ref = coalesce(nullif(source_ref, ''), '') ||
@@ -807,8 +838,8 @@ update public.service_price_tiers t
  where s.id = t.service_id and s.slug = 'contorno'
    and t.length_tier = 'largo';
 update public.service_price_tiers t
-   set duration_main_min = 120,
-       process_min = 40,
+   set duration_main_min = 95,
+       process_min = 30,
        duration_source = 'industry_baseline',
        duration_confidence = 'low',
        source_ref = coalesce(nullif(source_ref, ''), '') ||
@@ -1407,14 +1438,14 @@ begin
            ('iluminacion-papel','medio',135,40),
            ('iluminacion-papel','largo',150,40),
            ('iluminacion-papel','xl',165,40),
-           ('californianas','corto',150,45),
-           ('californianas','medio',165,45),
-           ('californianas','largo',180,45),
-           ('californianas','xl',195,45),
-           ('contorno','corto',90,40),
-           ('contorno','medio',105,40),
-           ('contorno','largo',120,40),
-           ('contorno','xl',120,40),
+           ('californianas','corto',105,35),
+           ('californianas','medio',120,35),
+           ('californianas','largo',135,35),
+           ('californianas','xl',150,35),
+           ('contorno','corto',70,30),
+           ('contorno','medio',80,30),
+           ('contorno','largo',90,30),
+           ('contorno','xl',95,30),
            ('ondas-al-agua','corto',60,0),
            ('ondas-al-agua','medio',70,0),
            ('ondas-al-agua','largo',80,0),

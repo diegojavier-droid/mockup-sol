@@ -572,6 +572,11 @@ jobs:
             v_actor uuid;
             v_precio text;
             v_tiempo text;
+            v_p0 integer;
+            v_d0 integer;
+            v_pr0 integer;
+            v_src0 text;
+            v_dsrc0 text;
           begin
             -- Rol de mostrador a proposito: la regla "nunca sin duena"
             -- impide borrar a la unica owner, y esta fila se borra al final.
@@ -581,16 +586,20 @@ jobs:
             select id into v_actor from public.staff_members where slug = 'ci-invariante';
 
             -- Punto de partida: el precio lo puso Sol, el tiempo es estimado.
-            select t.source, t.duration_source into v_precio, v_tiempo
+            -- Se guardan los valores para devolverlos al final. Nada de
+            -- numeros escritos a mano: la primera version los fijaba y
+            -- quedaron viejos en cuanto la tabla de tiempos cambio.
+            select t.source, t.duration_source, t.price_main, t.duration_main_min, t.process_min
+              into v_src0, v_dsrc0, v_p0, v_d0, v_pr0
               from public.service_price_tiers t
               join public.services s on s.id = t.service_id
              where s.slug = 'californianas' and t.length_tier = 'xl';
-            if v_precio <> 'sol_pricelist' or v_tiempo <> 'industry_baseline' then
-              raise exception 'punto de partida inesperado: precio %, tiempo %', v_precio, v_tiempo;
+            if v_src0 <> 'sol_pricelist' or v_dsrc0 <> 'industry_baseline' then
+              raise exception 'punto de partida inesperado: precio %, tiempo %', v_src0, v_dsrc0;
             end if;
 
-            -- Cambia SOLO el tiempo.
-            perform public.set_service_price('californianas', 'xl', 150000, 200, v_actor, 'ci');
+            -- Cambia SOLO el tiempo: mismo precio, un minuto mas.
+            perform public.set_service_price('californianas', 'xl', v_p0, v_d0 + 1, v_actor, 'ci');
             select t.source, t.duration_source into v_precio, v_tiempo
               from public.service_price_tiers t
               join public.services s on s.id = t.service_id
@@ -602,8 +611,8 @@ jobs:
               raise exception 'el tiempo editado quedo como %', v_tiempo;
             end if;
 
-            -- Cambia SOLO el precio.
-            perform public.set_service_price('californianas', 'xl', 155000, 200, v_actor, 'ci');
+            -- Cambia SOLO el precio: mismo tiempo, un peso mas.
+            perform public.set_service_price('californianas', 'xl', v_p0 + 1, v_d0 + 1, v_actor, 'ci');
             select t.source into v_precio
               from public.service_price_tiers t
               join public.services s on s.id = t.service_id
@@ -614,9 +623,9 @@ jobs:
 
             -- Se deja como estaba para no mover los pasos de mas abajo.
             update public.service_price_tiers t
-               set price_main = 150000, duration_main_min = 195,
-                   source = 'sol_pricelist', confidence = 'medium',
-                   duration_source = 'industry_baseline', duration_confidence = 'low'
+               set price_main = v_p0, duration_main_min = v_d0, process_min = v_pr0,
+                   source = v_src0, duration_source = v_dsrc0,
+                   confidence = 'medium', duration_confidence = 'low'
               from public.services s
              where s.id = t.service_id and s.slug = 'californianas' and t.length_tier = 'xl';
             delete from public.staff_members where slug = 'ci-invariante';
