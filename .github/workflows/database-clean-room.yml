@@ -201,12 +201,11 @@ jobs:
             if n <> 4 then raise exception 'anon categories expected 4, got %', n; end if;
 
             -- 49: 37 de peluquería, 5 de maquillaje, 3 de uñas y 4 de
-            -- depilación. Los 37 y los 3 salen de la planilla de Sol; los
-            -- 19 inventados que había en esas dos áreas se retiraron.
-            -- Maquillaje y depilación siguen siendo provisionales porque
-            -- la planilla no las trae, y retirar un área entera sería peor.
-            -- Los 16 tratamientos de la planilla siguen sin publicar hasta
-            -- que Sol diga qué hace cada uno.
+            -- depilación. Todos salen de la planilla de Sol menos los 5 de
+            -- maquillaje, que es la única área que ella no lista porque la
+            -- maneja su socia. Los 19 inventados de peluquería y uñas se
+            -- retiraron. Los 16 tratamientos de la planilla siguen sin
+            -- publicar hasta que Sol diga qué hace cada uno.
             select count(*) into n from public.services;
             if n <> 49 then raise exception 'anon services expected 49, got %', n; end if;
 
