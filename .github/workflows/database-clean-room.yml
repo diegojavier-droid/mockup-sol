@@ -558,6 +558,73 @@ jobs:
           end $$;
           SQL
 
+      - name: Verify Sol confirms the price and the time separately
+        run: |
+          set -euo pipefail
+
+          # El camino real: "Precios y tiempos" llama a set_service_price y
+          # manda SIEMPRE los dos valores. Si la funcion marcara los dos,
+          # corregir una duracion daria por confirmado un precio que nadie
+          # miro. Esto lo prueba cambiando uno por vez.
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_actor uuid;
+            v_precio text;
+            v_tiempo text;
+          begin
+            -- Rol de mostrador a proposito: la regla "nunca sin duena"
+            -- impide borrar a la unica owner, y esta fila se borra al final.
+            insert into public.staff_members (slug, display_name, email, role)
+            values ('ci-invariante', 'CI', 'ci-invariante@sol-mai.test', 'mostrador')
+            on conflict do nothing;
+            select id into v_actor from public.staff_members where slug = 'ci-invariante';
+
+            -- Punto de partida: el precio lo puso Sol, el tiempo es estimado.
+            select t.source, t.duration_source into v_precio, v_tiempo
+              from public.service_price_tiers t
+              join public.services s on s.id = t.service_id
+             where s.slug = 'californianas' and t.length_tier = 'xl';
+            if v_precio <> 'sol_pricelist' or v_tiempo <> 'industry_baseline' then
+              raise exception 'punto de partida inesperado: precio %, tiempo %', v_precio, v_tiempo;
+            end if;
+
+            -- Cambia SOLO el tiempo.
+            perform public.set_service_price('californianas', 'xl', 150000, 200, v_actor, 'ci');
+            select t.source, t.duration_source into v_precio, v_tiempo
+              from public.service_price_tiers t
+              join public.services s on s.id = t.service_id
+             where s.slug = 'californianas' and t.length_tier = 'xl';
+            if v_precio <> 'sol_pricelist' then
+              raise exception 'tocar el tiempo marco el precio como %', v_precio;
+            end if;
+            if v_tiempo <> 'sol_adjusted' then
+              raise exception 'el tiempo editado quedo como %', v_tiempo;
+            end if;
+
+            -- Cambia SOLO el precio.
+            perform public.set_service_price('californianas', 'xl', 155000, 200, v_actor, 'ci');
+            select t.source into v_precio
+              from public.service_price_tiers t
+              join public.services s on s.id = t.service_id
+             where s.slug = 'californianas' and t.length_tier = 'xl';
+            if v_precio <> 'sol_adjusted' then
+              raise exception 'el precio editado quedo como %', v_precio;
+            end if;
+
+            -- Se deja como estaba para no mover los pasos de mas abajo.
+            update public.service_price_tiers t
+               set price_main = 150000, duration_main_min = 195,
+                   source = 'sol_pricelist', confidence = 'medium',
+                   duration_source = 'industry_baseline', duration_confidence = 'low'
+              from public.services s
+             where s.id = t.service_id and s.slug = 'californianas' and t.length_tier = 'xl';
+            delete from public.staff_members where slug = 'ci-invariante';
+
+            raise notice 'PRECIO Y TIEMPO SE CONFIRMAN POR SEPARADO: pasa';
+          end $$;
+          SQL
+
       - name: Verify booking domain invariants
         run: |
           set -euo pipefail
@@ -2975,6 +3042,60 @@ jobs:
           export SOLMAI_E2E_BASE="http://localhost:${PORT}"
           export SOLMAI_E2E_STAFF_TOKEN="$TOKEN"
           export SOLMAI_E2E_DB_URL="$SUPABASE_LOCAL_DB_URL"
+
+          # El precio y el tiempo se confirman por separado. Esto prueba
+          # dos cosas a la vez: que el filtro compuesto de PostgREST es
+          # válido (uno inválido devolvería error, no 200), y que existe
+          # el caso nuevo —precio de la planilla de Sol, tiempo estimado—
+          # que antes no se podía representar.
+          PV=$(curl -sS -o /tmp/pending.json -w '%{http_code}' \
+            -H "authorization: Bearer $TOKEN" \
+            "http://localhost:${PORT}/api/v1/admin/pending-values")
+          if [ "$PV" != "200" ]; then
+            echo "::error::pending-values devolvió $PV"
+            cat /tmp/pending.json || true
+            exit 1
+          fi
+          bun -e '
+            const p = JSON.parse(await Bun.file("/tmp/pending.json").text());
+            const filas = p.data ?? [];
+            if (!Array.isArray(filas) || filas.length === 0) {
+              throw new Error("pending-values vino vacío");
+            }
+            const soloTiempo = filas.filter((f) => !f.falta_precio && f.falta_tiempo);
+            if (soloTiempo.length === 0) {
+              throw new Error("no hay ninguna fila con precio de Sol y tiempo estimado");
+            }
+            const sinMarca = filas.find(
+              (f) => typeof f.falta_precio !== "boolean" || typeof f.falta_tiempo !== "boolean",
+            );
+            if (sinMarca) throw new Error("una fila llegó sin decir qué falta confirmar");
+            console.log(`OK  · ${filas.length} valores pendientes, ${soloTiempo.length} deben sólo el tiempo`);
+          '
+
+          # Tocar SÓLO el tiempo no puede dar por confirmado el precio.
+          # Se usa californianas, que no está publicada, para no mover
+          # nada de lo que dependen los recorridos de abajo.
+          curl -fsS -X PATCH \
+            -H "authorization: Bearer $TOKEN" \
+            -H "content-type: application/json" \
+            -d '{"processMin":50}' \
+            "http://localhost:${PORT}/api/v1/admin/services/californianas/tiers/xl" > /dev/null
+          curl -fsS -H "authorization: Bearer $TOKEN" \
+            "http://localhost:${PORT}/api/v1/admin/services/californianas/tiers" > /tmp/tiers.json
+          bun -e '
+            const filas = JSON.parse(await Bun.file("/tmp/tiers.json").text()).data ?? [];
+            const xl = filas.find((f) => f.length_tier === "xl");
+            if (!xl) throw new Error("no volvió el tramo xl");
+            if (xl.process_min !== 50) throw new Error(`el proceso no se guardó: ${xl.process_min}`);
+            if (xl.duration_source !== "sol_adjusted") {
+              throw new Error(`el tiempo debía quedar confirmado, quedó ${xl.duration_source}`);
+            }
+            if (xl.source !== "sol_pricelist") {
+              throw new Error(`tocar el tiempo marcó el precio como ${xl.source}`);
+            }
+            console.log("OK  · el precio sigue sin confirmar aunque se editó el tiempo");
+          '
 
           bash scripts/e2e-flow.sh
           bash scripts/e2e-stations.sh

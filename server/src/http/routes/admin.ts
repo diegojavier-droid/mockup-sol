@@ -1625,21 +1625,32 @@ export function createAdminRoute(env: ServerEnv) {
     const { data, error } = await createSupabaseAdminClient(env)
       .from("service_price_tiers")
       .select(
-        "length_tier, price_main, duration_main_min, source, source_ref, confidence, services!inner(slug, name)",
+        "length_tier, price_main, duration_main_min, source, source_ref, confidence, duration_source, duration_confidence, services!inner(slug, name)",
       )
-      .neq("source", "sol_validated")
-      .neq("source", "sol_adjusted")
+      .or(
+        "source.not.in.(sol_validated,sol_adjusted),duration_source.not.in.(sol_validated,sol_adjusted)",
+      )
       .order("confidence", { ascending: true })
       .limit(300);
     if (error) throw error;
-    return c.json({ data });
+    // Decir QUÉ falta confirmar: una fila puede tener el precio de la
+    // planilla de Sol y el tiempo estimado, y sólo deber el tiempo.
+    const validado = (s: unknown) => s === "sol_validated" || s === "sol_adjusted";
+    const filas = (data ?? []) as Array<Record<string, unknown>>;
+    return c.json({
+      data: filas.map((f) => ({
+        ...f,
+        falta_precio: !validado(f.source),
+        falta_tiempo: !validado(f.duration_source),
+      })),
+    });
   });
 
   owner.get("/services/:slug/tiers", async (c) => {
     const { data, error } = await createSupabaseAdminClient(env)
       .from("service_price_tiers")
       .select(
-        "length_tier, price_main, price_addon, duration_main_min, duration_addon_min, process_min, source, confidence, services!inner(slug)",
+        "length_tier, price_main, price_addon, duration_main_min, duration_addon_min, process_min, source, confidence, duration_source, duration_confidence, services!inner(slug)",
       )
       .eq("services.slug", c.req.param("slug"));
     if (error) throw error;
@@ -1668,12 +1679,19 @@ export function createAdminRoute(env: ServerEnv) {
     const serviceId = (svc as { id: string } | null)?.id;
     if (!serviceId) throw new HTTPException(404, { message: "No encontramos ese servicio." });
 
-    const patch: Record<string, unknown> = {
-      source: "sol_adjusted",
-      confidence: "high",
-      updated_by: c.get("staff").email,
-    };
-    if (parsed.data.priceMain !== undefined) patch.price_main = parsed.data.priceMain;
+    // El precio y el tiempo se confirman por separado. Marcar los dos
+    // porque Sol tocó uno daba por validado un valor que nadie miró: el
+    // precio sale de su planilla, los minutos son estimados de oficio.
+    const patch: Record<string, unknown> = { updated_by: c.get("staff").email };
+    if (parsed.data.priceMain !== undefined) {
+      patch.price_main = parsed.data.priceMain;
+      patch.source = "sol_adjusted";
+      patch.confidence = "high";
+    }
+    if (parsed.data.durationMainMin !== undefined || parsed.data.processMin !== undefined) {
+      patch.duration_source = "sol_adjusted";
+      patch.duration_confidence = "high";
+    }
     if (parsed.data.durationMainMin !== undefined)
       patch.duration_main_min = parsed.data.durationMainMin;
     if (parsed.data.processMin !== undefined) patch.process_min = parsed.data.processMin;
