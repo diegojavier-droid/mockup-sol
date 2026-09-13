@@ -122,6 +122,76 @@ se puede leer igual en México, está mal escrito.
 
 ---
 
+## Cómo describen un SERVICIO en la lista de reserva
+
+Relevado el 13 de septiembre de 2026, buscando específicamente el texto
+que acompaña a cada servicio en un catálogo de reserva — no la portada.
+
+### BUCLES · bucles.com.ar
+
+Textual, tal como aparece debajo del nombre de cada servicio:
+
+> Mano Común · **Limado, corte de cutículas y esmaltado común** · $19999
+
+> Nutrición Capilar · **Ampolla y baño de crema.** · Desde $29999
+
+> Mechas localizadas · **Hasta 10 bandas** · Desde $44999
+
+> Baño de Crema Hidratante · **Nutrición Profunda para tu Cabello**
+
+> COMBO! Promo Tendencia · **La promo incluye Corte, Color de raíz,
+> Lavado, Brushing y Planchita** · Desde $59999
+
+### Marcelo Cuggini · Rosario · marcelocuggini.com.ar
+
+El calificador va pegado al nombre, en la misma línea:
+
+> CORTE STAFF **con secado** $42300
+
+> CORTE CON MARCELO CUGGINI **con lavado** $59000
+
+> COLOR **con lavado y secado (desde)** $72500
+
+> CORTE FLEQUILLO $20000 · SECADO MODELADO $20000 ·
+> BRUSHING **(desde)** $25600 · BRUSHING & PLANCHITA / ONDAS $39000 ·
+> DISEÑO DE TRENZAS **(desde)** $90000
+
+Y una aclaración que encabeza el bloque de coloración:
+
+> Toda coloración incluye lavado neutro y secado.
+
+### Rosario Peinados · rosariopeinados.com
+
+> BRUSHING (Corto) · BRUSHING (Medio) · BRUSHING (Largo) ·
+> BRUSHING (Extra Largo)
+
+> LAVADO L'OREAL C/CREMA · BAÑO DE CREMA KERASTASE · AMPOLLAS KERASTASE
+
+> CORTE DE CERQUILLO · MOÑOS O RECOGIDOS
+
+### Qué se aprende, y es lo que ordena las descripciones del catálogo
+
+- **La descripción dice QUÉ INCLUYE o CUÁNTO ABARCA. Nunca cómo se hace.**
+  «Hasta 10 bandas» no explica qué es una banda ni cómo se aplica: dice
+  cuánto se lleva la clienta. «Con lavado y secado» dice qué entra en el
+  precio. Ninguno de los tres sitios explica una técnica.
+
+- **Sólo se describe lo que el nombre no contesta.** BUCLES deja sin
+  subtítulo a Corte, Balayage y Permanente, y sí lo pone en «Mano Común»
+  y «Nutrición Capilar», donde el nombre no alcanza. Rellenar una
+  descripción que repite el nombre es ruido.
+
+- **Son frases nominales cortas**, de tres a ocho palabras, sin verbo
+  conjugado y sin dirigirse a la clienta. Eso evita, de paso, tener que
+  resolver si el salón habla en singular o en plural.
+
+- **«Desde» es la convención cuando el precio varía por largo**, y los
+  tres sitios la usan. Coincide con lo que ya hace la app.
+
+- **El largo se nombra igual que acá**: corto, medio, largo, extra largo.
+
+---
+
 ## La corrección
 
 La versión anterior de este archivo afirmaba:
@@ -170,5 +240,7 @@ transcrita de un posteo.
 - https://www.bucles.com.ar/
 - https://cerini.net/ · /historia/ · /servicios/
 - https://agendapro.com/mp/ar/peluquerias-buenos-aires
+- https://www.marcelocuggini.com.ar/precios-corte-peluqueria.php
+- https://www.rosariopeinados.com/precios-y-promociones
 - https://www.stardust.salon/ (la portada llega vacía: se arma con
   JavaScript, así que `curl` no ve el texto)
