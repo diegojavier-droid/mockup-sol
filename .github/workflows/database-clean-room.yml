@@ -3043,11 +3043,16 @@ jobs:
           export SOLMAI_E2E_STAFF_TOKEN="$TOKEN"
           export SOLMAI_E2E_DB_URL="$SUPABASE_LOCAL_DB_URL"
 
-          # El precio y el tiempo se confirman por separado. Esto prueba
-          # dos cosas a la vez: que el filtro compuesto de PostgREST es
-          # válido (uno inválido devolvería error, no 200), y que existe
-          # el caso nuevo —precio de la planilla de Sol, tiempo estimado—
-          # que antes no se podía representar.
+          # --- El precio y el tiempo se confirman por separado ---------
+          #
+          # Ojo con el vocabulario: `sol_pricelist` quiere decir "salio de
+          # la planilla", y cuenta como PENDIENTE, porque Sol nunca lo
+          # miro en pantalla. En una base recien construida, entonces,
+          # toda fila debe las dos cosas. El caso interesante —debe el
+          # precio pero ya no el tiempo— hay que crearlo editando.
+
+          # 1. La lista responde y dice que falta en cada fila. Un filtro
+          #    invalido de PostgREST daria error, no 200.
           PV=$(curl -sS -o /tmp/pending.json -w '%{http_code}' \
             -H "authorization: Bearer $TOKEN" \
             "http://localhost:${PORT}/api/v1/admin/pending-values")
@@ -3057,25 +3062,20 @@ jobs:
             exit 1
           fi
           bun -e '
-            const p = JSON.parse(await Bun.file("/tmp/pending.json").text());
-            const filas = p.data ?? [];
+            const filas = JSON.parse(await Bun.file("/tmp/pending.json").text()).data ?? [];
             if (!Array.isArray(filas) || filas.length === 0) {
               throw new Error("pending-values vino vacío");
-            }
-            const soloTiempo = filas.filter((f) => !f.falta_precio && f.falta_tiempo);
-            if (soloTiempo.length === 0) {
-              throw new Error("no hay ninguna fila con precio de Sol y tiempo estimado");
             }
             const sinMarca = filas.find(
               (f) => typeof f.falta_precio !== "boolean" || typeof f.falta_tiempo !== "boolean",
             );
             if (sinMarca) throw new Error("una fila llegó sin decir qué falta confirmar");
-            console.log(`OK  · ${filas.length} valores pendientes, ${soloTiempo.length} deben sólo el tiempo`);
+            console.log(`OK  · ${filas.length} valores pendientes, todos dicen qué falta`);
           '
 
-          # Tocar SÓLO el tiempo no puede dar por confirmado el precio.
-          # Se usa californianas, que no está publicada, para no mover
-          # nada de lo que dependen los recorridos de abajo.
+          # 2. Se confirma SOLO el tiempo. Se usa californianas, que no
+          #    está publicada, para no mover nada de lo que dependen los
+          #    recorridos de abajo.
           curl -fsS -X PATCH \
             -H "authorization: Bearer $TOKEN" \
             -H "content-type: application/json" \
@@ -3095,6 +3095,26 @@ jobs:
               throw new Error(`tocar el tiempo marcó el precio como ${xl.source}`);
             }
             console.log("OK  · el precio sigue sin confirmar aunque se editó el tiempo");
+          '
+
+          # 3. Y la lista lo refleja: esa fila sigue pendiente, pero ahora
+          #    debe sólo el precio. Antes de partir el origen en dos, este
+          #    estado no se podía representar.
+          curl -fsS -H "authorization: Bearer $TOKEN" \
+            "http://localhost:${PORT}/api/v1/admin/pending-values" > /tmp/pending2.json
+          bun -e '
+            const filas = JSON.parse(await Bun.file("/tmp/pending2.json").text()).data ?? [];
+            // PostgREST devuelve la relación como objeto o como lista
+            // según el caso; en este repo ya mordió una vez.
+            const slugDe = (f) =>
+              Array.isArray(f.services) ? f.services[0]?.slug : f.services?.slug;
+            const xl = filas.find(
+              (f) => slugDe(f) === "californianas" && f.length_tier === "xl",
+            );
+            if (!xl) throw new Error("californianas xl salió de la lista de pendientes");
+            if (xl.falta_tiempo) throw new Error("el tiempo sigue figurando como pendiente");
+            if (!xl.falta_precio) throw new Error("el precio dejó de figurar como pendiente");
+            console.log("OK  · la fila debe el precio y ya no el tiempo");
           '
 
           bash scripts/e2e-flow.sh
