@@ -549,10 +549,18 @@ jobs:
                and deleted_at is null;
             if n <> 6 then raise exception 'faltan servicios de mechones, hay %', n; end if;
 
-            -- Nacen sin publicar: la planilla tiene precios y no duraciones.
+            -- Nacieron sin publicar porque la planilla no trae duraciones.
+            -- Ya las tienen —estimadas y marcadas como tales— y el
+            -- catalogo real reemplazo al inventado, asi que ahora la
+            -- invariante es la contraria: tienen que estar a la vista.
             select count(*) into n from public.services
-             where slug in ('californianas','raiz-itely','semirecogido','lavado') and is_public;
-            if n <> 0 then raise exception '% servicios nuevos salieron publicados sin duracion validada', n; end if;
+             where slug in ('californianas','raiz-itely','semirecogido','lavado') and not is_public;
+            if n <> 0 then raise exception '% servicios de la planilla no llegan a la web', n; end if;
+
+            -- Y ninguno de los inventados que reemplazaron puede seguir ahi.
+            select count(*) into n from public.services
+             where slug in ('mechas','retoque-raiz','color-global','peinado-social') and is_public;
+            if n <> 0 then raise exception '% servicios inventados siguen publicados', n; end if;
 
             raise notice 'PRECIOS DE LA PLANILLA DE SOL: pasa';
           end $$;
@@ -3013,11 +3021,11 @@ jobs:
           bun -e '
             const checks = [
               ["/tmp/categories.json", 4],
-              // 26 desde que babylights y claritos se agruparon bajo
-              // Mechas. Los 16 tratamientos nuevos también son de
-              // peluquería pero entran sin publicar, así que el público
-              // no los ve y este número no los cuenta.
-              ["/tmp/services.json", 26],
+              // 37: los 10 de siempre más los 27 de la planilla de Sol,
+              // menos los 16 inventados que se retiraron. Los 16
+              // tratamientos de la planilla siguen sin publicar hasta que
+              // Sol diga qué hace cada uno, así que no entran acá.
+              ["/tmp/services.json", 37],
               ["/tmp/extras.json", 13],
               ["/tmp/personalization.json", 6],
             ];
