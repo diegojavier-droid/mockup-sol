@@ -270,9 +270,12 @@ jobs:
           declare
             n integer;
           begin
+            -- 12: los 5 de maquillaje, los 3 de uñas y los 4 de
+            -- depilación. Los 37 de peluquería tienen que desaparecer con
+            -- su área, que es lo que este paso prueba.
             select count(*) into n from public.services;
-            if n <> 15 then
-              raise exception 'expected 15 visible services after hiding peluqueria, got %', n;
+            if n <> 12 then
+              raise exception 'expected 12 visible services after hiding peluqueria, got %', n;
             end if;
           end
           $$;
