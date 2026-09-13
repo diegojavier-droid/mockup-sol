@@ -43,9 +43,15 @@ cleanup
 # día, así que dos servicios largos suman más que la jornada y la
 # disponibilidad del combo queda —correctamente— vacía: el test no podría
 # comparar nada y fallaría por un motivo que no es el que mide.
-A=$(psql_run "select s.slug from public.services s join public.categories c on c.id=s.category_id join public.service_price_tiers t on t.service_id=s.id where c.slug='peluqueria' and s.is_active group by s.slug, s.duration_minutes order by s.duration_minutes, s.slug limit 1")
-B=$(psql_run "select s.slug from public.services s join public.categories c on c.id=s.category_id join public.service_price_tiers t on t.service_id=s.id where c.slug='peluqueria' and s.is_active and s.slug <> '$A' group by s.slug, s.duration_minutes order by s.duration_minutes, s.slug limit 1")
-OTRA=$(psql_run "select s.slug from public.services s join public.categories c on c.id=s.category_id join public.service_price_tiers t on t.service_id=s.id where c.slug <> 'peluqueria' and s.is_active group by s.slug order by s.slug limit 1")
+#
+# Y se eligen entre los PUBLICADOS, porque /quote es el endpoint público:
+# un servicio sin publicar devuelve 404 y el test falla por no encontrarlo,
+# no por lo que mide. Antes no hacía falta porque lo no publicado era
+# siempre lo más largo; desde que los servicios de la planilla tienen
+# duraciones reales, el lavado (15 min) es de lo más corto del salón.
+A=$(psql_run "select s.slug from public.services s join public.categories c on c.id=s.category_id join public.service_price_tiers t on t.service_id=s.id where c.slug='peluqueria' and s.is_active and s.is_public and s.deleted_at is null group by s.slug, s.duration_minutes order by s.duration_minutes, s.slug limit 1")
+B=$(psql_run "select s.slug from public.services s join public.categories c on c.id=s.category_id join public.service_price_tiers t on t.service_id=s.id where c.slug='peluqueria' and s.is_active and s.is_public and s.deleted_at is null and s.slug <> '$A' group by s.slug, s.duration_minutes order by s.duration_minutes, s.slug limit 1")
+OTRA=$(psql_run "select s.slug from public.services s join public.categories c on c.id=s.category_id join public.service_price_tiers t on t.service_id=s.id where c.slug <> 'peluqueria' and s.is_active and s.is_public and s.deleted_at is null group by s.slug order by s.slug limit 1")
 
 if [ -z "$A" ] || [ -z "$B" ]; then
   echo "FALLA · el catálogo no tiene dos servicios cotizables de peluquería"
