@@ -147,20 +147,24 @@ jobs:
         run: |
           set -euo pipefail
 
-          # El catálogo lo siembran DOS archivos desde 2026-09-12: el
-          # bootstrap original y el catálogo real de Sol, que renombra,
-          # agrega tratamientos y da de baja babylights y claritos.
+          # El catálogo lo siembran TRES archivos: el bootstrap original,
+          # el catálogo real de Sol —que renombra, agrega tratamientos y da
+          # de baja babylights y claritos— y el que decide qué se publica.
           #
-          # Re-correr sólo el bootstrap no prueba idempotencia: la prueba
-          # se pasaría a sí misma dejando el mundo distinto de como lo
-          # encontró. El bootstrap trae babylights y claritos con
-          # `is_public = true`, así que replayarlo solo los resucita y la
-          # verificación de RLS de más abajo encontraría 43 públicos donde
-          # el catálogo define 41. Se replayan los dos, en orden.
+          # Re-correr sólo una parte no prueba idempotencia: la prueba se
+          # pasaría a sí misma dejando el mundo distinto de como lo
+          # encontró. El bootstrap inserta TODO con `is_public = true`,
+          # así que replayarlo solo resucita babylights y claritos y, desde
+          # que el catálogo real reemplazó al inventado, también los 19
+          # servicios inventados que se retiraron: la verificación de RLS
+          # de más abajo encontraría 68 públicos donde el catálogo define
+          # 49. Se replayan los tres, en orden.
           psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 \
             -f supabase/migrations/20260724170535_catalog_bootstrap.sql
           psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 \
             -f supabase/migrations/20260912130000_catalogo_real_de_sol.sql
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/20260913220000_la_web_muestra_el_catalogo_real.sql
 
           psql "$SUPABASE_LOCAL_DB_URL" -At -F '=' -c "
             select table_name, row_count
@@ -196,21 +200,26 @@ jobs:
             select count(*) into n from public.categories;
             if n <> 4 then raise exception 'anon categories expected 4, got %', n; end if;
 
-            -- 41 desde que babylights y claritos se agruparon bajo Mechas
-            -- (decisión de Sol, 2026-09-12) y los 16 tratamientos nuevos
-            -- entraron activos pero SIN publicar, a la espera de que ella
-            -- defina las duraciones.
+            -- 49: 37 de peluquería, 5 de maquillaje, 3 de uñas y 4 de
+            -- depilación. Todos salen de la planilla de Sol menos los 5 de
+            -- maquillaje, que es la única área que ella no lista porque la
+            -- maneja su socia. Los 19 inventados de peluquería y uñas se
+            -- retiraron. Los 16 tratamientos de la planilla siguen sin
+            -- publicar hasta que Sol diga qué hace cada uno.
             select count(*) into n from public.services;
-            if n <> 41 then raise exception 'anon services expected 41, got %', n; end if;
+            if n <> 49 then raise exception 'anon services expected 49, got %', n; end if;
 
             -- Lo que el número de arriba solo no prueba: hasta ahora todos
             -- los servicios eran públicos, así que un RLS roto habría dado
-            -- el mismo conteo. Ahora hay 16 activos que anon NO debe ver.
+            -- el mismo conteo. Ahora hay 35 activos que anon NO debe ver
+            -- —16 tratamientos de la planilla y los 19 inventados que se
+            -- retiraron— y eso sí distingue un RLS sano de uno roto.
             select count(*) into n from public.services where not is_public;
             if n <> 0 then raise exception 'anon ve % servicios sin publicar', n; end if;
 
+            -- 5, no 6: «Tratamiento post-color» era inventado y se retiró.
             select count(*) into n from public.services where kind = 'tratamiento';
-            if n <> 6 then raise exception 'anon tratamientos publicos expected 6, got %', n; end if;
+            if n <> 5 then raise exception 'anon tratamientos publicos expected 5, got %', n; end if;
 
             select count(*) into n from public.extras;
             if n <> 13 then raise exception 'anon extras expected 13, got %', n; end if;
@@ -261,9 +270,12 @@ jobs:
           declare
             n integer;
           begin
+            -- 12: los 5 de maquillaje, los 3 de uñas y los 4 de
+            -- depilación. Los 37 de peluquería tienen que desaparecer con
+            -- su área, que es lo que este paso prueba.
             select count(*) into n from public.services;
-            if n <> 15 then
-              raise exception 'expected 15 visible services after hiding peluqueria, got %', n;
+            if n <> 12 then
+              raise exception 'expected 12 visible services after hiding peluqueria, got %', n;
             end if;
           end
           $$;
@@ -549,10 +561,18 @@ jobs:
                and deleted_at is null;
             if n <> 6 then raise exception 'faltan servicios de mechones, hay %', n; end if;
 
-            -- Nacen sin publicar: la planilla tiene precios y no duraciones.
+            -- Nacieron sin publicar porque la planilla no trae duraciones.
+            -- Ya las tienen —estimadas y marcadas como tales— y el
+            -- catalogo real reemplazo al inventado, asi que ahora la
+            -- invariante es la contraria: tienen que estar a la vista.
             select count(*) into n from public.services
-             where slug in ('californianas','raiz-itely','semirecogido','lavado') and is_public;
-            if n <> 0 then raise exception '% servicios nuevos salieron publicados sin duracion validada', n; end if;
+             where slug in ('californianas','raiz-itely','semirecogido','lavado') and not is_public;
+            if n <> 0 then raise exception '% servicios de la planilla no llegan a la web', n; end if;
+
+            -- Y ninguno de los inventados que reemplazaron puede seguir ahi.
+            select count(*) into n from public.services
+             where slug in ('mechas','retoque-raiz','color-global','peinado-social') and is_public;
+            if n <> 0 then raise exception '% servicios inventados siguen publicados', n; end if;
 
             raise notice 'PRECIOS DE LA PLANILLA DE SOL: pasa';
           end $$;
@@ -3013,11 +3033,11 @@ jobs:
           bun -e '
             const checks = [
               ["/tmp/categories.json", 4],
-              // 26 desde que babylights y claritos se agruparon bajo
-              // Mechas. Los 16 tratamientos nuevos también son de
-              // peluquería pero entran sin publicar, así que el público
-              // no los ve y este número no los cuenta.
-              ["/tmp/services.json", 26],
+              // 37: los 10 de siempre más los 27 de la planilla de Sol,
+              // menos los 16 inventados que se retiraron. Los 16
+              // tratamientos de la planilla siguen sin publicar hasta que
+              // Sol diga qué hace cada uno, así que no entran acá.
+              ["/tmp/services.json", 37],
               ["/tmp/extras.json", 13],
               ["/tmp/personalization.json", 6],
             ];
