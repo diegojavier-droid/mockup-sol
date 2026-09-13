@@ -65,39 +65,39 @@ returns text language sql immutable as $FN$
 $FN$;
 
 
-update public.services set description = 'Sólo en el crecimiento de la raíz.', updated_at = now()
+update public.services set description = 'Sólo en el crecimiento de la raíz. Con lavado y secado.', updated_at = now()
  where slug = 'reflejos-gorra-raices';
-update public.services set description = 'En todo el largo del mechón.', updated_at = now()
+update public.services set description = 'En todo el largo del mechón. Con lavado y secado.', updated_at = now()
  where slug = 'reflejos-gorra-total';
-update public.services set description = 'Mechones más anchos, en todo el largo.', updated_at = now()
+update public.services set description = 'En todo el largo del mechón. Con lavado y secado.', updated_at = now()
  where slug = 'reflejos-papel-total';
-update public.services set description = 'Luz suave, sin cambiar tu color de base.', updated_at = now()
+update public.services set description = 'Luz suave, sin cambiar tu color de base. Con lavado y secado.', updated_at = now()
  where slug = 'iluminacion-gorra';
-update public.services set description = 'Luz suave en mechones más anchos, sin cambiar tu color de base.', updated_at = now()
+update public.services set description = 'Luz suave, sin cambiar tu color de base. Con lavado y secado.', updated_at = now()
  where slug = 'iluminacion-papel';
-update public.services set description = 'De la mitad a las puntas, con contraste marcado.', updated_at = now()
+update public.services set description = 'De la mitad a las puntas, con contraste marcado. Con lavado y secado.', updated_at = now()
  where slug = 'californianas';
-update public.services set description = 'Los mechones que enmarcan la cara.', updated_at = now()
+update public.services set description = 'Los mechones que enmarcan la cara. Con lavado y secado.', updated_at = now()
  where slug = 'contorno';
-update public.services set description = 'Sólo el crecimiento de la raíz.', updated_at = now()
+update public.services set description = 'Sólo el crecimiento de la raíz. Con lavado y secado.', updated_at = now()
  where slug = 'raiz-exiline';
-update public.services set description = 'Sólo el crecimiento de la raíz.', updated_at = now()
+update public.services set description = 'Sólo el crecimiento de la raíz. Con lavado y secado.', updated_at = now()
  where slug = 'raiz-itely';
-update public.services set description = 'Sólo el crecimiento de la raíz.', updated_at = now()
+update public.services set description = 'Sólo el crecimiento de la raíz. Con lavado y secado.', updated_at = now()
  where slug = 'raiz-sin-tacc';
-update public.services set description = 'Sólo el crecimiento de la raíz.', updated_at = now()
+update public.services set description = 'Sólo el crecimiento de la raíz. Con lavado y secado.', updated_at = now()
  where slug = 'raiz-tono-well';
-update public.services set description = 'Color parejo de raíz a puntas.', updated_at = now()
+update public.services set description = 'Color parejo de raíz a puntas. Con lavado y secado.', updated_at = now()
  where slug = 'total-exiline';
-update public.services set description = 'Color parejo de raíz a puntas.', updated_at = now()
+update public.services set description = 'Color parejo de raíz a puntas. Con lavado y secado.', updated_at = now()
  where slug = 'total-itely';
-update public.services set description = 'Color parejo de raíz a puntas.', updated_at = now()
+update public.services set description = 'Color parejo de raíz a puntas. Con lavado y secado.', updated_at = now()
  where slug = 'total-sin-tacc';
-update public.services set description = 'Color parejo de raíz a puntas.', updated_at = now()
+update public.services set description = 'Color parejo de raíz a puntas. Con lavado y secado.', updated_at = now()
  where slug = 'total-tono-well';
-update public.services set description = 'Empareja la franja de tono distinto que queda al crecer.', updated_at = now()
+update public.services set description = 'Empareja la franja de tono distinto que queda al crecer. Con lavado y secado.', updated_at = now()
  where slug = 'vincha-tono';
-update public.services set description = 'Cubre las canas del contorno: frente, patillas y nuca.', updated_at = now()
+update public.services set description = 'Una franja ancha en todo el contorno, para cubrir canas. Con lavado y secado.', updated_at = now()
  where slug = 'vincha-color-comun';
 update public.services set description = 'Refresca el color de los largos. Se suma al retoque de raíz.', updated_at = now()
  where slug = 'pasar-color';
@@ -115,6 +115,27 @@ update public.services set description = 'Secado con forma, sin brushing.', upda
  where slug = 'secado-modelado';
 update public.services set description = 'Sólo el flequillo, sin tocar el largo.', updated_at = now()
  where slug = 'corte-flequillo';
+
+-- El nombre que ve la clienta -------------------------------------------
+
+alter table public.services
+  add column if not exists public_name text;
+
+comment on column public.services.public_name is
+  'Como se llama el servicio en la web. Vacio: la clienta ve el mismo '
+  'nombre que Sol. Existe porque el nombre interno lleva la tecnica '
+  '(con gorra, con papel), que Sol necesita y la clienta no.';
+
+update public.services set public_name = 'Reflejos · sólo raíz', updated_at = now()
+ where slug = 'reflejos-gorra-raices';
+update public.services set public_name = 'Reflejos · mechones finos', updated_at = now()
+ where slug = 'reflejos-gorra-total';
+update public.services set public_name = 'Reflejos · mechones anchos', updated_at = now()
+ where slug = 'reflejos-papel-total';
+update public.services set public_name = 'Iluminación · mechones finos', updated_at = now()
+ where slug = 'iluminacion-gorra';
+update public.services set public_name = 'Iluminación · mechones anchos', updated_at = now()
+ where slug = 'iluminacion-papel';
 
 -- Estos dos van sin descripcion: el nombre ya contesta.
 update public.services set description = null, updated_at = now()
@@ -153,6 +174,22 @@ begin
       raise exception 'la descripcion de % servicios nombra la tecnica: %', n, v_jerga;
     end if;
   end loop;
+
+  -- Y lo mismo para el nombre que llega a la web.
+  foreach v_jerga in array array['gorra', 'gorro', 'aluminio', 'papel', 'bandas termicas'] loop
+    select count(*) into n from public.services
+     where lower(public.unaccent_simple(coalesce(public_name, name))) like '%' || v_jerga || '%';
+    if n <> 0 then
+      raise exception 'el nombre publico de % servicios nombra la tecnica: %', n, v_jerga;
+    end if;
+  end loop;
+
+  -- Los cinco que la llevaban en el nombre tienen que tener el suyo.
+  select count(*) into n from public.services
+   where slug in ('reflejos-gorra-raices', 'reflejos-gorra-total', 'reflejos-papel-total', 'iluminacion-gorra', 'iluminacion-papel') and coalesce(btrim(public_name), '') = '';
+  if n <> 0 then
+    raise exception '% servicios quedaron sin nombre para la clienta', n;
+  end if;
 
   raise notice 'EL CATALOGO NO EXPLICA LA TECNICA: pasa';
 end $$;

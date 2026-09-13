@@ -36,6 +36,10 @@ type CategoryRow = {
 type ServiceRow = {
   slug: string;
   name: string;
+  // El nombre interno lleva la técnica —«con gorra», «con papel»— porque
+  // Sol la necesita en su panel. La clienta no: si hay uno público, ése
+  // manda.
+  public_name: string | null;
   description: string | null;
   duration_minutes: number;
   price_amount: number;
@@ -91,7 +95,7 @@ function toServiceDTO(row: ServiceRow): ServiceSummaryDTO {
   return {
     slug: row.slug,
     categorySlug: row.categories?.slug ?? "",
-    name: row.name,
+    name: row.public_name?.trim() || row.name,
     description: row.description,
     durationMinutes: row.duration_minutes,
     priceAmount: row.price_amount,
@@ -235,7 +239,7 @@ export function createCatalogRepository(client: SupabaseAnonServerClient): Catal
       let q = client
         .from("services")
         .select(
-          "slug, name, description, duration_minutes, price_amount, currency, tag, sort_order, categories!inner(slug), service_parameters(price_display_mode), service_price_tiers(price_main)",
+          "slug, name, public_name, description, duration_minutes, price_amount, currency, tag, sort_order, categories!inner(slug), service_parameters(price_display_mode), service_price_tiers(price_main)",
         )
         .eq("is_public", true)
         .eq("is_active", true)
@@ -283,7 +287,7 @@ export function createCatalogRepository(client: SupabaseAnonServerClient): Catal
       const { data, error } = await client
         .from("services")
         .select(
-          "id, slug, name, description, duration_minutes, price_amount, currency, tag, kind, sort_order, categories!inner(slug), service_parameters(price_display_mode, length_affects_price, length_affects_duration, requires_consultation), service_price_tiers(length_tier, price_main, price_addon, duration_main_min, duration_addon_min, process_min, source, confidence)",
+          "id, slug, name, public_name, description, duration_minutes, price_amount, currency, tag, kind, sort_order, categories!inner(slug), service_parameters(price_display_mode, length_affects_price, length_affects_duration, requires_consultation), service_price_tiers(length_tier, price_main, price_addon, duration_main_min, duration_addon_min, process_min, source, confidence)",
         )
         .eq("is_public", true)
         .eq("is_active", true)

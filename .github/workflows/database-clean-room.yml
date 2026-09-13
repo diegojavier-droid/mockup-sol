@@ -583,6 +583,18 @@ jobs:
               end if;
             end loop;
 
+            -- Y el nombre que llega a la web, igual. «Balayage» no entra
+            -- en la lista: es el nombre con el que la clienta pide, no un
+            -- aparato.
+            foreach v_jerga in array array['gorra','gorro','aluminio','papel',
+                                           'bandas termicas'] loop
+              select count(*) into n from public.services
+               where lower(public.unaccent_simple(coalesce(public_name, name))) like '%' || v_jerga || '%';
+              if n <> 0 then
+                raise exception 'el nombre publico de % servicios nombra la tecnica: %', n, v_jerga;
+              end if;
+            end loop;
+
             -- Lo que la clienta ve tiene que estar descrito. Un servicio
             -- publicado sin descripcion es un nombre y un precio, y con
             -- eso no se decide una seña del 20%.
