@@ -136,7 +136,7 @@ jobs:
           personalization_options=49
           service_personalization_option_modifiers=192
           service_personalization_rules=209
-          services=59
+          services=86
           EOF
 
           echo "Counts after clean rebuild:"
@@ -508,6 +508,56 @@ jobs:
           rollback;
           SQL
 
+          # Los precios de la planilla viva de Sol. Si alguien los pisa con
+          # un promedio de industria, la web vuelve a cobrar menos que el
+          # salón —que es el daño que esta migración vino a reparar—.
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare n int;
+          begin
+            -- Las cuatro líneas de coloración existen y no son la misma.
+            select count(distinct t.price_main) into n
+              from public.services s
+              join public.service_price_tiers t on t.service_id = s.id
+             where s.slug in ('raiz-exiline','raiz-sin-tacc','raiz-tono-well','raiz-itely')
+               and t.length_tier = 'corto';
+            if n <> 4 then raise exception 'las cuatro raices deberian tener 4 precios distintos, hay %', n; end if;
+
+            -- Itely es la linea que mas se usa: 557 cobros contra 71 de
+            -- Exiline. Su raiz en corto sale 36000 segun la planilla.
+            select t.price_main into n
+              from public.services s
+              join public.service_price_tiers t on t.service_id = s.id
+             where s.slug = 'raiz-itely' and t.length_tier = 'corto';
+            if n is distinct from 36000 then raise exception 'raiz-itely corto deberia ser 36000, es %', n; end if;
+
+            -- Lo que estaba por debajo del precio real de Sol.
+            select t.price_main into n from public.services s
+              join public.service_price_tiers t on t.service_id = s.id
+             where s.slug = 'recogido' and t.length_tier = 'corto';
+            if n is distinct from 55000 then raise exception 'recogido corto deberia ser 55000, es %', n; end if;
+
+            select t.price_main into n from public.services s
+              join public.service_price_tiers t on t.service_id = s.id
+             where s.slug = 'semi' and t.length_tier = 'unico';
+            if n is distinct from 17000 then raise exception 'semi deberia ser 17000, es %', n; end if;
+
+            -- Los de mechones existen y son los mas caros del salon.
+            select count(*) into n from public.services
+             where slug in ('californianas','contorno','reflejos-gorra-total',
+                            'reflejos-papel-total','iluminacion-gorra','iluminacion-papel')
+               and deleted_at is null;
+            if n <> 6 then raise exception 'faltan servicios de mechones, hay %', n; end if;
+
+            -- Nacen sin publicar: la planilla tiene precios y no duraciones.
+            select count(*) into n from public.services
+             where slug in ('californianas','raiz-itely','semirecogido','lavado') and is_public;
+            if n <> 0 then raise exception '% servicios nuevos salieron publicados sin duracion validada', n; end if;
+
+            raise notice 'PRECIOS DE LA PLANILLA DE SOL: pasa';
+          end $$;
+          SQL
+
       - name: Verify booking domain invariants
         run: |
           set -euo pipefail
@@ -525,21 +575,22 @@ jobs:
             -- alguien le pone un número desde el repositorio.
             select count(*) into n from public.business_settings;
             if n <> 10 then raise exception 'business_settings expected 10, got %', n; end if;
-            -- 59 = 43 + los 16 tratamientos que el salón cobra y el
-            -- sistema no tenía (karseell, riflessi, ampolla, biotina…).
+            -- 86 = 59 + los 27 servicios que la planilla viva de Sol tiene
+            -- y el sistema no: las cuatro líneas de coloración, los de
+            -- mechones, los peinados de fiesta y los servicios sueltos.
             select count(*) into n from public.service_parameters;
-            if n <> 59 then raise exception 'service_parameters expected 59, got %', n; end if;
-            -- 191 = 127 + 64 filas de precio nuevas. Las otras 20 de la
-            -- lista de Sol pisaron filas que ya existían.
+            if n <> 86 then raise exception 'service_parameters expected 86, got %', n; end if;
+            -- 299 = 191 + 108 filas nuevas: 27 servicios por cuatro largos,
+            -- menos los que usan tramo único.
             select count(*) into n from public.service_price_tiers;
-            if n <> 191 then raise exception 'service_price_tiers expected 191, got %', n; end if;
+            if n <> 299 then raise exception 'service_price_tiers expected 299, got %', n; end if;
 
             -- La lista de Sol entró como sol_pricelist, NUNCA como
             -- sol_validated: son sus precios, pero ella todavía no los
             -- confirmó, y /admin/pending-values filtra por eso.
             select count(*) into n from public.service_price_tiers
              where source = 'sol_pricelist' and confidence = 'medium';
-            if n <> 84 then raise exception 'tiers de la lista de Sol expected 84, got %', n; end if;
+            if n <> 207 then raise exception 'tiers de la lista de Sol expected 207, got %', n; end if;
 
             -- price_addon es la oferta por llevarse color y tratamiento
             -- juntos. Sólo la tienen tratamientos: un corte vale lo mismo
