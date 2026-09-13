@@ -147,20 +147,24 @@ jobs:
         run: |
           set -euo pipefail
 
-          # El catálogo lo siembran DOS archivos desde 2026-09-12: el
-          # bootstrap original y el catálogo real de Sol, que renombra,
-          # agrega tratamientos y da de baja babylights y claritos.
+          # El catálogo lo siembran TRES archivos: el bootstrap original,
+          # el catálogo real de Sol —que renombra, agrega tratamientos y da
+          # de baja babylights y claritos— y el que decide qué se publica.
           #
-          # Re-correr sólo el bootstrap no prueba idempotencia: la prueba
-          # se pasaría a sí misma dejando el mundo distinto de como lo
-          # encontró. El bootstrap trae babylights y claritos con
-          # `is_public = true`, así que replayarlo solo los resucita y la
-          # verificación de RLS de más abajo encontraría 43 públicos donde
-          # el catálogo define 41. Se replayan los dos, en orden.
+          # Re-correr sólo una parte no prueba idempotencia: la prueba se
+          # pasaría a sí misma dejando el mundo distinto de como lo
+          # encontró. El bootstrap inserta TODO con `is_public = true`,
+          # así que replayarlo solo resucita babylights y claritos y, desde
+          # que el catálogo real reemplazó al inventado, también los 19
+          # servicios inventados que se retiraron: la verificación de RLS
+          # de más abajo encontraría 68 públicos donde el catálogo define
+          # 49. Se replayan los tres, en orden.
           psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 \
             -f supabase/migrations/20260724170535_catalog_bootstrap.sql
           psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 \
             -f supabase/migrations/20260912130000_catalogo_real_de_sol.sql
+          psql "$SUPABASE_LOCAL_DB_URL" -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/20260913220000_la_web_muestra_el_catalogo_real.sql
 
           psql "$SUPABASE_LOCAL_DB_URL" -At -F '=' -c "
             select table_name, row_count
@@ -196,21 +200,27 @@ jobs:
             select count(*) into n from public.categories;
             if n <> 4 then raise exception 'anon categories expected 4, got %', n; end if;
 
-            -- 41 desde que babylights y claritos se agruparon bajo Mechas
-            -- (decisión de Sol, 2026-09-12) y los 16 tratamientos nuevos
-            -- entraron activos pero SIN publicar, a la espera de que ella
-            -- defina las duraciones.
+            -- 49: 37 de peluquería, 5 de maquillaje, 3 de uñas y 4 de
+            -- depilación. Los 37 y los 3 salen de la planilla de Sol; los
+            -- 19 inventados que había en esas dos áreas se retiraron.
+            -- Maquillaje y depilación siguen siendo provisionales porque
+            -- la planilla no las trae, y retirar un área entera sería peor.
+            -- Los 16 tratamientos de la planilla siguen sin publicar hasta
+            -- que Sol diga qué hace cada uno.
             select count(*) into n from public.services;
-            if n <> 41 then raise exception 'anon services expected 41, got %', n; end if;
+            if n <> 49 then raise exception 'anon services expected 49, got %', n; end if;
 
             -- Lo que el número de arriba solo no prueba: hasta ahora todos
             -- los servicios eran públicos, así que un RLS roto habría dado
-            -- el mismo conteo. Ahora hay 16 activos que anon NO debe ver.
+            -- el mismo conteo. Ahora hay 35 activos que anon NO debe ver
+            -- —16 tratamientos de la planilla y los 19 inventados que se
+            -- retiraron— y eso sí distingue un RLS sano de uno roto.
             select count(*) into n from public.services where not is_public;
             if n <> 0 then raise exception 'anon ve % servicios sin publicar', n; end if;
 
+            -- 5, no 6: «Tratamiento post-color» era inventado y se retiró.
             select count(*) into n from public.services where kind = 'tratamiento';
-            if n <> 6 then raise exception 'anon tratamientos publicos expected 6, got %', n; end if;
+            if n <> 5 then raise exception 'anon tratamientos publicos expected 5, got %', n; end if;
 
             select count(*) into n from public.extras;
             if n <> 13 then raise exception 'anon extras expected 13, got %', n; end if;
