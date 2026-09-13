@@ -26,6 +26,8 @@ export type ServiceKind = "servicio" | "color" | "tratamiento";
 export interface CatalogRow {
   slug: string;
   name: string;
+  /** Cómo se llama en la web. `null`: la clienta ve el mismo que Sol. */
+  publicName: string | null;
   description: string | null;
   category: string;
   kind: ServiceKind;
@@ -48,7 +50,7 @@ export async function listCatalog(admin: SupabaseAdminClient): Promise<CatalogRo
   const { data, error } = await admin
     .from("services")
     .select(
-      "slug, name, description, kind, duration_minutes, price_amount, is_public, is_active, categories!inner(slug), service_parameters(standard_cost_amount)",
+      "slug, name, public_name, description, kind, duration_minutes, price_amount, is_public, is_active, categories!inner(slug), service_parameters(standard_cost_amount)",
     )
     .is("deleted_at", null)
     .order("name");
@@ -57,6 +59,7 @@ export async function listCatalog(admin: SupabaseAdminClient): Promise<CatalogRo
   type Fila = {
     slug: string;
     name: string;
+    public_name: string | null;
     description: string | null;
     kind: ServiceKind;
     duration_minutes: number;
@@ -70,6 +73,7 @@ export async function listCatalog(admin: SupabaseAdminClient): Promise<CatalogRo
   return ((data ?? []) as Fila[]).map((r) => ({
     slug: r.slug,
     name: r.name,
+    publicName: r.public_name,
     description: r.description,
     category: Array.isArray(r.categories) ? (r.categories[0]?.slug ?? "") : r.categories.slug,
     kind: r.kind,
@@ -135,6 +139,7 @@ export async function updateService(
   p: {
     slug: string;
     name?: string | null;
+    publicName?: string | null;
     description?: string | null;
     category?: string | null;
     kind?: ServiceKind | null;
@@ -146,6 +151,7 @@ export async function updateService(
   const { error } = await admin.rpc("update_service", {
     p_slug: p.slug,
     p_name: p.name ?? null,
+    p_public_name: p.publicName ?? null,
     p_description: p.description ?? null,
     p_category: p.category ?? null,
     p_kind: p.kind ?? null,
