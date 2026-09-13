@@ -838,6 +838,8 @@ export type ServiceKind = "servicio" | "color" | "tratamiento";
 export interface CatalogRow {
   slug: string;
   name: string;
+  /** Cómo se llama en la web. `null`: la clienta ve el mismo que Sol. */
+  publicName: string | null;
   description: string | null;
   category: string;
   kind: ServiceKind;
@@ -941,6 +943,8 @@ export function useEditarServicio() {
     mutationFn: (v: {
       slug: string;
       name?: string;
+      /** Cadena vacía borra el nombre público: vuelve a verse el interno. */
+      publicName?: string;
       description?: string | null;
       category?: string;
       kind?: ServiceKind;

@@ -1304,6 +1304,9 @@ export function createAdminRoute(env: ServerEnv) {
     const parsed = z
       .object({
         name: z.string().min(1).max(120).optional(),
+        // Cadena vacía es válida a propósito: así se borra el nombre
+        // público y la clienta vuelve a ver el interno.
+        publicName: z.string().max(120).optional(),
         description: z.string().max(500).nullish(),
         category: z.string().min(1).max(64).optional(),
         kind: KIND.optional(),

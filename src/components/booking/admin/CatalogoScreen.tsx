@@ -302,7 +302,7 @@ function Catalogo({ modo }: { modo: "servicios" | "tratamientos" }) {
                   // El valor va en la clave a propósito: cuando el servidor
                   // devuelve otro —al deshacer, por ejemplo— la fila se vuelve
                   // a montar con el dato correcto en vez de mostrar el viejo.
-                  key={`${f.slug}-${f.kind}-${f.standardCost}-${f.name}`}
+                  key={`${f.slug}-${f.kind}-${f.standardCost}-${f.name}-${f.publicName ?? ""}`}
                   categorias={categorias.data ?? []}
                   fila={f}
                   onAviso={setAviso}
@@ -339,6 +339,14 @@ function Catalogo({ modo }: { modo: "servicios" | "tratamientos" }) {
  * El nombre corto —el que va en la dirección— no se edita nunca: cambiarlo
  * rompería los turnos viejos que lo nombran, y renombrar lo que se lee es lo
  * que hace falta el 100% de las veces.
+ *
+ * POR QUÉ HAY DOS NOMBRES
+ *
+ * El de arriba es el de Sol: «Reflejos con gorra · total» le dice qué técnica
+ * aplicó. El de abajo es el que ve la clienta, y ahí la técnica no le sirve
+ * de nada. Vacío significa que ve el mismo, que es lo normal: sólo hace falta
+ * separarlos cuando el nombre de trabajo dice algo que la clienta no tiene
+ * por qué leer.
  */
 function FilaCatalogo({
   fila,
@@ -354,6 +362,7 @@ function FilaCatalogo({
   const baja = useBajaDeServicio();
 
   const [nombre, setNombre] = useState(fila.name);
+  const [publico, setPublico] = useState(fila.publicName ?? "");
   const [costoTexto, setCostoTexto] = useState(
     fila.standardCost === null ? "" : String(fila.standardCost),
   );
@@ -371,6 +380,24 @@ function FilaCatalogo({
       onSuccess: () => onAviso({ texto, deshacer: () => editar.mutate(volver) }),
       onError: fallo,
     });
+
+  /**
+   * El nombre que ve la clienta. Vacío no es «no cambies nada»: es
+   * «borralo», y al borrarlo la clienta vuelve a ver el nombre de Sol.
+   * Por eso se compara contra lo que había y no contra una cadena vacía.
+   */
+  const guardarPublico = () => {
+    const limpio = publico.trim();
+    const antes = fila.publicName ?? "";
+    if (limpio === antes) return;
+    cambiar(
+      { slug: fila.slug, publicName: limpio },
+      limpio === ""
+        ? `${fila.name}: la clienta vuelve a ver el mismo nombre.`
+        : `${fila.name} · la clienta ve «${limpio}»`,
+      { slug: fila.slug, publicName: antes },
+    );
+  };
 
   const guardarCosto = () => {
     const limpio = costoTexto.trim();
@@ -458,6 +485,21 @@ function FilaCatalogo({
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2 pl-2 text-xs text-muted-foreground">
         <span className="w-36 shrink-0 truncate font-mono" title={fila.slug}>
           {fila.slug}
+        </span>
+
+        <span className="flex items-center gap-1.5">
+          La clienta ve
+          <input
+            aria-label={`Nombre que ve la clienta para ${fila.name}`}
+            className={`${CAMPO} w-48 py-0.5 text-xs`}
+            onBlur={guardarPublico}
+            onChange={(e) => setPublico(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+            placeholder="El mismo"
+            value={publico}
+          />
         </span>
 
         <span className="flex items-center gap-1.5">

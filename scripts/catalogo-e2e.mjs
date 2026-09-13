@@ -61,6 +61,7 @@ const CATALOGO = [
   {
     slug: "corte-fem",
     name: "Corte",
+    publicName: null,
     description: null,
     category: "peluqueria",
     kind: "servicio",
@@ -73,6 +74,7 @@ const CATALOGO = [
   {
     slug: "mechas",
     name: "Mechas",
+    publicName: null,
     description: null,
     category: "peluqueria",
     kind: "servicio",
@@ -85,6 +87,7 @@ const CATALOGO = [
   {
     slug: "retoque-raiz",
     name: "Color de raíces",
+    publicName: null,
     description: null,
     category: "peluqueria",
     kind: "color",
@@ -97,6 +100,7 @@ const CATALOGO = [
   {
     slug: "karseell",
     name: "Karseell",
+    publicName: null,
     description: null,
     category: "peluqueria",
     kind: "tratamiento",
@@ -109,6 +113,7 @@ const CATALOGO = [
   {
     slug: "semi",
     name: "Esmaltado semipermanente",
+    publicName: null,
     description: null,
     category: "unas",
     kind: "servicio",
@@ -121,6 +126,7 @@ const CATALOGO = [
   {
     slug: "mk-social",
     name: "Maquillaje social",
+    publicName: null,
     description: null,
     category: "maquillaje",
     kind: "servicio",
@@ -416,8 +422,40 @@ await esperar();
 const apagar = escrituras.find((e) => e.ruta.endsWith("/active"));
 check("apagar manda active:false", apagar?.cuerpo?.active === false);
 
-// ── 7. Nada explotó ─────────────────────────────────────────────────────
-console.log("7. La consola");
+// ── 7. El nombre que ve la clienta ──────────────────────────────────────
+//
+// Sol necesita «Reflejos con gorra» para saber qué hizo; la clienta no.
+// El campo existe para separarlos, y vacío significa que ve el mismo.
+console.log("7. El nombre que ve la clienta");
+await ir("catalogo");
+escrituras.length = 0;
+
+const campoPublico = pagina.locator("input[aria-label^='Nombre que ve la clienta']").first();
+check("la fila tiene el campo", (await campoPublico.count()) === 1);
+check(
+  "vacío avisa que se ve el mismo nombre",
+  (await campoPublico.getAttribute("placeholder")) === "El mismo",
+);
+
+await campoPublico.fill("Reflejos · mechones finos");
+await campoPublico.blur();
+await esperar();
+const puesto = escrituras.find((e) => e.cuerpo?.publicName !== undefined);
+check("guarda el nombre que escribió Sol", puesto?.cuerpo?.publicName === "Reflejos · mechones finos");
+
+escrituras.length = 0;
+const campoOtraVez = pagina.locator("input[aria-label^='Nombre que ve la clienta']").first();
+await campoOtraVez.fill("");
+await campoOtraVez.blur();
+await esperar();
+const vaciado = escrituras.find((e) => e.cuerpo?.publicName !== undefined);
+// Vacío tiene que llegar como cadena vacía y no como ausencia: si no
+// llegara, el servidor lo leería como «no cambies nada» y Sol no podría
+// sacar un nombre público que puso.
+check("y al vaciarlo manda la orden de borrarlo", vaciado?.cuerpo?.publicName === "");
+
+// ── 8. Nada explotó ─────────────────────────────────────────────────────
+console.log("8. La consola");
 check("ningún error de JavaScript", erroresDePagina.length === 0);
 if (erroresDePagina.length) console.log("   ", erroresDePagina.slice(0, 3));
 
