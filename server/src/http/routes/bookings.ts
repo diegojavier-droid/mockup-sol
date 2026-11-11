@@ -31,9 +31,8 @@ import { logBookingFailure, requestId } from "../../lib/observability";
 import {
   BookingError,
   cancelBooking,
-  createBooking,
+  createOnlineBooking,
   getBookingByToken,
-  recordBookingConsent,
   type CreateBookingItem,
 } from "../../lib/booking/repository";
 import { TERMS_VERSION } from "../../config/legal";
@@ -307,7 +306,7 @@ export function createBookingsRoute(env: ServerEnv) {
     );
 
     try {
-      const booking = await createBooking(admin, {
+      const booking = await createOnlineBooking(admin, {
         areaSlug: context.areaSlug,
         startsAt,
         endsAt,
@@ -326,31 +325,8 @@ export function createBookingsRoute(env: ServerEnv) {
         },
         items,
         customerNote: body.note ?? null,
-        source: "online",
+        termsVersion: body.consent.termsVersion,
       });
-
-      // El turno ya existe. Si esto fallara, quedaría un turno sin la
-      // prueba del consentimiento: no se le rompe la reserva a la clienta
-      // por eso, pero tiene que quedar gritado en el log para poder
-      // repararlo. `pendientes_de_consentimiento` es lo que hay que
-      // buscar.
-      try {
-        await recordBookingConsent(admin, {
-          bookingId: booking.id,
-          version: body.consent.termsVersion,
-          channel: "web",
-        });
-      } catch (consentError) {
-        console.error(
-          JSON.stringify({
-            evento: "pendientes_de_consentimiento",
-            bookingId: booking.id,
-            version: body.consent.termsVersion,
-            detalle: consentError instanceof Error ? consentError.message : String(consentError),
-            ts: new Date().toISOString(),
-          }),
-        );
-      }
 
       return c.json(
         {

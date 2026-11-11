@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ApiPersonalizationField } from "./api/catalog-types";
 import { CatalogProvider } from "./catalog-context";
-import { useBookingWizard } from "../components/booking/hooks/useBookingWizard";
+import {
+  buildBookingRequestPayload,
+  useBookingWizard,
+} from "../components/booking/hooks/useBookingWizard";
 import { BOOKING_DRAFT_STORAGE_KEY, BOOKING_DRAFT_VERSION } from "./booking-draft-storage";
 
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
@@ -11,7 +15,11 @@ afterEach(() => {
   else Reflect.deleteProperty(globalThis, "window");
 });
 
-function restore(step: string) {
+function restore(
+  step: string,
+  personalization: Record<string, string> = { alergias: "Sí, importantes" },
+  fields: ApiPersonalizationField[] = [],
+) {
   const draft = {
     version: BOOKING_DRAFT_VERSION,
     updatedAt: new Date().toISOString(),
@@ -20,7 +28,7 @@ function restore(step: string) {
       currentStepKey: step,
       selectedCategoryId: "maquillaje",
       selectedServiceId: "mk-social",
-      personalization: { alergias: "Sí, importantes" },
+      personalization,
       additionalComments: "Nota sintética",
       selectedExtras: [],
       selectedDate: "2030-11-12",
@@ -59,7 +67,7 @@ function restore(step: string) {
     ],
   );
   client.setQueryData(["catalog", "extras"], []);
-  client.setQueryData(["catalog", "personalization"], []);
+  client.setQueryData(["catalog", "personalization"], fields);
   client.setQueryData(["salon-info"], { hours: [], termsVersion: "test-version" });
   let captured: ReturnType<typeof useBookingWizard> | undefined;
   function Harness() {
@@ -91,5 +99,68 @@ describe("inicialización React con borrador guardado", () => {
     expect(wizard.stepKey).toBe("dateTime");
     expect(wizard.acceptedTerms).toBe(false);
     expect(wizard.service?.id).toBe("mk-social");
+  });
+});
+
+const detailFields: ApiPersonalizationField[] = [
+  {
+    slug: "estilo",
+    categorySlug: "maquillaje",
+    label: "Estilo",
+    fieldType: "single_choice",
+    isRequired: true,
+    fieldRole: "modifier",
+    decision: "operational",
+    options: [],
+  },
+  {
+    slug: "alergias",
+    categorySlug: "maquillaje",
+    label: "Alergias",
+    fieldType: "single_choice",
+    isRequired: false,
+    fieldRole: "modifier",
+    decision: "operational",
+    options: [],
+  },
+];
+
+describe("obligatoriedad de los detalles desde el catálogo real", () => {
+  test("permite continuar sin responder alergias cuando el catálogo la declara opcional", () => {
+    const wizard = restore("details", { estilo: "Natural" }, detailFields);
+    expect(wizard.stepKey).toBe("details");
+    expect(wizard.canNext).toBe(true);
+    expect(wizard.personal).toEqual({ estilo: "Natural" });
+  });
+
+  test("bloquea continuar si falta un campo obligatorio aunque se responda el opcional", () => {
+    const wizard = restore("details", { alergias: "Sí, importantes" }, detailFields);
+    expect(wizard.stepKey).toBe("details");
+    expect(wizard.canNext).toBe(false);
+  });
+
+  test("respeta un cambio de obligatoriedad del catálogo sin reglas especiales por slug", () => {
+    const fields = detailFields.map((field) => ({ ...field, isRequired: true }));
+    const wizard = restore("details", { estilo: "Natural" }, fields);
+    expect(wizard.canNext).toBe(false);
+  });
+
+  test("conserva la elección de alergia y el resto de respuestas en resumen y solicitud", () => {
+    const personal = { estilo: "Natural", alergias: "Sí, importantes" };
+    const wizard = restore("details", personal, detailFields);
+    expect(wizard.canNext).toBe(true);
+    expect(wizard.data.personalization).toEqual(personal);
+    const payload = buildBookingRequestPayload({
+      category: wizard.category,
+      service: wizard.service,
+      personal: wizard.personal,
+      additionalComments: wizard.additionalComments,
+      chosenExtras: wizard.chosenExtras,
+      date: wizard.date,
+      time: wizard.time,
+      customer: wizard.customer,
+      isCustomerRecognized: wizard.isCustomerRecognized,
+    });
+    expect(payload).toMatchObject({ selection: { personalization: personal } });
   });
 });

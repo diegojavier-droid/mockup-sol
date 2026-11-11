@@ -474,7 +474,9 @@ export function useBookingWizard(
     if (stepKey === "service") return !!service;
     if (stepKey === "details") {
       return category
-        ? catalog.personalizationFields[category].every((field) => personal[field.id])
+        ? catalog.personalizationFields[category].every(
+            (field) => field.isRequired === false || !!personal[field.id],
+          )
         : false;
     }
     if (stepKey === "extras") return true;

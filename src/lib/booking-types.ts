@@ -33,6 +33,8 @@ export interface Extra {
 }
 
 export interface PersonalizationField {
+  /** El catálogo real lo informa; el mock histórico conserva su obligatoriedad. */
+  isRequired?: boolean;
   id: string;
   label: string;
   options: string[];
