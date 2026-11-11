@@ -1719,44 +1719,81 @@ export function createAdminRoute(env: ServerEnv) {
     const { data, error } = await createSupabaseAdminClient(env)
       .from("business_hours")
       .select("id, weekday, opens_at, closes_at, is_active")
-      .order("weekday");
+      .order("weekday")
+      .order("opens_at");
     if (error) throw error;
     return c.json({ data });
   });
 
   owner.patch("/business-hours/:id", async (c) => {
-    const schema = z.object({
-      opensAt: z
-        .string()
-        .regex(/^\d{2}:\d{2}$/)
-        .optional(),
-      closesAt: z
-        .string()
-        .regex(/^\d{2}:\d{2}$/)
-        .optional(),
-      isActive: z.boolean().optional(),
-    });
+    const time = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
+    const schema = z
+      .object({
+        opensAt: time.optional(),
+        closesAt: time.optional(),
+        isActive: z.boolean().optional(),
+        // Comparación atómica con lo que la persona vio al abrir el editor.
+        // No cambia el contrato de los clientes anteriores que no lo envían.
+        expected: z
+          .object({
+            opensAt: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,6})?)?$/),
+            closesAt: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,6})?)?$/),
+            isActive: z.boolean(),
+          })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .refine(
+        (v) => v.opensAt !== undefined || v.closesAt !== undefined || v.isActive !== undefined,
+      );
     const parsed = schema.safeParse(await c.req.json().catch(() => null));
-    if (!parsed.success) throw new HTTPException(400, { message: "Horario inválido." });
+    if (!z.string().uuid().safeParse(c.req.param("id")).success || !parsed.success)
+      throw new HTTPException(400, { message: "Horario inválido." });
+    if (parsed.data.opensAt && parsed.data.closesAt && parsed.data.opensAt >= parsed.data.closesAt)
+      throw new HTTPException(400, {
+        message: "El horario de cierre tiene que ser posterior al de apertura.",
+      });
 
     const patch: Record<string, unknown> = {};
-    if (parsed.data.opensAt) patch.opens_at = parsed.data.opensAt;
-    if (parsed.data.closesAt) patch.closes_at = parsed.data.closesAt;
+    if (parsed.data.opensAt !== undefined) patch.opens_at = parsed.data.opensAt;
+    if (parsed.data.closesAt !== undefined) patch.closes_at = parsed.data.closesAt;
     if (parsed.data.isActive !== undefined) patch.is_active = parsed.data.isActive;
 
-    const { error } = await createSupabaseAdminClient(env)
+    let update = createSupabaseAdminClient(env)
       .from("business_hours")
       .update(patch)
       .eq("id", c.req.param("id"));
+    if (parsed.data.expected) {
+      update = update
+        .eq("opens_at", parsed.data.expected.opensAt)
+        .eq("closes_at", parsed.data.expected.closesAt)
+        .eq("is_active", parsed.data.expected.isActive);
+    }
+    const { data, error } = await update
+      .select("id, weekday, opens_at, closes_at, is_active")
+      .maybeSingle();
     if (error) {
       if (String(error.message).includes("business_hours_time_order")) {
         throw new HTTPException(400, {
           message: "El horario de cierre tiene que ser posterior al de apertura.",
         });
       }
+      if (error.code === "23P01") {
+        throw new HTTPException(409, {
+          message: "Este horario se superpone con otra franja del mismo día. Revisá las horas.",
+        });
+      }
       throw error;
     }
-    return c.json({ data: { ok: true } });
+    if (!data) {
+      throw new HTTPException(parsed.data.expected ? 409 : 404, {
+        message: parsed.data.expected
+          ? "El horario cambió o ya no está disponible. Cancelá la edición y volvé a abrirlo."
+          : "No encontramos ese horario.",
+      });
+    }
+    return c.json({ data: { ok: true, hour: data } });
   });
 
   owner.get("/areas", async (c) => {

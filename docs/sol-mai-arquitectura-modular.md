@@ -225,12 +225,22 @@ superior; en el teléfono bajan a pestañas.
 |                                      | **Clientas**         | Fichas · Sin venir hace tiempo · Consentimientos                      |
 |                                      | **Finanzas**         | Caja del día · Cobros · Devoluciones · Facturación · Gastos · Resumen |
 |                                      | **Inventario**       | Productos · Stock · Movimientos                                       |
-| **Cada tanto**                       | **Servicios**          | Servicios · Tratamientos · Promociones · Precios y tiempos · Áreas · Horarios |
+| **Cada tanto**                       | **Servicios**          | Servicios · Tratamientos · Promociones · Precios y tiempos · Áreas |
 |                                      | **Puestos de trabajo** | Listado · Fuera de servicio                                           |
 |                                      | **Personal**         | Empleados · Horarios · Producción                                     |
 |                                      | **Compras**          | Proveedores · Pedidos                                                 |
 | **Casi nunca, pero tiene que estar** | **Usuarios y roles** | Personas · Roles · Accesos · Registro de cambios                      |
-|                                      | **Configuración**    | Datos del negocio · Términos y privacidad · Integraciones             |
+|                                      | **Configuración**    | Datos del negocio · Horarios · Términos y privacidad · Integraciones             |
+
+#### Horarios semanales en Configuración (2026-11-11)
+
+La pantalla real de horarios se ubica en Configuración, que ya gobierna
+GET/PATCH `business-hours` con niveles `view`/`full`. La dirección anterior
+`/panel/servicios/horarios` redirige a `/panel/configuracion/horarios`.
+Se reemplazan allí los paneles mock de buffers/cierres por edición de las
+franjas reales. No hay cambio de matriz de permisos ni nuevas reglas de
+negocio. Siguen siendo 37 secciones; las referencias anteriores que agrupan
+horarios dentro de Servicios describen la organización histórica.
 
 #### La ampliación del 2026-09-12: Servicios se abre en tres
 

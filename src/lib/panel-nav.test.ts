@@ -12,7 +12,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { ARBOL, BARRA_TELEFONO, buscarModulo, primeraSeccion, rutaDe } from "./panel-nav";
+import { ARBOL, BARRA_TELEFONO, MUDANZAS, buscarModulo, primeraSeccion, rutaDe } from "./panel-nav";
 
 describe("el árbol del panel", () => {
   test("son los diez módulos de §5.0", () => {
@@ -143,7 +143,6 @@ describe("el permiso y el nombre visible son cosas distintas", () => {
       "promociones",
       "precios",
       "areas",
-      "horarios",
     ]);
     expect(servicios.secciones.some((s) => s.slug.startsWith("puesto"))).toBe(false);
   });
@@ -167,4 +166,11 @@ describe("una dirección que no existe", () => {
     expect(buscarModulo("inventado")).toBeUndefined();
     expect(buscarModulo(undefined)).toBeUndefined();
   });
+});
+
+test("Horarios usa Configuración y conserva la dirección anterior", () => {
+  const configuracion = buscarModulo("configuracion")!;
+  expect(configuracion.permiso).toBe("configuracion");
+  expect(primeraSeccion(configuracion).slug).toBe("horarios");
+  expect(MUDANZAS["servicios/horarios"]).toEqual({ modulo: "configuracion", seccion: "horarios" });
 });

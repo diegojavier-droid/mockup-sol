@@ -82,6 +82,12 @@ jobs:
       - name: Build frontend
         run: bun run build
 
+      - name: Install Chromium for business-hours component QA
+        run: bunx playwright install --with-deps chromium
+
+      - name: Verify business-hours editor with synthetic HTTP fixtures
+        run: bun run scripts/business-hours-e2e.ts
+
       - name: Ensure routeTree.gen.ts is up-to-date
         run: |
           if ! git diff --exit-code -- src/routeTree.gen.ts; then
