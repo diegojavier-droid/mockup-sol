@@ -105,11 +105,13 @@ export interface CreatedBooking {
   created_via_override: boolean;
 }
 
-export async function createBooking(
-  admin: SupabaseAdminClient,
-  params: CreateBookingParams,
-): Promise<CreatedBooking> {
-  const { data, error } = await admin.rpc("create_booking", {
+type BookingDetails = Omit<
+  CreateBookingParams,
+  "source" | "createdBy" | "actorLabel" | "override" | "overrideReason"
+>;
+
+function bookingRpcDetails(params: BookingDetails) {
+  return {
     p_area_slug: params.areaSlug,
     p_starts_at: params.startsAt.toISOString(),
     p_ends_at: params.endsAt.toISOString(),
@@ -122,6 +124,18 @@ export async function createBooking(
     p_customer: params.customer,
     p_items: params.items,
     p_customer_note: params.customerNote ?? null,
+  };
+}
+
+/** Alta interna: no fabrica un consentimiento web para otros canales. */
+export async function createBooking(
+  admin: SupabaseAdminClient,
+  params: CreateBookingParams & { source: Exclude<BookingSource, "online"> },
+): Promise<CreatedBooking> {
+  // Defensa ante un caller JS o un cast que eluda la restricción de tipos.
+  if ((params.source as BookingSource) === "online") throw new Error("online_requires_consent");
+  const { data, error } = await admin.rpc("create_booking", {
+    ...bookingRpcDetails(params),
     p_source: params.source,
     p_created_by: params.createdBy ?? null,
     p_actor_label: params.actorLabel ?? null,
@@ -132,30 +146,20 @@ export async function createBooking(
   return data as CreatedBooking;
 }
 
-/**
- * Deja registrado que la clienta aceptó los términos al reservar.
- *
- * Se llama DESPUÉS de crear el turno porque el consentimiento se ancla al
- * turno y a la clienta, y ninguno de los dos existe antes. La ventana de
- * riesgo —turno creado, consentimiento no— se cubre en la ruta, que
- * rechaza el pedido antes de crear nada si la aceptación no vino o vino
- * con una versión que no es la vigente.
- */
-export async function recordBookingConsent(
+/** El turno público y su evidencia se confirman o revierten juntos en DB. */
+export async function createOnlineBooking(
   admin: SupabaseAdminClient,
-  params: {
-    bookingId: string;
-    version: string;
-    channel: "web" | "mostrador" | "telefono" | "whatsapp";
-  },
-): Promise<{ recorded: boolean }> {
-  const { data, error } = await admin.rpc("record_booking_consent", {
-    p_booking_id: params.bookingId,
-    p_version: params.version,
-    p_channel: params.channel,
+  params: BookingDetails & { termsVersion: string },
+): Promise<CreatedBooking> {
+  if (!params.termsVersion?.trim() || params.termsVersion.length > 32) {
+    throw new Error("booking_consent_required");
+  }
+  const { data, error } = await admin.rpc("create_online_booking", {
+    ...bookingRpcDetails(params),
+    p_terms_version: params.termsVersion,
   });
   if (error) rethrow(error);
-  return data as { recorded: boolean };
+  return data as CreatedBooking;
 }
 
 export async function cancelBooking(

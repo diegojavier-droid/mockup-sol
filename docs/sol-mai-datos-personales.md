@@ -128,3 +128,85 @@ Contra PostgreSQL real, el Worker real y Chromium, no contra mocks.
 | Reserva completa desde el navegador | creada, con su consentimiento |
 | Suites e2e (flujo, estaciones, combo) | verdes |
 | 113 pruebas unitarias, typecheck, lint, build | verdes |
+
+## 6. Corrección de transmisión previa al consentimiento (2026-11-11)
+
+La casilla de aceptación bloqueaba el avance, pero no las consultas automáticas:
+`useQuote` enviaba todas las respuestas y `useAvailability` las incluía en una
+URL GET antes de llegar a Datos. Además, un borrador retomado en Revisión podía
+confirmarse sin volver a marcar la casilla.
+
+La corrección mantiene la pregunta y el dato de alergias para preparar la visita:
+
+- Precio y horarios reciben sólo modificadores operativos válidos según el
+  detalle del servicio. No se usa el listado por categoría, cuya decisión es
+  siempre contextual. El largo y los extras se conservan.
+- Las claves de caché contienen esa selección mínima, no respuestas de salud.
+- Disponibilidad usa POST JSON. GET sigue disponible por compatibilidad, pero
+  ambos rechazan el campo de alergias antes de consultar servicios externos.
+  `/quote` hace el mismo rechazo, también para reservas combinadas.
+- Confirmar exige aceptación explícita de la versión cargada. Se comprueba
+  inmediatamente antes de enviar y en la API antes de consultar o guardar.
+  Un borrador de Revisión vuelve a Datos; no se inventa una aceptación pasada.
+- Las respuestas de cotización, disponibilidad y reserva son `no-store`.
+- No cambia el esquema: `booking_items.personalization` conserva las respuestas
+  y `customer_consents` sigue siendo el registro existente del consentimiento.
+
+Pruebas reproducibles: `bun run test`, `bun run typecheck`,
+`bun run typecheck:server`, `bun run build`. Los tests nuevos inspeccionan los
+requests reales del cliente HTTP y las rutas Hono con dependencias de datos
+simuladas. Incluyen rechazo antes de I/O, payload completo sólo al aceptar,
+compatibilidad GET/POST, largos, extras y servicios combinados.
+
+### Límites pendientes
+
+- La corrección no borra URLs antiguas de logs o infraestructura. No se leyó
+  ni modificó ningún dato productivo.
+- El borrador permanece en `sessionStorage` local con el TTL existente de dos
+  horas; no equivale a una aceptación ni se envía automáticamente al servidor.
+- La atomicidad del consentimiento y la obligatoriedad de preguntas detectadas
+  en esta revisión quedan corregidas por la segunda parte del mismo bloque,
+  descrita en §7.
+- Esto es una corrección técnica, no una certificación de cumplimiento legal.
+
+
+## 7. Reserva y consentimiento atómicos; preguntas opcionales (2026-11-11)
+
+La nueva RPC `create_online_booking` invoca el motor `create_booking` y registra
+la aceptación en una sola transacción PostgreSQL. Si falla cualquiera de los
+pasos, revierte reserva, items y cambios de clienta. También verifica que la
+prueba exista: una inserción silenciada por un trigger no se trata como éxito.
+
+No duplica el motor ni cambia capacidad, locks, seña, snapshots o deduplicación.
+El canal se fija en `online`, sin override. Sólo `service_role` puede ejecutarla;
+`anon` y `authenticated` no obtienen acceso. El backend valida la versión
+vigente antes de llamar a la RPC, que exige una versión explícita no vacía.
+
+Los canales internos conservan `create_booking`, sin fingir aceptación web.
+El helper TypeScript interno rechaza `online`, incluso si el caller elude sus
+tipos. La RPC antigua queda disponible sólo al rol privilegiado para clientes
+internos existentes; la API web usa exclusivamente la nueva RPC atómica.
+`record_booking_consent` permanece para reparaciones históricas idempotentes,
+pero ya no es un segundo request de la creación pública.
+
+El catálogo UX conserva `isRequired`; el wizard permite avanzar sin responder
+campos explícitamente opcionales, incluida alergias. No desaparece ninguna
+pregunta y las respuestas elegidas siguen en resumen y payload. Campos
+históricos sin metadata mantienen el comportamiento obligatorio previo.
+
+### Validación y publicación
+
+- `scripts/sql-tests/booking-consent.sql` se ejecuta en Database clean-room CI,
+  sobre PostgreSQL efímero. Prueba ejecución denegada para roles públicos,
+  éxito con `service_role`, versiones inválidas, falla y supresión de la
+  inserción de consentimiento, rollback de clienta nueva y existente,
+  reserva válida con un único consentimiento y compatibilidad interna.
+  Todas sus fixtures y triggers se revierten con `ROLLBACK`.
+- Tests de repositorio verifican una sola RPC y propagación del fallo sin
+  fallback inseguro. Tests React SSR cubren campos opcionales y obligatorios,
+  cambios del catálogo y conservación de la respuesta.
+- La migración es aditiva y debe aplicarse **antes** de publicar el backend
+  nuevo. El código antiguo puede convivir con la función adicional, pero
+  conserva el comportamiento no atómico anterior hasta actualizarse.
+- No se desplegó ni se aplicó a una base productiva. El estado de verificación
+  del commit exacto se registra en el PR.

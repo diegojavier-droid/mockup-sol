@@ -7,21 +7,17 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "./client";
-import type {
-  ApiAvailability,
-  ApiBookingView,
-  ApiCreatedBooking,
-  ApiQuote,
-  ApiServiceDetail,
-  LengthTier,
-} from "./catalog-types";
+import type { ApiBookingView, ApiServiceDetail } from "./catalog-types";
 
-export interface QuoteInput {
-  serviceSlug: string | null;
-  lengthTier?: LengthTier | null;
-  personalization?: Record<string, string>;
-  extraCodes?: string[];
-}
+import {
+  availabilityQueryOptions,
+  quoteQueryOptions,
+  submitBooking,
+  type QuoteInput,
+} from "./booking-requests";
+
+export { AVAILABILITY_WINDOW_DAYS } from "./booking-requests";
+export type { QuoteInput, CreateBookingInput } from "./booking-requests";
 
 export function useServiceDetail(slug: string | null) {
   return useQuery({
@@ -33,81 +29,27 @@ export function useServiceDetail(slug: string | null) {
 }
 
 export function useQuote(input: QuoteInput) {
-  return useQuery({
-    queryKey: ["quote", input],
-    queryFn: () =>
-      api.post<ApiQuote>("/quote", {
-        serviceSlug: input.serviceSlug,
-        lengthTier: input.lengthTier ?? null,
-        personalization: input.personalization ?? {},
-        extraCodes: input.extraCodes ?? [],
-      }),
-    enabled: Boolean(input.serviceSlug),
-    // Una cotización inválida (falta el largo) no se reintenta: es una
-    // decisión pendiente de la clienta, no un fallo de red.
-    retry: false,
-    staleTime: 60_000,
-  });
+  const detail = useServiceDetail(input.serviceSlug);
+  const query = useQuery(quoteQueryOptions(input, detail.data));
+  return {
+    ...query,
+    error: detail.error ?? query.error,
+    isLoading: detail.isLoading || query.isLoading,
+  };
 }
-
-/**
- * Cuántos días adelante se pide la disponibilidad.
- *
- * El calendario del paso de fecha no deja navegar más allá de esta
- * ventana: una semana que se ve vacía porque nunca se preguntó es
- * indistinguible de una semana sin lugar, y la clienta concluye que el
- * salón está completo cuando en realidad hay turnos.
- */
-export const AVAILABILITY_WINDOW_DAYS = 21;
 
 export function useAvailability(input: QuoteInput & { days?: number }) {
-  const params = new URLSearchParams();
-  if (input.serviceSlug) params.set("service", input.serviceSlug);
-  if (input.lengthTier) params.set("length", input.lengthTier);
-  if (input.extraCodes?.length) params.set("extras", input.extraCodes.join(","));
-  const personalization = Object.entries(input.personalization ?? {})
-    .map(([k, v]) => `${k}:${v}`)
-    .join(",");
-  if (personalization) params.set("personalization", personalization);
-  params.set("days", String(input.days ?? AVAILABILITY_WINDOW_DAYS));
-
-  return useQuery({
-    queryKey: ["availability", params.toString()],
-    queryFn: () => api.get<ApiAvailability>(`/availability?${params.toString()}`),
-    enabled: Boolean(input.serviceSlug),
-    retry: false,
-    staleTime: 30_000,
-  });
-}
-
-export interface CreateBookingInput extends QuoteInput {
-  startsAt: string;
-  customer: {
-    firstName: string;
-    lastName?: string;
-    phone: string;
-    email: string;
-    acceptsMarketing?: boolean;
+  const detail = useServiceDetail(input.serviceSlug);
+  const query = useQuery(availabilityQueryOptions(input, detail.data));
+  return {
+    ...query,
+    error: detail.error ?? query.error,
+    isLoading: detail.isLoading || query.isLoading,
   };
-  note?: string;
-  /** Versión de los términos que la clienta tenía en pantalla al aceptar. */
-  termsVersion: string;
 }
 
 export function useCreateBooking() {
-  return useMutation({
-    mutationFn: (input: CreateBookingInput) =>
-      api.post<ApiCreatedBooking>("/bookings", {
-        serviceSlug: input.serviceSlug,
-        lengthTier: input.lengthTier ?? null,
-        personalization: input.personalization ?? {},
-        extraCodes: input.extraCodes ?? [],
-        startsAt: input.startsAt,
-        customer: input.customer,
-        note: input.note,
-        consent: { termsVersion: input.termsVersion },
-      }),
-  });
+  return useMutation({ mutationFn: submitBooking });
 }
 
 export function useBooking(token: string | null) {

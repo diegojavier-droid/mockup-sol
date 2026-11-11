@@ -79,7 +79,12 @@ function toExtra(e: ApiExtra): Extra {
 }
 
 function toField(f: ApiPersonalizationField): PersonalizationField {
-  return { id: f.slug, label: f.label, options: f.options.map((o) => o.label) };
+  return {
+    id: f.slug,
+    label: f.label,
+    isRequired: f.isRequired,
+    options: f.options.map((o) => o.label),
+  };
 }
 
 export interface CatalogData {
