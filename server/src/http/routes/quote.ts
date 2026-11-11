@@ -50,12 +50,24 @@ const QUOTE_ERROR_STATUS: Record<string, 400 | 404 | 422> = {
   service_not_quotable: 404,
 };
 
+function hasAllergyAnswer(answers?: Record<string, string>) {
+  return Object.keys(answers ?? {}).some((field) => field.trim().toLowerCase() === "alergias");
+}
+
 export function createQuoteRoute(env: ServerEnv) {
   const route = new Hono();
+  route.use("*", async (c, next) => {
+    c.header("Cache-Control", "no-store");
+    await next();
+  });
 
   route.post("/", async (c) => {
     const parsed = quoteRequestSchema.safeParse(await c.req.json().catch(() => null));
-    if (!parsed.success) {
+    if (
+      !parsed.success ||
+      hasAllergyAnswer(parsed.data.personalization) ||
+      parsed.data.services?.some((part) => hasAllergyAnswer(part.personalization))
+    ) {
       throw new HTTPException(400, { message: "Invalid quote request" });
     }
 

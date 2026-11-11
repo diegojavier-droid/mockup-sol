@@ -155,6 +155,10 @@ function quoteErrorMessage(code: string): string {
 
 export function createBookingsRoute(env: ServerEnv) {
   const route = new Hono();
+  route.use("*", async (c, next) => {
+    c.header("Cache-Control", "no-store");
+    await next();
+  });
 
   route.post("/", async (c) => {
     const parsed = createSchema.safeParse(await c.req.json().catch(() => null));
@@ -162,6 +166,16 @@ export function createBookingsRoute(env: ServerEnv) {
       throw new HTTPException(400, { message: "Revisá los datos de la reserva." });
     }
     const body = parsed.data;
+
+    // Guard: la versión aceptada tiene que ser la vigente. Una pestaña
+    // abierta hace dos semanas muestra el texto viejo, y registrar eso
+    // como aceptación del texto nuevo sería fabricar una prueba falsa.
+    if (body.consent.termsVersion !== TERMS_VERSION) {
+      throw new HTTPException(422, {
+        message:
+          "Actualizamos los términos mientras reservabas. Recargá la página y confirmá de nuevo, así queda todo en orden.",
+      });
+    }
 
     const phone = normalizePhoneAr(body.customer.phone);
     if (!phone) {
@@ -293,16 +307,6 @@ export function createBookingsRoute(env: ServerEnv) {
     );
 
     try {
-      // Guard: la versión aceptada tiene que ser la vigente. Una pestaña
-      // abierta hace dos semanas muestra el texto viejo, y registrar eso
-      // como aceptación del texto nuevo sería fabricar una prueba falsa.
-      if (body.consent.termsVersion !== TERMS_VERSION) {
-        throw new HTTPException(422, {
-          message:
-            "Actualizamos los términos mientras reservabas. Recargá la página y confirmá de nuevo, así queda todo en orden.",
-        });
-      }
-
       const booking = await createBooking(admin, {
         areaSlug: context.areaSlug,
         startsAt,

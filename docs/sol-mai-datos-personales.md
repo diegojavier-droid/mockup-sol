@@ -128,3 +128,47 @@ Contra PostgreSQL real, el Worker real y Chromium, no contra mocks.
 | Reserva completa desde el navegador | creada, con su consentimiento |
 | Suites e2e (flujo, estaciones, combo) | verdes |
 | 113 pruebas unitarias, typecheck, lint, build | verdes |
+
+## 6. Corrección de transmisión previa al consentimiento (2026-11-11)
+
+La casilla de aceptación bloqueaba el avance, pero no las consultas automáticas:
+`useQuote` enviaba todas las respuestas y `useAvailability` las incluía en una
+URL GET antes de llegar a Datos. Además, un borrador retomado en Revisión podía
+confirmarse sin volver a marcar la casilla.
+
+La corrección mantiene la pregunta y el dato de alergias para preparar la visita:
+
+- Precio y horarios reciben sólo modificadores operativos válidos según el
+  detalle del servicio. No se usa el listado por categoría, cuya decisión es
+  siempre contextual. El largo y los extras se conservan.
+- Las claves de caché contienen esa selección mínima, no respuestas de salud.
+- Disponibilidad usa POST JSON. GET sigue disponible por compatibilidad, pero
+  ambos rechazan el campo de alergias antes de consultar servicios externos.
+  `/quote` hace el mismo rechazo, también para reservas combinadas.
+- Confirmar exige aceptación explícita de la versión cargada. Se comprueba
+  inmediatamente antes de enviar y en la API antes de consultar o guardar.
+  Un borrador de Revisión vuelve a Datos; no se inventa una aceptación pasada.
+- Las respuestas de cotización, disponibilidad y reserva son `no-store`.
+- No cambia el esquema: `booking_items.personalization` conserva las respuestas
+  y `customer_consents` sigue siendo el registro existente del consentimiento.
+
+Pruebas reproducibles: `bun run test`, `bun run typecheck`,
+`bun run typecheck:server`, `bun run build`. Los tests nuevos inspeccionan los
+requests reales del cliente HTTP y las rutas Hono con dependencias de datos
+simuladas. Incluyen rechazo antes de I/O, payload completo sólo al aceptar,
+compatibilidad GET/POST, largos, extras y servicios combinados.
+
+### Límites pendientes
+
+- La corrección no borra URLs antiguas de logs o infraestructura. No se leyó
+  ni modificó ningún dato productivo.
+- El borrador permanece en `sessionStorage` local con el TTL existente de dos
+  horas; no equivale a una aceptación ni se envía automáticamente al servidor.
+- Crear la reserva y registrar su consentimiento siguen siendo dos llamadas:
+  una falla en la segunda puede dejar `pendientes_de_consentimiento`. Resolver
+  esa atomicidad requiere una migración y pruebas de base de datos reales.
+- La pregunta de alergias está marcada opcional en el esquema, pero el wizard
+  aún trata todas las preguntas visibles como obligatorias al avanzar. Se
+  conserva aquí el comportamiento existente; su alineación debe cubrirse en
+  una corrección de validación del formulario.
+- Esto es una corrección técnica, no una certificación de cumplimiento legal.

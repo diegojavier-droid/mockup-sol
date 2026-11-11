@@ -4,8 +4,9 @@
  * devuelva de más. Una clave secreta filtrada acá abre la base entera:
  * `service_role` saltea RLS por definición.
  */
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createAuthRoute } from "./auth";
+import { __resetSupabaseSettingsCache } from "../../lib/identity/supabase-settings";
 import type { ServerEnv } from "../../config/env";
 
 const SECRETO = "sb_secret_no_debe_salir_nunca_de_aca";
@@ -19,6 +20,24 @@ const ENV = {
   ANTHROPIC_API_KEY: "sk-ant-tampoco-esto",
   MP_ACCESS_TOKEN: "ni-esto",
 } as unknown as ServerEnv;
+
+// Esta es una prueba de contrato HTTP, no de la red de Supabase. La
+// URL de ejemplo no existe y esperar sus 5 s de timeout hacía fallar CI
+// de forma intermitente. Cada caso obtiene settings sintéticos y aislados.
+const originalFetch = globalThis.fetch;
+beforeEach(() => {
+  __resetSupabaseSettingsCache();
+  globalThis.fetch = (async () =>
+    Response.json({
+      mailer_autoconfirm: false,
+      disable_signup: false,
+      external: { google: true, email: true },
+    })) as unknown as typeof fetch;
+});
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  __resetSupabaseSettingsCache();
+});
 
 async function pedir() {
   const res = await createAuthRoute(ENV).request("/panel-config");

@@ -50,6 +50,9 @@ Este documento es la fuente de verdad vigente para alinear producto, diseño y d
 - La personalización por categoría/servicio está implementada.
 - La selección de extras está implementada.
 - El resumen final está implementado.
+- Antes de confirmar, las consultas de precio y horarios sólo envían el largo, los extras y las opciones operativas admitidas por el detalle del servicio. Alergias, notas y otros datos de contexto no se envían en esas consultas ni se incorporan a sus claves de caché.
+- El wizard consulta disponibilidad por POST JSON, sin respuestas de personalización en la URL. GET se conserva para clientes anteriores; ambos transportes rechazan alergias. Las respuestas de cotización, disponibilidad y reservas llevan `Cache-Control: no-store`.
+- El consentimiento se comprueba nuevamente al enviar la reserva, queda ligado a la versión aceptada y nunca se restaura desde un borrador. Retomar una revisión guardada vuelve al paso de datos/aceptación. Los detalles de contexto se conservan en la reserva enviada después de aceptar.
 - Email y teléfono/WhatsApp son obligatorios para reservar.
 - La UI debe explicar que esos datos se usan para enviar confirmación, enlace de seña y recordatorio del turno.
 - El cálculo vigente mantiene seña del 20% sobre el total estimado.

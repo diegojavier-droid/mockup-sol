@@ -14,6 +14,7 @@ import {
 } from "@/lib/booking-data";
 import { useCatalog, type CatalogData } from "@/lib/catalog-context";
 import { useAvailability, useCreateBooking, useQuote } from "@/lib/api/booking-hooks";
+import { hasCurrentConsent } from "@/lib/api/booking-requests";
 import { useSalonInfo } from "@/lib/business-hours";
 import type { ApiCreatedBooking, LengthTier } from "@/lib/api/catalog-types";
 import { computeBookingOperationalTotals } from "@/lib/booking-totals";
@@ -303,6 +304,10 @@ function getRestoredStep(
     return getStepPosition(stepKeys, "service");
   }
 
+  // La aceptación nunca se restaura. Volver a una revisión guardada debe
+  // pasar por la casilla de nuevo antes de poder confirmar.
+  if (stepKey === "review") return getStepPosition(stepKeys, "customerData");
+
   const restoredStep = stepKeys.indexOf(stepKey);
 
   if (restoredStep >= 0) return restoredStep;
@@ -365,9 +370,12 @@ export function useBookingWizard(
   const [customerTouched, setCustomerTouched] = useState<CustomerTouched>({});
   // Aceptación de los términos. Vive en el wizard y no en el borrador que
   // se guarda en el teléfono: un consentimiento restaurado de un
-  // localStorage de hace dos semanas no es una aceptación, es una
+  // sessionStorage de una sesión anterior no es una aceptación, es una
   // suposición.
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  // La versión viene del servidor: no se reserva hasta que esté cargada.
+  const { termsVersion } = useSalonInfo();
+  const [acceptedTermsVersion, setAcceptedTermsVersion] = useState<string | null>(null);
+  const acceptedTerms = hasCurrentConsent(acceptedTermsVersion, termsVersion);
   const [showTermsRequired, setShowTermsRequired] = useState(false);
   const [isCustomerRecognized, setIsCustomerRecognized] = useState(false);
   const [paymentPending, setPaymentPending] = useState(restoredDraft?.paymentPending ?? false);
@@ -429,12 +437,6 @@ export function useBookingWizard(
   }, [availableDays]);
 
   const createBookingMutation = useCreateBooking();
-  // La versión de los términos la manda el servidor; el front no tiene
-  // copia propia. Si todavía no llegó, no se reserva: es preferible pedir
-  // un reintento a guardar datos personales sin poder decir qué texto
-  // aceptó la clienta.
-  const { termsVersion } = useSalonInfo();
-
   const availabilityRequest = useMemo(() => {
     return {
       durationMinutes: quote?.durationShownMin ?? 0,
@@ -479,7 +481,16 @@ export function useBookingWizard(
     if (stepKey === "dateTime") return !!date && !!time;
     if (stepKey === "customerData") return Object.keys(customerValidationErrors).length === 0;
     return true;
-  }, [category, customerValidationErrors, date, personal, service, stepKey, time]);
+  }, [
+    catalog.personalizationFields,
+    category,
+    customerValidationErrors,
+    date,
+    personal,
+    service,
+    stepKey,
+    time,
+  ]);
 
   useEffect(() => {
     const hasDraftContent =
@@ -616,6 +627,11 @@ export function useBookingWizard(
    */
   const confirmBookingRequest = async () => {
     setBookingRequestError(null);
+    if (!acceptedTerms) {
+      setShowTermsRequired(true);
+      setStep(getStepPosition(visibleStepKeys, "customerData"));
+      return;
+    }
 
     const payload = buildBookingRequestPayload({
       category,
@@ -660,6 +676,7 @@ export function useBookingWizard(
         },
         note: additionalComments.trim() || undefined,
         termsVersion,
+        acceptedTerms,
       });
 
       setConfirmedBooking(created);
@@ -731,7 +748,7 @@ export function useBookingWizard(
     acceptedTerms,
     showTermsRequired,
     chooseAcceptedTerms: (accepted: boolean) => {
-      setAcceptedTerms(accepted);
+      setAcceptedTermsVersion(accepted ? termsVersion : null);
       if (accepted) setShowTermsRequired(false);
     },
     choosePersonalization,
