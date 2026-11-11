@@ -64,8 +64,18 @@ $$;
 reset role;
 
 -- Temporary test helpers are visible to the API role only in this session.
-grant usage on schema pg_temp to service_role;
-grant execute on function pg_temp.consent_test_booking(text, text, timestamptz, text) to service_role;
+do $$
+declare
+  v_schema text;
+begin
+  -- GRANT SCHEMA expects the real namespace name, not the pg_temp alias.
+  select nspname into strict v_schema from pg_namespace where oid = pg_my_temp_schema();
+  execute format('grant usage on schema %I to service_role', v_schema);
+  execute format(
+    'grant execute on function %I.consent_test_booking(text, text, timestamptz, text) to service_role',
+    v_schema);
+end;
+$$;
 
 -- The same role the API uses must be able to call the atomic RPC.
 set local role service_role;
