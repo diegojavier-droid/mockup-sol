@@ -29,8 +29,7 @@ import { DashboardScreen } from "./DashboardScreen";
 import { PreciosYTiemposScreen, PuestosScreen, ProductosScreen } from "./SalonScreen";
 import { PromocionesScreen, ServiciosScreen, TratamientosScreen } from "./CatalogoScreen";
 import { PuestosFueraScreen } from "./PuestosFueraScreen";
-import { ClosedDaysBlocksPanel } from "./ClosedDaysBlocksPanel";
-import { OperationalBufferPanel } from "./OperationalBufferPanel";
+import { BusinessHoursScreen } from "./BusinessHoursScreen";
 import { PeopleScreen } from "./PeopleScreen";
 import { RolesScreen } from "./RolesScreen";
 import { AuditScreen } from "./AuditScreen";
@@ -103,23 +102,6 @@ function Devoluciones() {
           texto="Cuando una clienta cancele dentro de la ventana, la seña queda acá hasta que la devuelvas."
         />
       )}
-    </div>
-  );
-}
-
-/**
- * Servicios › Horarios.
- *
- * Acá aterriza lo que era `/operaciones`: una página suelta cuyo único
- * botón de volver decía «← Volver al sitio público» y te echaba del
- * panel. Sus dos paneles nunca fueron una página, eran dos secciones de
- * Servicios que quedaron sueltas.
- */
-function Horarios() {
-  return (
-    <div className="space-y-6">
-      <OperationalBufferPanel />
-      <ClosedDaysBlocksPanel />
     </div>
   );
 }
@@ -217,8 +199,8 @@ export function contenidoDe(
       return <PromocionesScreen />;
     case "servicios/precios":
       return <PreciosYTiemposScreen />;
-    case "servicios/horarios":
-      return <Horarios />;
+    case "configuracion/horarios":
+      return <BusinessHoursScreen />;
 
     // Los puestos, que estaban partidos en dos módulos con nombres
     // parecidos: el alta y baja en Servicios, y los bloqueos en un

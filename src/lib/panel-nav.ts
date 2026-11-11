@@ -130,7 +130,6 @@ export const ARBOL: ModuloDef[] = [
       seccion("promociones", "Promociones", true),
       seccion("precios", "Precios y tiempos", true),
       seccion("areas", "Áreas"),
-      seccion("horarios", "Horarios", true),
     ],
   },
   {
@@ -197,6 +196,7 @@ export const ARBOL: ModuloDef[] = [
     permiso: "configuracion",
     secciones: [
       seccion("negocio", "Datos del negocio"),
+      seccion("horarios", "Horarios", true),
       seccion("terminos", "Términos y privacidad"),
       seccion("integraciones", "Integraciones"),
     ],
@@ -225,6 +225,7 @@ export const ENTRADA = "/panel/agenda/hoy";
  * como 404 si sabemos a dónde fue.
  */
 export const MUDANZAS: Record<string, { modulo: string; seccion: string }> = {
+  "servicios/horarios": { modulo: "configuracion", seccion: "horarios" },
   "servicios/puestos": { modulo: "puestos", seccion: "listado" },
 };
 

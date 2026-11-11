@@ -116,6 +116,27 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - `Database clean-room CI` reconstruye Supabase desde cero, valida ledger, bootstrap, RLS, FK compuesta, typecheck, build, routeTree, guards y endpoints Hono.
 - El frontend no conserva la integración Supabase/Auth autogenerada por Lovable; Auth interna sigue fuera de alcance hasta su bloque específico.
 
+### Edición del horario semanal
+
+- `Configuración › Horarios` consulta `GET /admin/business-hours` y permite
+  editar apertura, cierre y oferta online de cada franja existente con
+  `PATCH /admin/business-hours/:id`. No usa el horario del mock.
+- La lectura exige `configuracion:view`; guardar exige `configuracion:full`.
+  `/panel/servicios/horarios` redirige al nuevo destino para alinear la pantalla
+  con el permiso que ya aplica el backend.
+- Se muestran los siete días en hora del salón (Santa Fe, UTC-3), incluyendo
+  días sin franja. **Sin horario online no equivale a salón cerrado**: las
+  atenciones especiales se coordinan por el canal interno.
+- Cada franja se guarda por separado. La edición conserva su borrador ante
+  fallos de red; compara atómicamente los valores originales para rechazar
+  cambios sobre una versión vieja. El backend valida formato/rango y deja a
+  las restricciones de PostgreSQL la última palabra sobre orden y solapes.
+- No agrega franjas, no inventa horarios para días vacíos, no cambia
+  excepciones, horarios por profesional ni turnos ya tomados. Activar una
+  franja existente vuelve a ofrecerla online. Los cambios conservan el
+  historial de parámetros existente; atribuir actor en `business_hours`
+  sigue siendo una limitación del esquema actual (sin `updated_by`).
+
 ### Los números del salón
 
 - Seis indicadores, no cincuenta: cobrado, facturado, ticket promedio, ocupación, reservas por canal y clientas nuevas. El criterio de inclusión es cuál cambia una decisión de Sol y cuál tiene su insumo garantizado.
