@@ -19,9 +19,9 @@ const entry = join(temp, "entry.tsx");
 await Bun.write(
   entry,
   `
-import React from ${JSON.stringify(join(root, "node_modules/react"))};
-import { createRoot } from ${JSON.stringify(join(root, "node_modules/react-dom/client"))};
-import { QueryClient, QueryClientProvider } from ${JSON.stringify(join(root, "node_modules/@tanstack/react-query"))};
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BusinessHoursScreen } from ${JSON.stringify(join(root, "src/components/booking/admin/BusinessHoursScreen.tsx"))};
 sessionStorage.setItem("sol-mai-staff-token", "fixture");
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -125,7 +125,13 @@ try {
     return url.hostname === "127.0.0.1" ? route.continue() : route.abort();
   });
   const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("pageerror", (error) => {
+    errors.push(error.message);
+    console.error("Browser error:", error.message);
+  });
+  page.on("console", (message) => {
+    if (message.type() === "error") console.error("Browser console:", message.text());
+  });
   await page.goto(`http://127.0.0.1:${server.port}`);
   const edit = () => page.getByRole("button", { name: /Editar Martes/ });
   const save = () => page.getByRole("button", { name: "Guardar", exact: true });
