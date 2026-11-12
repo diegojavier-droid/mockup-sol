@@ -42,6 +42,7 @@ let reads = 0;
 let checkouts = 0;
 let status = "pending_payment";
 let failRead = false;
+let failCreate = true;
 const token = "synthetic-reload-test";
 const booking = () => ({
   publicToken: token,
@@ -65,7 +66,7 @@ await page.route("**/api/v1/**", async (route) => {
   if (path === "/bookings") {
     creates++;
     await new Promise((resolve) => setTimeout(resolve, 75));
-    return reply(booking());
+    return reply(booking(), failCreate ? 409 : 200);
   }
   if (path === `/bookings/${token}`) {
     reads++;
@@ -113,9 +114,17 @@ try {
   });
   await page.reload();
   await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: /^Continuar/ }).click();
+  await page
+    .getByRole("button", { name: /^Continuar/ })
+    .first()
+    .click();
+  const historyLength = await page.evaluate(() => history.length);
   const confirm = page.getByRole("button", { name: "Confirmar mi turno", exact: true });
   await confirm.waitFor();
+  await confirm.click();
+  await page.getByText("Test unavailable").waitFor();
+  assert.equal(creates, 1);
+  failCreate = false;
   // Same-tick repeated clicks exercise the ref before React disables it.
   await confirm.evaluate((button) => {
     button.click();
@@ -123,14 +132,21 @@ try {
   });
   await page.waitForURL(`**/reserva/${token}`);
   await page.getByRole("button", { name: "Pagar la seña", exact: true }).waitFor();
-  assert.equal(creates, 1);
+  assert.equal(creates, 2);
+  assert.equal(await page.evaluate(() => history.length), historyLength);
+  await page.getByRole("button", { name: "Copiar el link de mi turno", exact: true }).waitFor();
   await noDraft();
+  // Leaving and returning through browser history cannot revive the wizard.
+  await page.getByRole("link", { name: /Volver al inicio/ }).click();
+  await page.goBack();
+  await page.getByRole("button", { name: "Pagar la seña", exact: true }).waitFor();
+  assert.equal(creates, 2);
   const readsBefore = reads;
   await page.reload();
   await page.getByRole("button", { name: "Pagar la seña", exact: true }).waitFor();
   assert.ok(reads > readsBefore, "reload must query server state again");
   assert.match(await page.locator("body").innerText(), /2\.400/);
-  assert.equal(creates, 1);
+  assert.equal(creates, 2);
   await noDraft();
   await page.getByRole("button", { name: "Pagar la seña", exact: true }).click();
   await page.getByText("Test: pago no habilitado").waitFor();
@@ -145,13 +161,13 @@ try {
     await page.reload();
     await page.getByRole("heading", { name: heading }).waitFor();
     assert.equal(await page.getByRole("button", { name: "Pagar la seña" }).count(), 0);
-    assert.equal(creates, 1);
+    assert.equal(creates, 2);
   }
   failRead = true;
   await page.reload();
   await page.getByRole("heading", { name: "No encontramos esa reserva" }).waitFor();
   assert.equal(await page.getByRole("button", { name: "Pagar la seña" }).count(), 0);
-  assert.equal(creates, 1);
+  assert.equal(creates, 2);
   failRead = false;
 
   await page.evaluate(({ key, draft }) => sessionStorage.setItem(key, JSON.stringify(draft)), {
@@ -172,7 +188,7 @@ try {
     .getByRole("button", { name: /Ver servicios/i })
     .first()
     .waitFor();
-  assert.equal(creates, 1);
+  assert.equal(creates, 2);
   assert.deepEqual(errors, []);
   console.log(
     "PASS: submit once, reload, pending/confirmed/expired/cancelled, read failure, legacy recovery, close/reload",

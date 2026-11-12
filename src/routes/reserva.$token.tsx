@@ -14,6 +14,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useBooking, useCancelBooking, useDepositCheckout } from "@/lib/api/booking-hooks";
 import { formatPrice } from "@/lib/catalog-context";
+import { BookingLink } from "@/components/booking/summary/BookingLink";
+import { solMaiContact } from "@/lib/sol-mai-contact";
 
 export const Route = createFileRoute("/reserva/$token")({
   head: () => ({
@@ -53,6 +55,10 @@ function Shell({ children }: { children: React.ReactNode }) {
         <div className="rounded-3xl border border-champagne-deep/20 bg-card p-6 shadow-sm sm:p-8">
           {children}
         </div>
+        <p className="mt-5 break-words text-xs text-muted-foreground">
+          ¿Alguna duda? Escribinos: <span className="break-all">{solMaiContact.email}</span> ·{" "}
+          {solMaiContact.whatsappDisplay}
+        </p>
         <Link
           to="/"
           className="mt-6 inline-flex rounded-full border border-border bg-card px-4 py-2 text-sm text-foreground transition-colors hover:border-champagne"
@@ -190,6 +196,8 @@ function BookingStatus() {
           seña nunca abonada). Se muestra fuera del bloque de cancelación
           porque al refrescar el estado ese bloque deja de existir. */}
       {cancel.isSuccess && <p className="text-sm text-foreground/80">{cancel.data.message}</p>}
+
+      <BookingLink key={token} token={token} />
 
       {/* Cancelar. La regla de 24 h se dice ANTES de decidir, no después:
           enterarse de que se pierde la seña una vez cancelado es la peor
