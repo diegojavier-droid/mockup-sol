@@ -63,6 +63,8 @@ Este documento es la fuente de verdad vigente para alinear producto, diseño y d
 - Un pago aprobado después de que la reserva ya expiró debe tratarse como excepción manual: no debe confirmar automáticamente la reserva ni volver a bloquear el slot sin revisión operativa.
 - La confirmación queda preparada para enviarse por email y WhatsApp cuando exista backend real.
 - El recordatorio queda preparado para enviarse 30 minutos antes del turno por email y WhatsApp cuando exista backend real.
+- Una reserva creada abre directamente su página `/reserva/:token`, reemplazando la entrada del wizard en el historial. Al recargar se consulta otra vez el estado del servidor; no se guarda una copia de pago ni el token en el borrador.
+- El borrador sólo representa una selección no enviada. El efecto de guardado no puede recrearlo después de crear el turno. Un borrador anterior con `paymentPending` sin referencia muestra una salida de recuperación y contacto, nunca una seña de $0 ni una confirmación ficticia; no puede reconstruirse el enlace que la versión anterior no guardó.
 
 ### Canales y agenda interna
 
