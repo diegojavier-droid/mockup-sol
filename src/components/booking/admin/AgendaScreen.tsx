@@ -17,6 +17,7 @@ import {
   useRevertAutoNoShow,
   type AgendaEntry,
 } from "@/lib/api/admin-hooks";
+import { agendaActions } from "@/lib/agenda-actions";
 import { NewBookingDialog } from "./NewBookingDialog";
 import { CloseServiceDialog } from "./CloseServiceDialog";
 
@@ -231,7 +232,8 @@ function BookingRow({
   const noShow = useMarkNoShow();
   const updateStatus = useUpdateBookingStatus();
   const revertNoShow = useRevertAutoNoShow();
-  const open = entry.status === "confirmed" || entry.status === "pending_payment";
+  const actions = agendaActions(entry);
+  const open = actions.closeService || actions.manageBooking;
 
   return (
     <article className={`rounded-2xl border px-4 py-3 ${statusTone(entry.status)}`}>
@@ -247,10 +249,10 @@ function BookingRow({
               Va acá arriba, a un toque, sin desplegar nada: si marcar una
               llegada cuesta tres clics, no se marca, y de ese dato depende
               que el sistema no dé por ausente a alguien que sí vino. */}
-          {entry.status === "confirmed" && (
+          {actions.markArrival && (
             <button
               type="button"
-              disabled={updateStatus.isPending}
+              disabled={updateStatus.isPending || noShow.isPending || closing}
               onClick={() =>
                 updateStatus.mutate(
                   { bookingId: entry.id, status: "attended" },
@@ -283,7 +285,9 @@ function BookingRow({
             </button>
           )}
           <span className="text-[11px] uppercase tracking-wider opacity-80">
-            {STATUS_LABEL[entry.status] ?? entry.status}
+            {entry.status === "attended" && entry.hasServiceClosure === false
+              ? "Llegó"
+              : (STATUS_LABEL[entry.status] ?? entry.status)}
           </span>
         </div>
       </div>
@@ -318,46 +322,61 @@ function BookingRow({
 
       {open && (
         <div className="mt-3 flex flex-wrap gap-2 border-t border-current/10 pt-2.5">
-          {entry.status === "confirmed" && (
-            <RowAction onClick={() => setClosing(true)}>Cerrar atención</RowAction>
-          )}
-
-          {assigning ? (
-            <StationPicker entry={entry} onDone={() => setAssigning(false)} />
-          ) : (
-            <RowAction onClick={() => setAssigning(true)}>
-              {entry.station ? "Cambiar el puesto" : "Asignar un puesto"}
+          {actions.closeService && (
+            <RowAction
+              disabled={updateStatus.isPending || noShow.isPending}
+              onClick={() => setClosing(true)}
+            >
+              Cerrar atención
             </RowAction>
           )}
 
-          {confirmingNoShow ? (
+          {actions.manageBooking && (
             <>
-              <span className="text-xs opacity-80">
-                ¿No vino?{" "}
-                {entry.depositStatus === "paid"
-                  ? "La seña queda retenida."
-                  : "No hay seña que retener."}
-              </span>
-              <RowAction
-                danger
-                disabled={noShow.isPending}
-                onClick={() =>
-                  noShow.mutate(entry.id, {
-                    onSuccess: (r) => {
-                      setConfirmingNoShow(false);
-                      onFeedback(r.message);
-                    },
-                  })
-                }
-              >
-                Sí, no vino
-              </RowAction>
-              <RowAction onClick={() => setConfirmingNoShow(false)}>Cancelar</RowAction>
+              {assigning ? (
+                <StationPicker entry={entry} onDone={() => setAssigning(false)} />
+              ) : (
+                <RowAction onClick={() => setAssigning(true)}>
+                  {entry.station ? "Cambiar el puesto" : "Asignar un puesto"}
+                </RowAction>
+              )}
+
+              {confirmingNoShow ? (
+                <>
+                  <span className="text-xs opacity-80">
+                    ¿No vino?{" "}
+                    {entry.depositStatus === "paid"
+                      ? "La seña queda retenida."
+                      : "No hay seña que retener."}
+                  </span>
+                  <RowAction
+                    danger
+                    disabled={noShow.isPending}
+                    onClick={() =>
+                      noShow.mutate(entry.id, {
+                        onSuccess: (r) => {
+                          setConfirmingNoShow(false);
+                          onFeedback(r.message);
+                        },
+                      })
+                    }
+                  >
+                    Sí, no vino
+                  </RowAction>
+                  <RowAction onClick={() => setConfirmingNoShow(false)}>Cancelar</RowAction>
+                </>
+              ) : (
+                <RowAction onClick={() => setConfirmingNoShow(true)}>No vino</RowAction>
+              )}
             </>
-          ) : (
-            <RowAction onClick={() => setConfirmingNoShow(true)}>No vino</RowAction>
           )}
         </div>
+      )}
+
+      {(updateStatus.isError || noShow.isError) && (
+        <p role="alert" className="mt-2 text-xs text-destructive">
+          {((updateStatus.error ?? noShow.error) as Error).message}
+        </p>
       )}
 
       {closing && (

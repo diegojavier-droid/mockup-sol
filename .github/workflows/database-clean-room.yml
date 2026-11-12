@@ -1008,6 +1008,8 @@ jobs:
           declare
             v_id uuid; v_staff uuid; v_caja jsonb; v_ids uuid[]; v_svc text; v_items jsonb;
             v_antes jsonb; v_movs_antes int; v_efectivo_antes bigint;
+            -- A las 01:00 UTC todavía es el día anterior en Santa Fe.
+            v_dia date := (now() at time zone 'America/Argentina/Cordoba')::date;
           begin
             insert into public.staff_members (slug, display_name, email, role, is_active)
             values ('ci-caja', 'CI', 'ci-caja@solmai.test', 'mostrador', true)
@@ -1016,7 +1018,7 @@ jobs:
             -- Foto de la caja ANTES. Los bloques anteriores dejan plata del
             -- mismo día, así que se mide lo que agregan estos tres
             -- movimientos y no el total, que depende de qué más corrió.
-            v_antes := public.cash_register(current_date);
+            v_antes := public.cash_register(v_dia);
             v_movs_antes := jsonb_array_length(v_antes->'movimientos');
             select coalesce(sum((m->>'monto')::bigint), 0) into v_efectivo_antes
               from jsonb_array_elements(v_antes->'por_medio') m where m->>'medio' = 'efectivo';
@@ -1054,7 +1056,7 @@ jobs:
             perform public.cancel_booking((select public_token from public.bookings where id = v_id), null);
             perform public.mark_refund_completed(v_id, v_staff, 'ci-caja@solmai.test', null, null);
 
-            v_caja := public.cash_register(current_date);
+            v_caja := public.cash_register(v_dia);
             if (v_caja->>'entro')::bigint - (v_antes->>'entro')::bigint <> 36000 then
               raise exception 'la caja sumó % y esperaba 36000',
                 (v_caja->>'entro')::bigint - (v_antes->>'entro')::bigint;
@@ -2152,9 +2154,11 @@ jobs:
           do $$
           declare
             v_from timestamptz; v_to timestamptz; r jsonb; v_n int;
+            v_dia date := (now() at time zone 'America/Argentina/Buenos_Aires')::date;
           begin
-            v_from := (current_date::text || ' 00:00:00-03')::timestamptz;
-            v_to   := ((current_date+1)::text || ' 00:00:00-03')::timestamptz;
+            -- El contador y la ventana deben usar el mismo día del salón.
+            v_from := (v_dia::text || ' 00:00:00-03')::timestamptz;
+            v_to   := ((v_dia+1)::text || ' 00:00:00-03')::timestamptz;
 
             delete from public.assisted_activity_daily;
 
@@ -2426,6 +2430,8 @@ jobs:
           declare
             v_duena uuid; v_ana uuid; v_cli uuid; v_b uuid; v_n integer;
             v_cobrado integer; v_r jsonb;
+            -- Coincide con la fecha que valida mark_invoiced, no con UTC.
+            v_hoy date := (now() at time zone 'America/Argentina/Cordoba')::date;
           begin
             insert into public.staff_members (slug, display_name, email, role, is_active)
             values ('ci-fact','CI Facturación','ci-fact@solmai.test','owner',true)
@@ -2456,7 +2462,7 @@ jobs:
 
             -- 2. Quien no maneja Finanzas no factura ni deshace.
             begin
-              perform public.mark_invoiced(v_b, 25000, current_date, null, v_ana, null);
+              perform public.mark_invoiced(v_b, 25000, v_hoy, null, v_ana, null);
               raise exception 'quien atiende pudo marcar una factura';
             exception when others then
               if sqlerrm not like '%sin_permiso_finanzas%' then raise; end if;
@@ -2464,7 +2470,7 @@ jobs:
 
             -- 3. Un comprobante con fecha futura no existe.
             begin
-              perform public.mark_invoiced(v_b, 25000, current_date + 1, null, v_duena, null);
+              perform public.mark_invoiced(v_b, 25000, v_hoy + 1, null, v_duena, null);
               raise exception 'se acepto un comprobante con fecha futura';
             exception when others then
               if sqlerrm not like '%fecha_futura%' then raise; end if;
@@ -2472,18 +2478,18 @@ jobs:
 
             -- 4. Un importe en cero o negativo no es un comprobante.
             begin
-              perform public.mark_invoiced(v_b, 0, current_date, null, v_duena, null);
+              perform public.mark_invoiced(v_b, 0, v_hoy, null, v_duena, null);
               raise exception 'se acepto un importe en cero';
             exception when others then
               if sqlerrm not like '%importe_invalido%' then raise; end if;
             end;
 
             -- 5. Marcar funciona, no se repite, y queda auditado.
-            perform public.mark_invoiced(v_b, 25000, current_date, '00001-00000001', v_duena, null);
+            perform public.mark_invoiced(v_b, 25000, v_hoy, '00001-00000001', v_duena, null);
             select count(*) into v_n from public.pending_invoices() where booking_id = v_b;
             if v_n <> 0 then raise exception 'sigue figurando sin facturar'; end if;
             begin
-              perform public.mark_invoiced(v_b, 25000, current_date, null, v_duena, null);
+              perform public.mark_invoiced(v_b, 25000, v_hoy, null, v_duena, null);
               raise exception 'se facturo dos veces la misma atencion';
             exception when others then
               if sqlerrm not like '%ya_facturado%' then raise; end if;

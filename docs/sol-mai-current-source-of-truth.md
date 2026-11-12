@@ -74,6 +74,7 @@ Este documento es la fuente de verdad vigente para alinear producto, diseño y d
 
 ### Cierre de atención y dinero
 
+- Marcar «Llegó» o corregir una ausencia automática con «Vino igual» registra `attended`, pero no cierra la atención ni cobra. La agenda consulta si existe `service_execution_records` y conserva «Cerrar atención» mientras falta ese registro. Un cierre existente no se reabre desde un formulario vacío, para no reemplazar cobros ya registrados.
 - El cierre registra el precio **final** (que puede diferir del estimado), lo que efectivamente se cobró, el medio de pago (`efectivo`, `transferencia`, `mercado_pago`, `otro`) y el saldo pendiente.
 - El efectivo cuenta igual que Mercado Pago en lo cobrado: el sistema no privilegia el canal digital al medir.
 - El costo de la atención es opcional y su ausencia significa "no sabemos", no cero.

@@ -79,6 +79,12 @@ jobs:
       - name: Run domain and behaviour tests
         run: bun run test
 
+      - name: Install Chromium for isolated agenda regression
+        run: bunx playwright install --with-deps chromium
+
+      - name: Exercise arrival and closure UI with synthetic data
+        run: bun run test:e2e:agenda
+
       - name: Build frontend
         run: bun run build
 

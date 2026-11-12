@@ -10,7 +10,7 @@
  * estima: sin costo, el margen es NO DISPONIBLE.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCloseService, type AgendaEntry, type PaymentMethod } from "@/lib/api/admin-hooks";
 
 const METHODS: { id: PaymentMethod; label: string }[] = [
@@ -42,6 +42,13 @@ export function CloseServiceDialog({
   const [observation, setObservation] = useState("");
   const close = useCloseService();
 
+  // Si otra persona cerró mientras el formulario estaba abierto, no
+  // enviar un cierre vacío por encima. Durante nuestro propio guardado
+  // hay que esperar onSuccess: el refetch llega antes que ese callback.
+  useEffect(() => {
+    if (entry.hasServiceClosure && !close.isPending) onClose();
+  }, [entry.hasServiceClosure, close.isPending, onClose]);
+
   const priceNum = Number(finalPrice) || 0;
   const amountNum = Number(amount) || 0;
   // La seña ya acreditada cuenta como cobrada: no se le pide dos veces.
@@ -57,6 +64,7 @@ export function CloseServiceDialog({
           <button
             type="button"
             onClick={onClose}
+            disabled={close.isPending}
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
             Cerrar
@@ -161,7 +169,7 @@ export function CloseServiceDialog({
 
         <button
           type="button"
-          disabled={!priceNum || close.isPending}
+          disabled={!priceNum || close.isPending || entry.hasServiceClosure !== false}
           onClick={() =>
             close.mutate(
               {
