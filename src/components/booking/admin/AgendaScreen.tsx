@@ -252,7 +252,7 @@ function BookingRow({
           {actions.markArrival && (
             <button
               type="button"
-              disabled={updateStatus.isPending || closing}
+              disabled={updateStatus.isPending || noShow.isPending || closing}
               onClick={() =>
                 updateStatus.mutate(
                   { bookingId: entry.id, status: "attended" },
@@ -379,7 +379,7 @@ function BookingRow({
         </p>
       )}
 
-      {closing && actions.closeService && (
+      {closing && (
         <CloseServiceDialog
           entry={entry}
           onClose={() => setClosing(false)}

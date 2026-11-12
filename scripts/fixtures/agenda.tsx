@@ -7,6 +7,10 @@ import "../../src/styles.css";
 
 window.sessionStorage.setItem("sol-mai-staff-token", "synthetic-test-token");
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+// Permite simular el refetch que llega cuando otra empleada cierra.
+window.addEventListener("test:refresh-agenda", () => {
+  void client.invalidateQueries({ queryKey: ["admin", "agenda"] });
+});
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={client}>
     <AgendaScreen range="hoy" fecha="2026-11-12" />

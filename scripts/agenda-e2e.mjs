@@ -80,6 +80,7 @@ async function scenario(viewport, overrides = {}, options = {}) {
     }
     if (url.pathname.endsWith("/no-show/revert")) {
       state.entry.status = "attended";
+      if (state.entry.depositStatus === "retained") state.entry.depositStatus = "paid";
       return reply({ message: "Turno corregido." });
     }
     if (url.pathname.endsWith("/close")) {
@@ -94,12 +95,16 @@ async function scenario(viewport, overrides = {}, options = {}) {
       state.payments = body.payments;
       state.entry.status = "attended";
       state.entry.hasServiceClosure = true;
+      const collected = body.payments.reduce(
+        (sum, p) => sum + p.amount,
+        state.entry.depositStatus === "paid" ? state.entry.depositAmount : 0,
+      );
       return reply({
         message: "Atención cerrada.",
         status: "attended",
         final_price: body.finalPrice,
-        collected: body.payments.reduce((sum, p) => sum + p.amount, 4000),
-        outstanding: 0,
+        collected,
+        outstanding: Math.max(body.finalPrice - collected, 0),
       });
     }
     throw new Error(`API sin fixture: ${request.method()} ${url.pathname}`);
@@ -180,14 +185,50 @@ try {
 
   const viewport = { width: 390, height: 844 };
   {
-    const { context, page, closeAction } = await scenario(viewport, { status: "no_show" });
+    const { context, page, state, closeAction, waitClosed } = await scenario(viewport, {
+      status: "no_show",
+      depositStatus: "retained",
+    });
     await page.getByRole("button", { name: "Vino igual" }).click();
     await page.getByText("Turno corregido.", { exact: true }).waitFor();
     await closeAction().waitFor();
     await closeAction().click();
-    await page.getByPlaceholder("Monto").waitFor();
+    await page.getByText("Ya abonó $4.000 de seña.", { exact: true }).waitFor();
+    await page.getByPlaceholder("Monto").fill("16000");
+    await closeAction().last().click();
+    await waitClosed();
+    assert.deepEqual(state.payments, [{ amount: 16000, method: "efectivo", kind: "balance" }]);
     await context.close();
-    console.log("OK Vino igual conserva el cierre pendiente");
+    console.log("OK Vino igual permite cerrar descontando la seña recuperada");
+  }
+  {
+    const { context, page, state, closeAction, waitClosed } = await scenario(viewport, {
+      status: "attended",
+    });
+    await closeAction().click();
+    await page.getByPlaceholder("Monto").fill("16000");
+    state.entry.hasServiceClosure = true;
+    await page.evaluate(() => window.dispatchEvent(new Event("test:refresh-agenda")));
+    await waitClosed();
+    assert.equal(state.calls.filter((c) => c.path.endsWith("/close")).length, 0);
+    await context.close();
+    console.log(
+      "OK un cierre registrado por otra persona descarta el formulario sin enviar cobros",
+    );
+  }
+  {
+    const { context, page, state, closeAction, waitClosed } = await scenario(viewport, {
+      source: "manual",
+      depositStatus: "not_required",
+      depositAmount: 0,
+    });
+    await closeAction().click();
+    await page.getByText("Queda un saldo de $20.000.", { exact: true }).waitFor();
+    await closeAction().last().click();
+    await waitClosed();
+    assert.deepEqual(state.payments, [], "cerrar sin cobro no inventa dinero recibido");
+    await context.close();
+    console.log("OK cierre sin seña ni cobro conserva saldo sin inventar pagos");
   }
   for (const overrides of [
     { status: "attended", hasServiceClosure: true },
