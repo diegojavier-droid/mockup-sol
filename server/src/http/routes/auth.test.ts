@@ -4,9 +4,22 @@
  * devuelva de más. Una clave secreta filtrada acá abre la base entera:
  * `service_role` saltea RLS por definición.
  */
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createAuthRoute } from "./auth";
 import type { ServerEnv } from "../../config/env";
+import { __resetSupabaseSettingsCache } from "../../lib/identity/supabase-settings";
+
+// El proyecto es ficticio: esta prueba no debe salir a Supabase.
+const originalFetch = globalThis.fetch;
+beforeEach(() => {
+  __resetSupabaseSettingsCache();
+  globalThis.fetch = (async () =>
+    Response.json({ external: { google: true, email: false } })) as unknown as typeof fetch;
+});
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  __resetSupabaseSettingsCache();
+});
 
 const SECRETO = "sb_secret_no_debe_salir_nunca_de_aca";
 

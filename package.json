@@ -24,7 +24,8 @@
     "test:e2e:flow": "bash scripts/e2e-flow.sh",
     "test:e2e:stations": "bash scripts/e2e-stations.sh",
     "test:e2e:combo": "bash scripts/e2e-combo.sh",
-    "test:e2e:dashboard": "bun run scripts/e2e-dashboard.ts"
+    "test:e2e:dashboard": "bun run scripts/e2e-dashboard.ts",
+    "test:e2e:agenda": "node scripts/agenda-e2e.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",

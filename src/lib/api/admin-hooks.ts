@@ -19,6 +19,8 @@ export interface AgendaEntry {
   endsAt: string;
   shownDurationMin: number;
   status: string;
+  /** Independiente del estado attended, que también registra la llegada. */
+  hasServiceClosure: boolean;
   source: BookingSource;
   depositStatus: string;
   createdViaOverride: boolean;

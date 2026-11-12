@@ -15,6 +15,8 @@ export interface AgendaEntry {
   endsAt: string;
   shownDurationMin: number;
   status: string;
+  /** La llegada no es un cierre: éste existe sólo si hay registro de atención. */
+  hasServiceClosure: boolean;
   source: string;
   depositStatus: string;
   /** Se creó superando la disponibilidad. La agenda lo distingue. */
@@ -38,7 +40,7 @@ export interface AgendaEntry {
 }
 
 const AGENDA_SELECT =
-  "id, public_token, starts_at, ends_at, shown_duration_min, status, source, deposit_status, created_via_override, override_reason, price_estimated_min, price_display_mode, deposit_amount, customer_note, resource_id, resources(id, code, name), areas!inner(slug), customers!inner(id, first_name, last_name, phone_e164, email), booking_items(snapshot_name, role, sort_order)";
+  "id, public_token, starts_at, ends_at, shown_duration_min, status, source, deposit_status, created_via_override, override_reason, price_estimated_min, price_display_mode, deposit_amount, customer_note, resource_id, resources(id, code, name), areas!inner(slug), customers!inner(id, first_name, last_name, phone_e164, email), booking_items(snapshot_name, role, sort_order), service_execution_records(booking_id)";
 
 type AgendaRow = {
   id: string;
@@ -66,6 +68,7 @@ type AgendaRow = {
     email: string | null;
   };
   booking_items: { snapshot_name: string; role: string; sort_order: number }[];
+  service_execution_records: { booking_id: string } | { booking_id: string }[] | null;
 };
 
 function toAgendaEntry(row: AgendaRow): AgendaEntry {
@@ -76,6 +79,9 @@ function toAgendaEntry(row: AgendaRow): AgendaEntry {
     endsAt: row.ends_at,
     shownDurationMin: row.shown_duration_min,
     status: row.status,
+    hasServiceClosure: Array.isArray(row.service_execution_records)
+      ? row.service_execution_records.length > 0
+      : row.service_execution_records != null,
     source: row.source,
     depositStatus: row.deposit_status,
     createdViaOverride: row.created_via_override,

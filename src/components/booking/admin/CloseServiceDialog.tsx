@@ -57,6 +57,7 @@ export function CloseServiceDialog({
           <button
             type="button"
             onClick={onClose}
+            disabled={close.isPending}
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
             Cerrar

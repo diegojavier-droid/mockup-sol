@@ -151,7 +151,16 @@ A=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "$H" -H "content-type: app
 ok "se le asigna una estación" "$([ "$A" = "200" ] && echo 1 || echo 0)" "http $A"
 
 echo ""
-echo "── 9. Se cierra la atención con el precio real"
+echo "── 9. Llega y luego se cierra la atención con el precio real"
+# Llegó no registra un cierre ni cobra: ambos usan attended, pero sólo
+# close_service crea el registro que distingue la atención cerrada.
+ARRIVAL=$(curl -s -m 15 -o /dev/null -w '%{http_code}' -X PATCH -H "$H" -H "content-type: application/json" \
+  -d '{"status":"attended"}' "$API/admin/bookings/$WID/status")
+ok "se registra la llegada" "$([ "$ARRIVAL" = "200" ] && echo 1 || echo 0)" "http $ARRIVAL"
+BEFORE_CLOSE=$(curl -fsS -H "$H" "$API/admin/bookings/$WID")
+ok "la llegada conserva el cierre pendiente" "$(echo "$BEFORE_CLOSE" | python3 -c "import sys,json;d=json.load(sys.stdin)['data'];print(int(d['status']=='attended' and d['hasServiceClosure'] is False))")" "$BEFORE_CLOSE"
+AGENDA_BEFORE=$(curl -fsS -H "$H" "$API/admin/agenda?date=$BDAY&days=1")
+ok "la agenda distingue la llegada del cierre" "$(echo "$AGENDA_BEFORE" | python3 -c "import sys,json;d=next(x for x in json.load(sys.stdin)['data']['entries'] if x['id']=='$WID');print(int(d['hasServiceClosure'] is False))")" "$AGENDA_BEFORE"
 # Foto del cobrado ANTES de cerrar. La prueba mide lo que agrega este
 # cierre, no el total del día: en el mismo día puede haber plata de otro
 # origen —en CI, las señas retenidas que crean las invariantes de la base—
@@ -165,6 +174,15 @@ CL=$(curl -s -m 15 -X POST -H "$H" -H "content-type: application/json" \
 ok "se cierra la atención" "$(echo "$CL" | grep -q '"ok"\|attended\|outstanding' && echo 1 || echo 0)" "$(echo "$CL"|head -c 250)"
 FIN=$(curl -s -H "$H" "$API/admin/bookings/$WID" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['status'])")
 ok "queda como atendida" "$([ "$FIN" = "attended" ] && echo 1 || echo 0)" "$FIN"
+AFTER_CLOSE=$(curl -fsS -H "$H" "$API/admin/agenda?date=$BDAY&days=1")
+ok "el cierre aparece en la agenda y no se ofrece como uno nuevo" "$(echo "$AFTER_CLOSE" | python3 -c "import sys,json;d=next(x for x in json.load(sys.stdin)['data']['entries'] if x['id']=='$WID');print(int(d['hasServiceClosure'] is True))")" "$AFTER_CLOSE"
+# Un reintento idéntico conserva un solo cobro. La comprobación del
+# dashboard debajo sigue exigiendo +24000, no +48000.
+RETRY=$(curl -s -m 15 -o /dev/null -w '%{http_code}' -X POST -H "$H" -H "content-type: application/json" \
+  -d '{"finalPrice":24000,"servicesDone":"Corte y brushing","durationMin":70,"payments":[{"amount":24000,"method":"efectivo","kind":"balance"}]}' \
+  "$API/admin/bookings/$WID/close")
+ok "reintentar el mismo cierre responde sin duplicar cobros" "$([ "$RETRY" = "200" ] && echo 1 || echo 0)" "http $RETRY"
+
 
 echo ""
 echo "── 10. El dinero aparece en los números"
