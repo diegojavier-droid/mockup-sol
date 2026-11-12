@@ -370,9 +370,12 @@ export function useBookingWizard(
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showTermsRequired, setShowTermsRequired] = useState(false);
   const [isCustomerRecognized, setIsCustomerRecognized] = useState(false);
-  const [paymentPending, setPaymentPending] = useState(restoredDraft?.paymentPending ?? false);
   const [bookingRequestError, setBookingRequestError] = useState<string | null>(null);
   const [confirmedBooking, setConfirmedBooking] = useState<ApiCreatedBooking | null>(null);
+  // A legacy pending draft only opens the recovery notice. It cannot
+  // stand in for a booking response or authorize another submission.
+  const paymentPending = confirmedBooking !== null || restoredDraft?.paymentPending === true;
+  const bookingSubmissionRef = useRef(false);
 
   const visibleStepKeys = useMemo(
     () => buildVisibleBookingStepKeys(catalog, category),
@@ -615,6 +618,7 @@ export function useBookingWizard(
    * así que lo que se manda es la selección, nunca importes.
    */
   const confirmBookingRequest = async () => {
+    if (paymentPending || bookingSubmissionRef.current) return;
     setBookingRequestError(null);
 
     const payload = buildBookingRequestPayload({
@@ -645,6 +649,8 @@ export function useBookingWizard(
         return;
       }
 
+      // A ref closes the gap before React renders the disabled button.
+      bookingSubmissionRef.current = true;
       const created = await createBookingMutation.mutateAsync({
         serviceSlug: service.id,
         lengthTier,
@@ -662,10 +668,10 @@ export function useBookingWizard(
         termsVersion,
       });
 
-      setConfirmedBooking(created);
-      setPaymentPending(true);
       clearBookingDraft();
+      setConfirmedBooking(created);
     } catch (error) {
+      bookingSubmissionRef.current = false;
       // El backend habla en lenguaje humano; se muestra tal cual.
       setBookingRequestError(
         error instanceof Error ? error.message : "No pudimos confirmar el turno. Intentá otra vez.",
