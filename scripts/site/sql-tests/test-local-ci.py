@@ -38,6 +38,15 @@ class Guards(unittest.TestCase):
   self.assertEqual(m.sqlstate_only('ERROR:  P0001: private'),'P0001')
   self.assertEqual(m.SafeFailure('P0001','private').assertion,'unclassified')
   self.assertTrue(all('%' not in item for item in m.ASSERTION_IDS))
+ def test_fixture_role_matches_actual_canonical_check(self):
+  canonical=(m.ROOT/'supabase/migrations/20260910160000_roles_por_modulo.sql').read_text()
+  pattern=m.re.search(r"slug\s+text primary key check \(slug ~ '([^']+)'\)",canonical).group(1)
+  run='f'*32
+  self.assertIsNone(m.re.fullmatch(pattern,'qa-'+run))
+  self.assertIsNotNone(m.re.fullmatch(pattern,m.fixture_role(run)))
+  self.assertEqual(len(m.fixture_role(run)),31)
+  self.assertNotEqual(m.fixture_role('a'*32),m.fixture_role('b'*32))
+  with self.assertRaises(ValueError):m.fixture_role('not-a-run')
  def test_integer_parser(self):
   self.assertEqual(m.scalar_int(['123']),123)
   for value in ([],['1','2'],['bad'],['1; DROP'],['-1']):

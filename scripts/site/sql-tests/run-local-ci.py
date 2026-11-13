@@ -113,8 +113,14 @@ def assert_sql(expr, message='assertion_failed'):
 def expected_call(call, state):
     return f"DO $$ BEGIN BEGIN PERFORM {call}; RAISE EXCEPTION 'expected rejection absent'; EXCEPTION WHEN SQLSTATE '{state}' THEN NULL; END; END $$;"
 
+def fixture_role(run):
+    if not re.fullmatch(r'[0-9a-f]{32}', run): raise ValueError('run UUID hex required')
+    # Canonical roles.slug permits at most31 characters. Retain112 random bits;
+    # UUID primary keys still identify every fixture and cleanup is exact.
+    return 'qa-'+run[:28]
+
 def scenario(env, observer, kind):
-    run=uuid.uuid4().hex; role='qa-'+run
+    run=uuid.uuid4().hex; role=fixture_role(run)
     a,b,c,booking=[str(uuid.uuid4()) for _ in range(4)]
     call=lambda action, actor: f"public.record_booking_attention('{booking}','{action}','{actor}')"
     setup=f"""BEGIN;
