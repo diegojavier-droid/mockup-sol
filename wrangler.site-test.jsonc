@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sol-mai-site-private-demo",
+  "compatibility_date": "2026-07-24",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "main": "src/server-site-test.ts",
+  "vars": {
+    "APP_ENV": "site-demo"
+  }
+}

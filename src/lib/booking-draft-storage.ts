@@ -1,3 +1,4 @@
+import {persistBookingDraft} from "@deployment/booking-policy";
 import type { CategoryId, Personalization } from "@/lib/booking-data";
 import type { BookingStepKey } from "@/components/booking/wizard/booking-steps";
 import type { CustomerFormState } from "@/components/booking/steps/CustomerDataStep";
@@ -16,6 +17,7 @@ export interface BookingDraftState {
   selectedDate: string | null;
   selectedTime: string | null;
   customer: CustomerFormState;
+  /** Legacy read-only marker. Created bookings must be opened by their URL. */
   paymentPending: boolean;
 }
 
@@ -26,8 +28,13 @@ export interface BookingDraft {
   state: BookingDraftState;
 }
 
-const isBrowser = () =>
-  typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
+const isBrowser = () => {
+  try {
+    return persistBookingDraft && typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
+  } catch {
+    return false;
+  }
+};
 
 function buildBookingDraft(state: BookingDraftState): BookingDraft {
   const updatedAt = new Date();
@@ -96,6 +103,13 @@ export function loadBookingDraft(): BookingDraft | null {
 }
 
 export function saveBookingDraft(state: BookingDraftState) {
+  // A created booking is no longer a draft. Its status and amounts come
+  // from /reserva/:token, never from sessionStorage. In particular, the
+  // wizard effect must not recreate the draft after a successful POST.
+  if (state.paymentPending) {
+    clearBookingDraft();
+    return;
+  }
   if (!isBrowser()) return;
 
   try {

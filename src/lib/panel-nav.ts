@@ -23,7 +23,7 @@
  * `docs/sol-mai-arquitectura-modular.md` §5.0.
  */
 
-import type { Modulo } from "@/lib/staff-session";
+import {puede,type StaffIdentity,type Modulo } from "@/lib/staff-session";
 
 export interface Seccion {
   /** Lo que va en la dirección: /panel/<modulo>/<slug>. */
@@ -31,9 +31,8 @@ export interface Seccion {
   /** Lo que lee quien usa el panel. */
   label: string;
   /**
-   * Si hay pantalla construida. Las que no, se muestran apagadas: el
-   * boceto decidió que esconderlas haría parecer el sistema más chico de
-   * lo que va a ser, y mostrarlas como si anduvieran sería mentir.
+   * Si hay pantalla construida. Las pendientes conservan ruta explicativa,
+   * pero no se ofrecen como destinos en la navegación operativa.
    */
   listo: boolean;
 }
@@ -130,7 +129,6 @@ export const ARBOL: ModuloDef[] = [
       seccion("promociones", "Promociones", true),
       seccion("precios", "Precios y tiempos", true),
       seccion("areas", "Áreas"),
-      seccion("horarios", "Horarios", true),
     ],
   },
   {
@@ -197,6 +195,7 @@ export const ARBOL: ModuloDef[] = [
     permiso: "configuracion",
     secciones: [
       seccion("negocio", "Datos del negocio"),
+      seccion("horarios", "Horarios", true),
       seccion("terminos", "Términos y privacidad"),
       seccion("integraciones", "Integraciones"),
     ],
@@ -225,6 +224,7 @@ export const ENTRADA = "/panel/agenda/hoy";
  * como 404 si sabemos a dónde fue.
  */
 export const MUDANZAS: Record<string, { modulo: string; seccion: string }> = {
+  "servicios/horarios": { modulo: "configuracion", seccion: "horarios" },
   "servicios/puestos": { modulo: "puestos", seccion: "listado" },
 };
 
@@ -247,4 +247,9 @@ export function primeraSeccion(modulo: ModuloDef): Seccion {
 
 export function rutaDe(modulo: ModuloDef, seccion: Seccion): string {
   return `/panel/${modulo.slug}/${seccion.slug}`;
+}
+
+/** Available screens only; visibility is UX, never authorization. */
+export function modulosDisponibles(identity: StaffIdentity | undefined): ModuloDef[] {
+ return ARBOL.filter(m=>puede(identity,m.permiso)).map(m=>({...m,secciones:m.secciones.filter(s=>s.listo)})).filter(m=>m.secciones.length>0);
 }

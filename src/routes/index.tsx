@@ -1,3 +1,4 @@
+import {isSiteTest} from "@deployment/booking-policy";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Landing } from "@/components/booking/Landing";
@@ -48,7 +49,7 @@ function Index() {
   };
 
   // El token vive en el navegador; el backend decide qué puede ver.
-  const [hasCustomerSession] = useState(() => Boolean(readCustomerToken()));
+  const [hasCustomerSession] = useState(() => !isSiteTest && Boolean(readCustomerToken()));
   const { services: servicesByCategory } = useCatalog();
 
   const categoryOfService = (slug: string): CategoryId | undefined => {
@@ -112,7 +113,7 @@ function Index() {
     <>
       {/* Para una clienta que ya vino, la reserva empieza por lo que ya
           se hizo, no por el catálogo. Sin historial no se muestra nada. */}
-      <div className="pt-4">
+      {!isSiteTest && <div className="pt-4">
         <KnownCustomerBlock
           enabled={hasCustomerSession}
           onRepeat={(service) =>
@@ -127,7 +128,7 @@ function Index() {
             })
           }
         />
-      </div>
+      </div>}
       <Landing
         onSelectPublicCategory={setSelectedPublicCategory}
         onStart={handleStartBooking}

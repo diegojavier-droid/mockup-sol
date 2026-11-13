@@ -31,9 +31,8 @@ import { logBookingFailure, requestId } from "../../lib/observability";
 import {
   BookingError,
   cancelBooking,
-  createBooking,
+  createOnlineBooking,
   getBookingByToken,
-  recordBookingConsent,
   type CreateBookingItem,
 } from "../../lib/booking/repository";
 import { TERMS_VERSION } from "../../config/legal";
@@ -153,8 +152,12 @@ function quoteErrorMessage(code: string): string {
   return messages[code] ?? "Falta un dato para calcular el turno.";
 }
 
-export function createBookingsRoute(env: ServerEnv) {
+export function createBookingsRoute(env: ServerEnv, policy: { termsVersion: string } = { termsVersion: TERMS_VERSION }) {
   const route = new Hono();
+  route.use("*", async (c, next) => {
+    c.header("Cache-Control", "no-store");
+    await next();
+  });
 
   route.post("/", async (c) => {
     const parsed = createSchema.safeParse(await c.req.json().catch(() => null));
@@ -162,6 +165,16 @@ export function createBookingsRoute(env: ServerEnv) {
       throw new HTTPException(400, { message: "Revisá los datos de la reserva." });
     }
     const body = parsed.data;
+
+    // Guard: la versión aceptada tiene que ser la vigente. Una pestaña
+    // abierta hace dos semanas muestra el texto viejo, y registrar eso
+    // como aceptación del texto nuevo sería fabricar una prueba falsa.
+    if (body.consent.termsVersion !== policy.termsVersion) {
+      throw new HTTPException(422, {
+        message:
+          "Actualizamos los términos mientras reservabas. Recargá la página y confirmá de nuevo, así queda todo en orden.",
+      });
+    }
 
     const phone = normalizePhoneAr(body.customer.phone);
     if (!phone) {
@@ -293,17 +306,7 @@ export function createBookingsRoute(env: ServerEnv) {
     );
 
     try {
-      // Guard: la versión aceptada tiene que ser la vigente. Una pestaña
-      // abierta hace dos semanas muestra el texto viejo, y registrar eso
-      // como aceptación del texto nuevo sería fabricar una prueba falsa.
-      if (body.consent.termsVersion !== TERMS_VERSION) {
-        throw new HTTPException(422, {
-          message:
-            "Actualizamos los términos mientras reservabas. Recargá la página y confirmá de nuevo, así queda todo en orden.",
-        });
-      }
-
-      const booking = await createBooking(admin, {
+      const booking = await createOnlineBooking(admin, {
         areaSlug: context.areaSlug,
         startsAt,
         endsAt,
@@ -322,31 +325,8 @@ export function createBookingsRoute(env: ServerEnv) {
         },
         items,
         customerNote: body.note ?? null,
-        source: "online",
+        termsVersion: body.consent.termsVersion,
       });
-
-      // El turno ya existe. Si esto fallara, quedaría un turno sin la
-      // prueba del consentimiento: no se le rompe la reserva a la clienta
-      // por eso, pero tiene que quedar gritado en el log para poder
-      // repararlo. `pendientes_de_consentimiento` es lo que hay que
-      // buscar.
-      try {
-        await recordBookingConsent(admin, {
-          bookingId: booking.id,
-          version: body.consent.termsVersion,
-          channel: "web",
-        });
-      } catch (consentError) {
-        console.error(
-          JSON.stringify({
-            evento: "pendientes_de_consentimiento",
-            bookingId: booking.id,
-            version: body.consent.termsVersion,
-            detalle: consentError instanceof Error ? consentError.message : String(consentError),
-            ts: new Date().toISOString(),
-          }),
-        );
-      }
 
       return c.json(
         {

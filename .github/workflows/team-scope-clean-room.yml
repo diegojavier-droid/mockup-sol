@@ -1,0 +1,88 @@
+name: Isolated team scope Auth and concurrency
+
+on:
+  pull_request:
+    branches: [main, mvp/sol-mai-v2]
+    paths: ["server/**", "supabase/**", "scripts/**", "package.json", "bun.lock", ".github/workflows/team-scope-clean-room.yml", ".github/workflows/cloudflare-deploy.yml", ".github/workflows/supabase-schema-deploy.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: isolated-team-scope-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-team:
+    name: Real disposable Auth, PostgREST and row-lock schedules
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      NODE_ENV: test
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Setup pinned Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.4"
+      - name: Setup pinned Supabase CLI without a hosted credential
+        uses: supabase/setup-cli@v3.0.0
+        with:
+          version: "2.122.1"
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+      - name: Check local-only guards and production holds
+        run: |
+          set -euo pipefail
+          bun test --preload ./scripts/test-no-network.ts scripts/ci scripts/deployment/team-scope-release-hold.test.ts
+          PYTHONDONTWRITEBYTECODE=1 python scripts/site/sql-tests/test-local-ci.py
+      - name: Start a new loopback-only disposable Supabase stack
+        run: |
+          set -euo pipefail
+          umask 077
+          test -z "${SUPABASE_ACCESS_TOKEN:-}"
+          test -z "${SUPABASE_DB_PASSWORD:-}"
+          command -v psql >/dev/null
+          stack="$RUNNER_TEMP/solmai-team-stack"
+          test ! -e "$stack"
+          mkdir -p "$stack/supabase"
+          # No repository migration, .env, remote link or credential is copied.
+          printf 'project_id = "sol-mai-team-scope-ci"\n' > "$stack/supabase/config.toml"
+          network="solmai-team-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker network create -o com.docker.network.bridge.host_binding_ipv4=127.0.0.1 "$network" >/dev/null
+          if ! supabase start --workdir "$stack" --network-id "$network" > "$RUNNER_TEMP/solmai-start.log" 2>&1; then
+            echo "::error::Disposable stack did not start. Raw service logs are not published."
+            exit 1
+          fi
+          supabase status --workdir "$stack" -o json > "$RUNNER_TEMP/solmai-status.json" 2> "$RUNNER_TEMP/solmai-status.log"
+          bun run scripts/ci/isolated-local-status.ts "$RUNNER_TEMP/solmai-status.json"
+      - name: Replay SQL and prove locking before any Auth fixture exists
+        env:
+          SOLMAI_DISPOSABLE_LOCAL_SQL: "yes"
+        run: python scripts/site/sql-tests/run-local-ci.py
+      - name: Exercise real Auth and PostgREST with fictional staff only
+        env:
+          LOCAL_TEAM_SCOPE_ACCEPTANCE: ephemeral-clean-room
+        run: bun run scripts/acceptance-team-scope-local.ts
+      - name: Destroy disposable services and credential files
+        if: always()
+        run: |
+          set -uo pipefail
+          failed=0
+          stack="$RUNNER_TEMP/solmai-team-stack"
+          network="solmai-team-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          if [ -f "$stack/supabase/config.toml" ]; then
+            supabase stop --workdir "$stack" --no-backup > "$RUNNER_TEMP/solmai-stop.log" 2>&1 || failed=1
+          fi
+          if docker network inspect "$network" >/dev/null 2>&1; then
+            docker network rm "$network" >/dev/null 2>&1 || failed=1
+          fi
+          rm -f "$RUNNER_TEMP/solmai-status.json" "$RUNNER_TEMP/solmai-start.log" "$RUNNER_TEMP/solmai-status.log" "$RUNNER_TEMP/solmai-stop.log"
+          if [ "$failed" -ne 0 ]; then echo "::error::Disposable service cleanup could not be fully confirmed."; fi
+          exit "$failed"

@@ -1,0 +1,32 @@
+import { expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+const text = readFileSync('.github/workflows/team-scope-clean-room.yml', 'utf8');
+const workflow = Bun.YAML.parse(text) as any;
+test('disposable CI has no production environment, secrets or deploy path', () => {
+  expect(workflow.permissions).toEqual({ contents: 'read' });
+  expect(workflow.on.pull_request.branches).toEqual(['main', 'mvp/sol-mai-v2']);
+  expect(workflow.on.pull_request_target).toBeUndefined();
+  expect(workflow.jobs['isolated-team'].environment).toBeUndefined();
+  expect(text).not.toContain('${{ secrets.');
+  expect(text).not.toMatch(/supabase (?:link|db push|functions deploy)|wrangler (?:deploy|publish)/);
+  expect(text).not.toMatch(/uses:.*upload-artifact/);
+  const steps = workflow.jobs['isolated-team'].steps;
+  expect(steps[0].with['persist-credentials']).toBe(false);
+  expect(steps.find((s: any) => s.uses?.startsWith('oven-sh/setup-bun')).with['bun-version']).toBe('1.4.4');
+  expect(steps.find((s: any) => s.uses?.startsWith('supabase/setup-cli')).with.version).toBe('2.122.1');
+});
+test('SQL locks precede Auth and cleanup always runs with no backup', () => {
+  const steps = workflow.jobs['isolated-team'].steps;
+  const sql = steps.findIndex((s: any) => s.run === 'python scripts/site/sql-tests/run-local-ci.py');
+  const auth = steps.findIndex((s: any) => s.run === 'bun run scripts/acceptance-team-scope-local.ts');
+  expect(sql).toBeGreaterThan(0); expect(auth).toBeGreaterThan(sql);
+  expect(steps[sql].env.SOLMAI_DISPOSABLE_LOCAL_SQL).toBe('yes');
+  expect(steps[auth].env.LOCAL_TEAM_SCOPE_ACCEPTANCE).toBe('ephemeral-clean-room');
+  const cleanup = steps.at(-1);
+  expect(cleanup.if).toBe('always()');
+  expect(cleanup.run).toContain('supabase stop --workdir "$stack" --no-backup');
+  expect(cleanup.run).toContain('exit "$failed"');
+  expect(text).toContain('com.docker.network.bridge.host_binding_ipv4=127.0.0.1');
+  expect(text).toContain('test ! -e "$stack"');
+  expect(text).not.toMatch(/cp .*supabase|source .*\.env/);
+});

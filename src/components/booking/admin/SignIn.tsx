@@ -1,17 +1,12 @@
-/**
- * La puerta del panel.
- *
- * Se mudó acá desde `src/routes/agenda.tsx` cuando el panel pasó a tener
- * direcciones propias por sección. El contenido no cambió: lo que decide
- * qué se muestra —link al mail, Google, o el token de emergencia— lo
- * arregló el bloque anterior y sigue valiendo.
- */
+/** Ingreso individual; la sesión identifica y el backend autoriza. */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api/client";
-import { writeStaffToken } from "@/lib/staff-session";
 import {
   correoDeLaSesion,
+  correoValido,
+  entrarConContrasena,
+  ERROR_INGRESO,
   entrarConGoogle,
   leerConfig,
   pedirLinkPorMail,
@@ -20,15 +15,23 @@ import {
 
 export function SignIn({
   onToken,
+  onSignOut,
   error,
   aviso,
 }: {
   onToken: () => void;
+  onSignOut?: () => void;
   error: Error | null;
   /** Por qué falló el intento anterior, si volvió de uno. */
   aviso: string | null;
 }) {
-  const [token, setToken] = useState("");
+  const [password, setPassword] = useState("");
+  const ocupado = useRef(false);
+  const montado = useRef(true);
+  useEffect(() => {
+    montado.current = true;
+    return () => { montado.current = false; };
+  }, []);
   const [mail, setMail] = useState("");
   const [config, setConfig] = useState<Awaited<ReturnType<typeof leerConfig>> | undefined>(
     undefined,
@@ -102,19 +105,22 @@ export function SignIn({
             <p className="mt-4 text-sm leading-relaxed text-foreground/85">
               {correo ? (
                 <>
-                  Te identificaste como <span className="font-medium">{correo}</span>, así que el
-                  link anduvo.
+                  Te identificaste como <span className="font-medium">{correo}</span>, pero todavía no tenés acceso al panel.
                 </>
               ) : (
-                <>Te identificaste bien, así que el link anduvo.</>
+                <>Tu sesión está identificada, pero todavía no tenés acceso al panel.</>
               )}{" "}
-              Lo que falta es el acceso al panel, y eso lo da quien lo administra: pedir otro link
-              no lo cambia.
+              Lo que falta es el acceso al panel, y eso lo da quien lo administra: volver a iniciar sesión con el mismo correo no lo cambia.
             </p>
             <button
               type="button"
               onClick={() => {
-                void salir().then(() => window.location.assign("/panel"));
+                if (onSignOut) { onSignOut(); return; }
+                void salir().then((result) => {
+                  if (montado.current) setFalla(result.mensaje ?? null);
+                  // Do not reload: a session that could not be erased may still
+                  // be persisted. The parent owns the safe transition and notice.
+                });
               }}
               className="mt-4 w-full rounded-full border border-border bg-card py-3 text-sm text-foreground transition-colors hover:border-champagne"
             >
@@ -133,8 +139,8 @@ export function SignIn({
         {enviado && (
           <div className="mt-5 rounded-2xl border border-champagne-deep/30 bg-cream/60 px-4 py-4">
             <p className="text-sm text-foreground/85">
-              Te mandamos un link a <span className="font-medium">{mail.trim()}</span>. Abrilo desde
-              este mismo dispositivo y entrás.
+              Si ese correo tiene una cuenta habilitada, recibirá un link: <span className="font-medium">{mail.trim()}</span>. Abrilo desde
+              este mismo dispositivo para continuar.
             </p>
             <button
               type="button"
@@ -150,7 +156,21 @@ export function SignIn({
         )}
 
         {conMail && !enviado && (
-          <>
+          <form onSubmit={(event) => {
+            event.preventDefault();
+            if (ocupado.current || !correoValido(mail) || !password) return;
+            ocupado.current = true;
+            setFalla(null); setYendo(true);
+            const intento = entrarConContrasena(mail, password);
+            setPassword("");
+            void intento.then((r) => {
+              if (!montado.current) return;
+              if (r.ok) onToken();
+              else setFalla(r.mensaje ?? ERROR_INGRESO);
+            }).catch(() => setFalla(ERROR_INGRESO)).finally(() => {
+              ocupado.current = false; setYendo(false); setPassword("");
+            });
+          }}>
             <label
               htmlFor="staff-mail"
               className="mt-5 block text-[11px] uppercase tracking-wider text-muted-foreground"
@@ -160,29 +180,41 @@ export function SignIn({
             <input
               id="staff-mail"
               type="email"
-              autoComplete="email"
+              autoComplete="username"
+              required
+              maxLength={254}
+              disabled={yendo}
               value={mail}
               onChange={(e) => setMail(e.target.value)}
               placeholder="vos@ejemplo.com"
               className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <button
-              type="button"
-              disabled={yendo || mail.trim() === ""}
-              onClick={() => {
-                setFalla(null);
-                setYendo(true);
-                void pedirLinkPorMail(mail).then((r) => {
-                  setYendo(false);
-                  if (r.ok) setEnviado(true);
-                  else setFalla(r.mensaje ?? "No pudimos mandar el link.");
-                });
-              }}
-              className="mt-3 w-full rounded-full bg-primary py-3 font-serif text-base text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-            >
-              {yendo ? "Mandando…" : "Mandarme un link"}
+            <label htmlFor="staff-password" className="mt-4 block text-sm">Contraseña</label>
+            <input id="staff-password" type="password" autoComplete="current-password"
+              required maxLength={1024} value={password} disabled={yendo}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
+            <button type="submit" disabled={yendo || !correoValido(mail) || !password}
+              className="mt-3 w-full rounded-full bg-primary py-3 text-primary-foreground disabled:opacity-50">
+              {yendo ? "Verificando…" : "Entrar"}
             </button>
-          </>
+            <button type="button" disabled={yendo || !correoValido(mail)}
+              onClick={() => {
+                if (ocupado.current) return;
+                ocupado.current = true;
+                setPassword(""); setFalla(null); setYendo(true);
+                void pedirLinkPorMail(mail).then((r) => {
+                  if (r.ok) setEnviado(true);
+                  else setFalla(r.mensaje ?? ERROR_INGRESO);
+                }).catch(() => setFalla(ERROR_INGRESO)).finally(() => {
+                  ocupado.current = false; setYendo(false);
+                });
+              }} className="mt-3 w-full text-sm underline disabled:opacity-50">
+              Mandarme un link por correo
+            </button>
+            <button type="button" disabled={yendo} onClick={() => {setPassword(""); setMail(""); setFalla(null);}}
+              className="mt-3 w-full text-sm underline">Borrar datos</button>
+          </form>
         )}
 
         {conGoogle && !enviado && (
@@ -190,14 +222,16 @@ export function SignIn({
             type="button"
             disabled={yendo}
             onClick={() => {
-              setFalla(null);
+              if (ocupado.current) return;
+              ocupado.current = true;
+              setPassword(""); setFalla(null);
               setYendo(true);
               void entrarConGoogle().then((r) => {
                 if (!r.ok) {
                   setFalla(r.mensaje ?? "No pudimos abrir el ingreso con Google.");
-                  setYendo(false);
+                  setYendo(false); ocupado.current = false;
                 }
-              });
+              }).catch(() => {setFalla(ERROR_INGRESO); setYendo(false); ocupado.current = false;});
             }}
             className={
               conMail
@@ -217,40 +251,9 @@ export function SignIn({
         )}
 
         {sinPuerta && (
-          <>
-            {/* Ni link ni Google: el proyecto de Supabase no tiene
-                habilitado ninguno de los dos. Se dice con todas las
-                letras y se deja una forma de entrar, porque si no el
-                sistema queda sin nadie que pueda arreglarlo. */}
-            <p className="mt-5 rounded-2xl border border-champagne-deep/30 bg-cream/60 px-4 py-3 text-sm text-foreground/85">
-              Este servidor todavía no tiene habilitado ningún modo de ingreso. Mientras tanto se
-              entra con el token de la sesión de Supabase.
-            </p>
-
-            <label
-              htmlFor="staff-token"
-              className="mt-5 block text-[11px] uppercase tracking-wider text-muted-foreground"
-            >
-              Token de acceso
-            </label>
-            <input
-              id="staff-token"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <button
-              type="button"
-              disabled={!token.trim()}
-              onClick={() => {
-                writeStaffToken(token.trim());
-                onToken();
-              }}
-              className="mt-4 w-full rounded-full bg-primary py-3 font-serif text-base text-primary-foreground transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-            >
-              Entrar
-            </button>
-          </>
+          <p className="mt-5 text-sm text-muted-foreground">
+            El ingreso no está disponible. Consultá con quien administra el panel.
+          </p>
         )}
       </div>
     </main>

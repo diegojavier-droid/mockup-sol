@@ -1,3 +1,4 @@
+import {isSiteTest} from "@deployment/booking-policy";
 import { type CategoryId, type Personalization } from "@/lib/booking-data";
 import type { PersonalizationField } from "@/lib/booking-types";
 import { cn } from "@/lib/utils";
@@ -46,7 +47,7 @@ const visibleFieldLabels: Record<string, string> = {
 const sectionTitles: Record<Intent, string> = {
   goal: "Lo que buscás",
   current: "Cómo estás hoy",
-  allergies: "Salud",
+  allergies: "Para conversar al llegar",
   history: "Cuidados",
 };
 
@@ -115,15 +116,16 @@ function FieldRow({
   return (
     <fieldset>
       <legend className="mb-2 text-sm text-foreground/85">
-        {visibleFieldLabels[field.id] ?? field.label}
+        {field.id === "alergias" ? "Alergias" : visibleFieldLabels[field.id] ?? field.label}
       </legend>
+      {isSiteTest && field.id === "alergias" && <p className="mb-3 text-sm text-muted-foreground">Elegí un escenario de la clienta de ejemplo para conversar al llegar, antes del servicio.</p>}
       <div className="flex flex-wrap gap-1.5">
         {field.options.map((option) => (
           <Chip
             key={option}
             option={option}
             selected={personal[field.id] === option}
-            onSelect={() => onChooseOption(field.id, option)}
+            onSelect={() => onChooseOption(field.id, field.id === "alergias" && personal[field.id] === option ? "" : option)}
           />
         ))}
       </div>
@@ -169,7 +171,7 @@ export function PersonalizationStep({
   return (
     <StepShell title={personalizationStepTitleByCategory[category]}>
       <p className="-mt-1 text-sm text-muted-foreground">
-        Cuanto más nos contás, mejor preparamos tu visita.
+        Elegí las opciones del servicio.
       </p>
 
       <div className="mt-5 divide-y divide-border/40">
@@ -189,37 +191,17 @@ export function PersonalizationStep({
           </section>
         ))}
 
-        {/* La nota, siempre abierta.
- 
-            Estaba detrás de un «+ Agregar una nota», y esconderla tenía
-            dos costos. Uno: la clienta tenía que darse cuenta de que ese
-            link existía y decidir abrirlo, justo lo contrario de lo que
-            este paso pide, que es contar cosas. Dos: el link rompía el
-            ritmo visual — todo lo de arriba son secciones con su título
-            y sus opciones, y abajo aparecía un renglón subrayado suelto.
-
-            Ahora es una sección más, con el mismo encabezado que las
-            otras. Vacía no molesta a nadie; abierta invita. */}
-        <section className="py-5">
-          <SectionEyebrow>Agregá una nota para Sol</SectionEyebrow>
-          <label className="block">
-            <span className="sr-only">Agregá una nota para Sol</span>
-            <textarea
-              className="min-h-20 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30"
-              maxLength={ADDITIONAL_COMMENTS_MAX_LENGTH}
-              onChange={(event) => onChangeAdditionalComments(event.target.value)}
-              placeholder="Detalles, referencias o algo a tener en cuenta."
-              value={additionalComments}
-            />
-            {/* El contador sólo aparece cuando hay algo escrito: en un
-                campo vacío es ruido, y cerca del límite es información. */}
-            {additionalComments.length > 0 ? (
-              <span className="mt-1.5 block text-right text-xs text-muted-foreground">
-                {additionalComments.length}/{ADDITIONAL_COMMENTS_MAX_LENGTH}
-              </span>
-            ) : null}
-          </label>
+        <section className="space-y-3 py-5">
+          <label htmlFor="comments-for-sol" className="block font-serif text-sm">Comentario para Sol (opcional)</label>
+          <textarea id="comments-for-sol" value={additionalComments} maxLength={ADDITIONAL_COMMENTS_MAX_LENGTH}
+            onChange={event => onChangeAdditionalComments(event.target.value)} rows={3}
+            aria-describedby="comments-for-sol-help"
+            className="w-full rounded-2xl border border-border bg-card p-3 text-sm"
+          />
+          <p id="comments-for-sol-help" className="text-xs text-muted-foreground">{isSiteTest ? "Para conversar con Sol o el equipo antes del servicio. Usá sólo datos ficticios de la clienta de ejemplo, no información personal real." : "Detalles, referencias o algo a tener en cuenta."}</p>
+          <p className="text-xs text-muted-foreground">{additionalComments.length}/{ADDITIONAL_COMMENTS_MAX_LENGTH}</p>
         </section>
+
       </div>
     </StepShell>
   );

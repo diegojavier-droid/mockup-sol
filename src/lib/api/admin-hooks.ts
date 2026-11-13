@@ -1,3 +1,7 @@
+import {useContext} from "react";
+import {SesionPanelCtx} from "../panel-sesion";
+import {invalidateAdminChange} from "./admin-invalidation";
+import {isSiteTest} from "@deployment/booking-policy";
 /**
  * Hooks del panel interno.
  *
@@ -12,13 +16,21 @@ import { readStaffToken, type Modulo, type Nivel, type StaffIdentity } from "../
 
 export type BookingSource = "online" | "manual" | "phone" | "whatsapp" | "walk_in";
 
+export interface AttentionState { startedAt: string | null; finishedAt: string | null; }
 export interface AgendaEntry {
+  view?: "financial";
+  attention?: AttentionState;
+  closedBeforeTracking?: boolean;
+  canStartAttention?: boolean;
+  canFinishAttention?: boolean;
   id: string;
   publicToken: string;
   startsAt: string;
   endsAt: string;
   shownDurationMin: number;
   status: string;
+  /** Independiente del estado attended, que también registra la llegada. */
+  hasServiceClosure: boolean;
   source: BookingSource;
   depositStatus: string;
   createdViaOverride: boolean;
@@ -37,12 +49,23 @@ export interface AgendaEntry {
     email: string | null;
   };
   services: string[];
+  allergyScenarios?: {serviceName:string;answer:"no"|"si-leves"|"si-importantes"}[];
 }
+
+export type OperationalAgendaEntry = Pick<AgendaEntry, "id"|"startsAt"|"endsAt"|"shownDurationMin"|"status"|"source"|"area"|"station"|"services"|"customerNote"|"allergyScenarios"> & {
+  view: "operational";
+  customer: {firstName:string;lastName:string|null};
+  attention: AttentionState;
+  closedBeforeTracking?: boolean;
+  canStartAttention: boolean;
+  canFinishAttention: boolean;
+};
+export type AgendaRowEntry = AgendaEntry | OperationalAgendaEntry;
 
 export interface AgendaPage {
   date: string;
   days: number;
-  entries: AgendaEntry[];
+  entries: AgendaRowEntry[];
 }
 
 /**
@@ -56,13 +79,16 @@ export interface AgendaPage {
  * que abriera el panel sin sesión, que es la primera vez de todo el
  * mundo.
  */
-export function useStaffIdentity() {
+export function useStaffIdentity(enabled = true) {
+  const session=useContext(SesionPanelCtx);
   return useQuery({
     queryKey: ["admin", "me"],
     queryFn: () => adminApi.get<StaffIdentity>("/me"),
-    enabled: Boolean(readStaffToken()),
+    enabled: enabled && !session?.identidad && (isSiteTest || Boolean(readStaffToken())),
     retry: false,
-    staleTime: 5 * 60_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: session?.identidad ? false : 30_000,
   });
 }
 
@@ -80,21 +106,27 @@ export interface AgendaResumen {
  * que un año por ahí serían doce pedidos con miles de filas completas
  * para contarlas y tirarlas.
  */
+function useAgendaScopeKey() {
+ const identity=useContext(SesionPanelCtx)?.identidad;
+ return [identity?.staffId ?? "unknown",identity?.agendaScope ?? "legacy",identity?.permisos.finanzas ?? "none"].join(":");
+}
 export function useAgendaResumen(params: { desde: string; hasta: string; area?: string }) {
+  const scopeKey=useAgendaScopeKey();
   const search = new URLSearchParams({ desde: params.desde, hasta: params.hasta });
   if (params.area) search.set("area", params.area);
   return useQuery({
-    queryKey: ["admin", "agenda-resumen", params.desde, params.hasta, params.area ?? ""],
+    queryKey: ["admin", "agenda-resumen", params.desde, params.hasta, params.area ?? "", scopeKey],
     queryFn: () => adminApi.get<AgendaResumen>(`/agenda/resumen?${search.toString()}`),
     staleTime: 60_000,
   });
 }
 
 export function useAgenda(params: { date: string; days: number; area?: string }) {
+  const scopeKey=useAgendaScopeKey();
   const search = new URLSearchParams({ date: params.date, days: String(params.days) });
   if (params.area) search.set("area", params.area);
   return useQuery({
-    queryKey: ["admin", "agenda", search.toString()],
+    queryKey: ["admin", "agenda", search.toString(), scopeKey],
     queryFn: () => adminApi.get<AgendaPage>(`/agenda?${search.toString()}`),
     // Un turno tomado hace un minuto tiene que aparecer.
     staleTime: 10_000,
@@ -111,9 +143,10 @@ export interface AreaRow {
   isActive: boolean;
 }
 
-export function useAreas() {
+export function useAreas(enabled = true) {
   return useQuery({
     queryKey: ["admin", "areas"],
+    enabled,
     queryFn: () => adminApi.get<AreaRow[]>("/areas"),
     staleTime: 10 * 60_000,
   });
@@ -144,7 +177,8 @@ export interface CreateInternalBooking {
   lengthTier?: string | null;
   extraCodes?: string[];
   startsAt: string;
-  customer: { firstName: string; lastName?: string; phone: string; email?: string };
+  customer: { firstName: string; lastName?: string; phone: string; email?: string; acceptsMarketing?:false };
+  testCustomerScenario?:true;
   note?: string;
   source: Exclude<BookingSource, "online">;
   override?: boolean;
@@ -159,7 +193,7 @@ export function useCreateInternalBooking() {
         "/bookings",
         input,
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "agenda"] }),
+    onSuccess: () => invalidateAdminChange(qc, "booking"),
   });
 }
 
@@ -173,7 +207,7 @@ export function useMarkNoShow() {
         deposit_amount: number;
         message: string;
       }>(`/bookings/${bookingId}/no-show`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "agenda"] }),
+    onSuccess: () => invalidateAdminChange(qc, "booking"),
   });
 }
 
@@ -478,12 +512,7 @@ export function useSetServicePrice() {
         priceMain: v.priceMain,
         durationMin: v.durationMin,
       }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin", "salon", "services"] });
-      // El catálogo público también cambia: si no se refresca, Sol ve el
-      // precio nuevo en su panel y la clienta el viejo en la web.
-      qc.invalidateQueries({ queryKey: ["catalog"] });
-    },
+    onSuccess: () => invalidateAdminChange(qc, "price"),
   });
 }
 
@@ -675,7 +704,7 @@ export function useUpdateBookingStatus() {
   return useMutation({
     mutationFn: (input: { bookingId: string; status: string }) =>
       adminApi.patch<AgendaEntry>(`/bookings/${input.bookingId}/status`, { status: input.status }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "agenda"] }),
+    onSuccess: () => invalidateAdminChange(qc, "booking"),
   });
 }
 
@@ -725,7 +754,7 @@ export function useCloseService() {
         outstanding: number;
         message: string;
       }>(`/bookings/${bookingId}/close`, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "agenda"] }),
+    onSuccess: () => invalidateAdminChange(qc, "booking"),
   });
 }
 
@@ -796,9 +825,7 @@ export function useAssignStation() {
       adminApi.post<{ ok: true }>(`/bookings/${input.bookingId}/station`, {
         stationId: input.stationId,
       }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["admin", "agenda"] });
-    },
+    onSuccess: () => invalidateAdminChange(qc, "station"),
   });
 }
 
@@ -1044,5 +1071,15 @@ export function useBorrarPromocion() {
   return useMutation({
     mutationFn: (slug: string) => adminApi.del<{ slug: string }>(`/salon/promotions/${slug}`),
     onSuccess: invalidar,
+  });
+}
+
+/** Operational events never accept price/payment data or browser timestamps. */
+export function useAttentionTransition() {
+  const client=useQueryClient();
+  return useMutation({
+    mutationFn: ({bookingId,action}:{bookingId:string;action:'start'|'finish'}) =>
+      adminApi.post<{bookingId:string;startedAt:string|null;finishedAt:string|null}>(`/bookings/${bookingId}/attention/${action}`, {}),
+    onSuccess: () => invalidateAdminChange(client,'booking'),
   });
 }

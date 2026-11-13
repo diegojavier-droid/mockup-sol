@@ -1,3 +1,4 @@
+import {isSiteTest} from "@deployment/booking-policy";
 /**
  * Catálogo real, con las formas que la UX ya consume.
  *
@@ -79,7 +80,12 @@ function toExtra(e: ApiExtra): Extra {
 }
 
 function toField(f: ApiPersonalizationField): PersonalizationField {
-  return { id: f.slug, label: f.label, options: f.options.map((o) => o.label) };
+  return {
+    id: f.slug,
+    label: f.label,
+    isRequired: f.isRequired,
+    options: f.options.map((o) => o.label),
+  };
 }
 
 export interface CatalogData {
@@ -144,6 +150,11 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     for (const f of fieldsQuery.data ?? []) {
       // El largo se pregunta como cualquier campo, pero resuelve un tier
       // en el backend; los campos de contexto no entran al wizard.
+      if (f.slug === "alergias" && (isSiteTest || f.fieldRole === "context")) {
+        if (f.fieldRole !== "context" || f.fieldType !== "single_choice" || !isCategoryId(f.categorySlug)) continue;
+        personalizationFields[f.categorySlug].push(toField({...f, isRequired: isSiteTest ? false : f.isRequired, options: f.options.filter(option => ["no", "si-leves", "si-importantes"].includes(option.slug))}));
+        continue;
+      }
       if (f.fieldRole === "context") continue;
       if (isCategoryId(f.categorySlug)) personalizationFields[f.categorySlug].push(toField(f));
     }

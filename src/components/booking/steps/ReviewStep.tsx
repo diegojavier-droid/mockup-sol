@@ -1,3 +1,4 @@
+import {isSiteTest} from "@deployment/booking-policy";
 import type { Personalization } from "@/lib/booking-data";
 import type { ApiQuote } from "@/lib/api/catalog-types";
 import { priceViewFromQuote } from "@/lib/booking-price";
@@ -9,9 +10,10 @@ import { useCatalog } from "@/lib/catalog-context";
 export function ReviewStep({
   customer,
   data,
-  personal: _personal,
+  personal,
   error,
   onConfirm,
+  isConfirming = false,
   quote,
 }: {
   customer: CustomerFormState;
@@ -19,6 +21,7 @@ export function ReviewStep({
   personal: Personalization;
   error: string | null;
   onConfirm: () => void;
+  isConfirming?: boolean;
   /** Cotización del backend: es la autoridad sobre el porcentaje de seña. */
   quote?: ApiQuote | null;
 }) {
@@ -68,6 +71,8 @@ export function ReviewStep({
             </div>
           </section>
 
+          {data.additionalComments.trim() && <section><p>Comentario para Sol</p><p className="whitespace-pre-wrap break-words">{data.additionalComments}</p></section>}
+          {personal.alergias && <section><p>Alergias: {personal.alergias}</p><p>Información para conversar con la clienta al llegar, antes del servicio.</p></section>}
           <section className="rounded-2xl border border-champagne-deep/30 bg-gradient-to-b from-champagne/45 to-cream/50 p-4">
             <ReviewAmount label="Total estimado" value={price} />
             <div className="mt-3 border-t border-champagne-deep/20 pt-3">
@@ -78,7 +83,7 @@ export function ReviewStep({
               />
             </div>
             <div className="mt-3 border-t border-champagne-deep/20 pt-3">
-              <ReviewAmount label="Saldo en salón" value={remainingPrice} />
+              <ReviewAmount label={isSiteTest ? "Saldo" : "Saldo en salón"} value={remainingPrice} />
             </div>
           </section>
         </div>
@@ -93,7 +98,7 @@ export function ReviewStep({
       {/* Lo que pasa si no viene se dice ANTES de confirmar, con el mismo
           peso que la regla de cancelación. Esconderlo en un enlace legal
           sería enterarse cuando ya no se puede hacer nada. */}
-      <section className="mt-4 rounded-2xl border border-border bg-cream/40 px-4 py-3">
+      {!isSiteTest && <section className="mt-4 rounded-2xl border border-border bg-cream/40 px-4 py-3">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
           Antes de confirmar
         </p>
@@ -101,17 +106,20 @@ export function ReviewStep({
           <li>Cancelando con más de 24 horas de anticipación, te devolvemos la seña.</li>
           <li>Si no venís y no cancelaste antes, la seña no se devuelve.</li>
         </ul>
-      </section>
+      </section>}
 
       <button
         type="button"
         onClick={onConfirm}
-        className="mt-5 w-full rounded-full bg-primary py-4 font-serif text-lg text-primary-foreground shadow-[0_20px_40px_-18px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        disabled={isConfirming}
+        aria-busy={isConfirming}
+        className="mt-5 w-full disabled:cursor-wait disabled:opacity-70 disabled:transform-none rounded-full bg-primary py-4 font-serif text-lg text-primary-foreground shadow-[0_20px_40px_-18px_rgba(80,55,30,0.55)] transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
+        {isConfirming && <span aria-hidden="true" className="mr-2 inline-block size-4 animate-spin rounded-full border-2 border-current border-r-transparent align-middle" />}
         Confirmar mi turno
       </button>
       <p className="mt-2 text-center text-xs text-muted-foreground">
-        Después pagás la seña y tu turno queda asegurado.
+        {isSiteTest ? "Pagos y mensajes deshabilitados." : "Después pagás la seña y tu turno queda asegurado."}
       </p>
     </StepShell>
   );

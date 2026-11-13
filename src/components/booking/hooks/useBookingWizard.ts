@@ -1,3 +1,4 @@
+import {isSiteTest} from "@deployment/booking-policy";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   bookingRequestPayloadSchema,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/booking-data";
 import { useCatalog, type CatalogData } from "@/lib/catalog-context";
 import { useAvailability, useCreateBooking, useQuote } from "@/lib/api/booking-hooks";
+import { hasCurrentConsent, bookingCustomerSchema } from "@/lib/api/booking-requests";
 import { useSalonInfo } from "@/lib/business-hours";
 import type { ApiCreatedBooking, LengthTier } from "@/lib/api/catalog-types";
 import { computeBookingOperationalTotals } from "@/lib/booking-totals";
@@ -67,7 +69,7 @@ function buildVisibleBookingStepKeys(
 ): BookingStepKey[] {
   return [
     ...alwaysVisibleSteps,
-    ...(categoryHasPersonalization(catalog, category) ? (["details"] as const) : []),
+    ...(isSiteTest || categoryHasPersonalization(catalog, category) ? (["details"] as const) : []),
     ...(categoryHasExtras(catalog, category) ? (["extras"] as const) : []),
     ...checkoutSteps,
   ];
@@ -231,6 +233,11 @@ function validateCustomer(customer: CustomerFormState): CustomerErrors {
     }
   }
 
+  const bounded=bookingCustomerSchema.safeParse({firstName:customer.firstName,phone:customer.whatsapp,email:customer.email});
+  if(!bounded.success) for(const issue of bounded.error.issues) {
+    const field=issue.path[0] === "phone" ? "whatsapp" : issue.path[0];
+    if(field === "firstName" || field === "whatsapp" || field === "email") errors[field]=issue.message;
+  }
   return errors;
 }
 
@@ -303,6 +310,10 @@ function getRestoredStep(
     return getStepPosition(stepKeys, "service");
   }
 
+  // La aceptación nunca se restaura. Volver a una revisión guardada debe
+  // pasar por la casilla de nuevo antes de poder confirmar.
+  if (stepKey === "review") return getStepPosition(stepKeys, "customerData");
+
   const restoredStep = stepKeys.indexOf(stepKey);
 
   if (restoredStep >= 0) return restoredStep;
@@ -365,14 +376,20 @@ export function useBookingWizard(
   const [customerTouched, setCustomerTouched] = useState<CustomerTouched>({});
   // Aceptación de los términos. Vive en el wizard y no en el borrador que
   // se guarda en el teléfono: un consentimiento restaurado de un
-  // localStorage de hace dos semanas no es una aceptación, es una
+  // sessionStorage de una sesión anterior no es una aceptación, es una
   // suposición.
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  // La versión viene del servidor: no se reserva hasta que esté cargada.
+  const { termsVersion } = useSalonInfo();
+  const [acceptedTermsVersion, setAcceptedTermsVersion] = useState<string | null>(null);
+  const acceptedTerms = hasCurrentConsent(acceptedTermsVersion, termsVersion);
   const [showTermsRequired, setShowTermsRequired] = useState(false);
   const [isCustomerRecognized, setIsCustomerRecognized] = useState(false);
-  const [paymentPending, setPaymentPending] = useState(restoredDraft?.paymentPending ?? false);
   const [bookingRequestError, setBookingRequestError] = useState<string | null>(null);
   const [confirmedBooking, setConfirmedBooking] = useState<ApiCreatedBooking | null>(null);
+  // A legacy pending draft only opens the recovery notice. It cannot
+  // stand in for a booking response or authorize another submission.
+  const paymentPending = confirmedBooking !== null || restoredDraft?.paymentPending === true;
+  const bookingSubmissionRef = useRef(false);
 
   const visibleStepKeys = useMemo(
     () => buildVisibleBookingStepKeys(catalog, category),
@@ -429,12 +446,6 @@ export function useBookingWizard(
   }, [availableDays]);
 
   const createBookingMutation = useCreateBooking();
-  // La versión de los términos la manda el servidor; el front no tiene
-  // copia propia. Si todavía no llegó, no se reserva: es preferible pedir
-  // un reintento a guardar datos personales sin poder decir qué texto
-  // aceptó la clienta.
-  const { termsVersion } = useSalonInfo();
-
   const availabilityRequest = useMemo(() => {
     return {
       durationMinutes: quote?.durationShownMin ?? 0,
@@ -472,14 +483,25 @@ export function useBookingWizard(
     if (stepKey === "service") return !!service;
     if (stepKey === "details") {
       return category
-        ? catalog.personalizationFields[category].every((field) => personal[field.id])
+        ? catalog.personalizationFields[category].every(
+            (field) => field.isRequired === false || !!personal[field.id],
+          )
         : false;
     }
     if (stepKey === "extras") return true;
     if (stepKey === "dateTime") return !!date && !!time;
     if (stepKey === "customerData") return Object.keys(customerValidationErrors).length === 0;
     return true;
-  }, [category, customerValidationErrors, date, personal, service, stepKey, time]);
+  }, [
+    catalog.personalizationFields,
+    category,
+    customerValidationErrors,
+    date,
+    personal,
+    service,
+    stepKey,
+    time,
+  ]);
 
   useEffect(() => {
     const hasDraftContent =
@@ -580,7 +602,7 @@ export function useBookingWizard(
       const nextCustomer = { ...current, [field]: value };
 
       if (field === "whatsapp" || field === "email") {
-        const mockCustomer = findMockCustomer(nextCustomer);
+        const mockCustomer = isSiteTest ? undefined : findMockCustomer(nextCustomer);
 
         if (mockCustomer) {
           setIsCustomerRecognized(true);
@@ -615,7 +637,13 @@ export function useBookingWizard(
    * así que lo que se manda es la selección, nunca importes.
    */
   const confirmBookingRequest = async () => {
+    if (paymentPending || bookingSubmissionRef.current) return;
     setBookingRequestError(null);
+    if (!acceptedTerms) {
+      setShowTermsRequired(true);
+      setStep(getStepPosition(visibleStepKeys, "customerData"));
+      return;
+    }
 
     const payload = buildBookingRequestPayload({
       category,
@@ -645,10 +673,13 @@ export function useBookingWizard(
         return;
       }
 
+      // A ref closes the gap before React renders the disabled button.
+      bookingSubmissionRef.current = true;
       const created = await createBookingMutation.mutateAsync({
         serviceSlug: service.id,
         lengthTier,
         personalization: personalizationSlugs,
+        ...(isSiteTest ? {testAllergyScenario:Boolean(personal.alergias)} : {}),
         extraCodes: chosenExtras.map((extra) => extra.id),
         // El horario elegido es hora del salón (Santa Fe, UTC-3).
         startsAt: `${date}T${time}:00-03:00`,
@@ -660,12 +691,13 @@ export function useBookingWizard(
         },
         note: additionalComments.trim() || undefined,
         termsVersion,
+        acceptedTerms,
       });
 
-      setConfirmedBooking(created);
-      setPaymentPending(true);
       clearBookingDraft();
+      setConfirmedBooking(created);
     } catch (error) {
+      bookingSubmissionRef.current = false;
       // El backend habla en lenguaje humano; se muestra tal cual.
       setBookingRequestError(
         error instanceof Error ? error.message : "No pudimos confirmar el turno. Intentá otra vez.",
@@ -731,7 +763,7 @@ export function useBookingWizard(
     acceptedTerms,
     showTermsRequired,
     chooseAcceptedTerms: (accepted: boolean) => {
-      setAcceptedTerms(accepted);
+      setAcceptedTermsVersion(accepted ? termsVersion : null);
       if (accepted) setShowTermsRequired(false);
     },
     choosePersonalization,

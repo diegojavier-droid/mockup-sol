@@ -44,6 +44,11 @@ export interface StaffIdentity {
   role: string;
   /** Cómo se llama ese rol en la pantalla. */
   roleName: string;
+  /** Explicit DB scope. Missing legacy values are assigned-only, never global. */
+  agendaScope?: "assigned" | "all";
+  attentionEnabled?: boolean;
+  /** Non-credential cache invalidation hint, never an authorization input. */
+  accessVersion?: string;
   /**
    * Qué puede tocar, módulo por módulo. Viene resuelto en la misma
    * consulta que la identidad, así que no hay una segunda ida a la base
@@ -113,12 +118,14 @@ async function resolveIdentity(env: ServerEnv, token: string): Promise<Resolucio
     display_name: string;
     role: string;
     role_name: string;
+    agenda_scope?: unknown;
+    attention_enabled?: unknown;
     permisos: MapaDePermisos | null;
   };
 
   const sesion = async (): Promise<StaffRow | undefined> => {
-    const { data, error } = await admin.rpc("resolve_staff_session", { p_email: email });
-    if (error) throw error;
+    const { data, error } = await admin.rpc(env.TEAM_SCOPE_ENABLED === true ? "resolve_staff_session_scoped" : "resolve_staff_session", { p_email: email });
+    if (error) throw new HTTPException(503, { message: "No pudimos verificar el acceso al panel." });
     return (data as StaffRow[] | null)?.[0];
   };
 
@@ -178,6 +185,8 @@ async function resolveIdentity(env: ServerEnv, token: string): Promise<Resolucio
       displayName: row.display_name,
       role: row.role,
       roleName: row.role_name,
+      attentionEnabled: env.TEAM_SCOPE_ENABLED === true && row.attention_enabled === true,
+      agendaScope: row.role === "owner" || row.agenda_scope === "all" ? "all" : "assigned",
       permisos: row.permisos ?? {},
     },
   };

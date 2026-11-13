@@ -4,14 +4,27 @@
  * devuelva de más. Una clave secreta filtrada acá abre la base entera:
  * `service_role` saltea RLS por definición.
  */
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createAuthRoute } from "./auth";
 import type { ServerEnv } from "../../config/env";
+
+import { __resetSupabaseSettingsCache } from "../../lib/identity/supabase-settings";
+
+const originalFetch = globalThis.fetch;
+beforeEach(() => {
+  __resetSupabaseSettingsCache();
+  globalThis.fetch = (async (input:string|Request|URL) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url !== "https://fixture.invalid/auth/v1/settings") throw new Error("Unexpected fixture destination");
+    return Response.json({mailer_autoconfirm:false, external:{google:true,email:false}});
+  }) as typeof fetch;
+});
+afterEach(() => { globalThis.fetch=originalFetch; __resetSupabaseSettingsCache(); });
 
 const SECRETO = "sb_secret_no_debe_salir_nunca_de_aca";
 
 const ENV = {
-  SUPABASE_URL: "https://proyecto.supabase.co",
+  SUPABASE_URL: "https://fixture.invalid",
   SUPABASE_PUBLISHABLE_KEY: "sb_publishable_abc123",
   SUPABASE_SECRET_KEY: SECRETO,
   INTERNAL_AUTH_ALLOWED_PROVIDERS: ["google"],
@@ -30,7 +43,7 @@ describe("la configuración pública del panel", () => {
     const { status, texto } = await pedir();
     expect(status).toBe(200);
     const { data } = JSON.parse(texto);
-    expect(data.supabaseUrl).toBe("https://proyecto.supabase.co");
+    expect(data.supabaseUrl).toBe("https://fixture.invalid");
     expect(data.publishableKey).toBe("sb_publishable_abc123");
   });
 

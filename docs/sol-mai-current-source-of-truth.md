@@ -50,6 +50,11 @@ Este documento es la fuente de verdad vigente para alinear producto, diseño y d
 - La personalización por categoría/servicio está implementada.
 - La selección de extras está implementada.
 - El resumen final está implementado.
+- Antes de confirmar, las consultas de precio y horarios sólo envían el largo, los extras y las opciones operativas admitidas por el detalle del servicio. Alergias, notas y otros datos de contexto no se envían en esas consultas ni se incorporan a sus claves de caché.
+- El wizard consulta disponibilidad por POST JSON, sin respuestas de personalización en la URL. GET se conserva para clientes anteriores; ambos transportes rechazan alergias. Las respuestas de cotización, disponibilidad y reservas llevan `Cache-Control: no-store`.
+- El consentimiento se comprueba nuevamente al enviar la reserva, queda ligado a la versión aceptada y nunca se restaura desde un borrador. Retomar una revisión guardada vuelve al paso de datos/aceptación. Los detalles de contexto se conservan en la reserva enviada después de aceptar.
+- La API web crea reserva y evidencia del consentimiento en una única RPC transaccional, `create_online_booking`. Si falla el consentimiento, se revierte la creación completa. Los canales internos no inventan una aceptación web.
+- La obligatoriedad del formulario respeta `isRequired` del catálogo: las preguntas opcionales, incluida alergias, se pueden omitir sin perder el turno. Las respuestas elegidas se conservan.
 - Email y teléfono/WhatsApp son obligatorios para reservar.
 - La UI debe explicar que esos datos se usan para enviar confirmación, enlace de seña y recordatorio del turno.
 - El cálculo vigente mantiene seña del 20% sobre el total estimado.
@@ -63,6 +68,8 @@ Este documento es la fuente de verdad vigente para alinear producto, diseño y d
 - Un pago aprobado después de que la reserva ya expiró debe tratarse como excepción manual: no debe confirmar automáticamente la reserva ni volver a bloquear el slot sin revisión operativa.
 - La confirmación queda preparada para enviarse por email y WhatsApp cuando exista backend real.
 - El recordatorio queda preparado para enviarse 30 minutos antes del turno por email y WhatsApp cuando exista backend real.
+- Una reserva creada abre directamente su página `/reserva/:token`, reemplazando la entrada del wizard en el historial. Al recargar se consulta otra vez el estado del servidor; no se guarda una copia de pago ni el token en el borrador.
+- El borrador sólo representa una selección no enviada. El efecto de guardado no puede recrearlo después de crear el turno. Un borrador anterior con `paymentPending` sin referencia muestra una salida de recuperación y contacto, nunca una seña de $0 ni una confirmación ficticia; no puede reconstruirse el enlace que la versión anterior no guardó.
 
 ### Canales y agenda interna
 
@@ -74,6 +81,7 @@ Este documento es la fuente de verdad vigente para alinear producto, diseño y d
 
 ### Cierre de atención y dinero
 
+- Marcar «Llegó» o corregir una ausencia automática con «Vino igual» registra `attended`, pero no cierra la atención ni cobra. La agenda consulta si existe `service_execution_records` y conserva «Cerrar atención» mientras falta ese registro. Un cierre existente no se reabre desde un formulario vacío, para no reemplazar cobros ya registrados.
 - El cierre registra el precio **final** (que puede diferir del estimado), lo que efectivamente se cobró, el medio de pago (`efectivo`, `transferencia`, `mercado_pago`, `otro`) y el saldo pendiente.
 - El efectivo cuenta igual que Mercado Pago en lo cobrado: el sistema no privilegia el canal digital al medir.
 - El costo de la atención es opcional y su ausencia significa "no sabemos", no cero.
@@ -115,6 +123,27 @@ Los siguientes elementos existen para simular o validar la experiencia, pero no 
 - El bootstrap fue probado dos veces en un entorno Supabase local limpio y mantuvo los conteos esperados.
 - `Database clean-room CI` reconstruye Supabase desde cero, valida ledger, bootstrap, RLS, FK compuesta, typecheck, build, routeTree, guards y endpoints Hono.
 - El frontend no conserva la integración Supabase/Auth autogenerada por Lovable; Auth interna sigue fuera de alcance hasta su bloque específico.
+
+### Edición del horario semanal
+
+- `Configuración › Horarios` consulta `GET /admin/business-hours` y permite
+  editar apertura, cierre y oferta online de cada franja existente con
+  `PATCH /admin/business-hours/:id`. No usa el horario del mock.
+- La lectura exige `configuracion:view`; guardar exige `configuracion:full`.
+  `/panel/servicios/horarios` redirige al nuevo destino para alinear la pantalla
+  con el permiso que ya aplica el backend.
+- Se muestran los siete días en hora del salón (Santa Fe, UTC-3), incluyendo
+  días sin franja. **Sin horario online no equivale a salón cerrado**: las
+  atenciones especiales se coordinan por el canal interno.
+- Cada franja se guarda por separado. La edición conserva su borrador ante
+  fallos de red; compara atómicamente los valores originales para rechazar
+  cambios sobre una versión vieja. El backend valida formato/rango y deja a
+  las restricciones de PostgreSQL la última palabra sobre orden y solapes.
+- No agrega franjas, no inventa horarios para días vacíos, no cambia
+  excepciones, horarios por profesional ni turnos ya tomados. Activar una
+  franja existente vuelve a ofrecerla online. Los cambios conservan el
+  historial de parámetros existente; atribuir actor en `business_hours`
+  sigue siendo una limitación del esquema actual (sin `updated_by`).
 
 ### Los números del salón
 
@@ -287,3 +316,46 @@ Hallazgos que estos documentos incorporan y que antes no estaban medidos:
 ## Regla de mantenimiento
 
 Este documento debe actualizarse cuando un PR cambie decisiones de producto, alcance funcional, estado de mocks, flujo de reserva, catálogo, pagos, CRM, categorías, estrategia de ramas o arquitectura de implementación.
+
+
+## Acceso individual del equipo: rama de prueba, noviembre de 2026
+
+La rama `feat/staff-password-auth` prepara correo y contraseña con Supabase Auth
+existente; no crea un sistema casero de claves, no crea cuentas remotas y no
+sustituye el Site privado v10, que conserva su identidad ChatGPT de propietario.
+El ingreso manual de tokens se retira del formulario. El link por correo queda
+como alternativa para cuentas existentes, sin auto-alta; Google sólo se ofrece
+si está admitido por la configuración. Tener sesión no da permisos: cada API
+sigue verificando identidad, email confirmado, staff activo y rol actual.
+
+La sesión del equipo tiene cache separado de la web de clientas y de otras
+sesiones. Al salir o cambiar de cuenta se retira ese cache y se descartan las
+respuestas anteriores. La renovación de un token de la misma sesión no cancela
+una operación que puede haberse guardado. Logout limpia estado local incluso
+si falla la red, informa si no pudo confirmar cierre con el proveedor y acota
+las esperas. No promete revocar inmediatamente un JWT ya emitido.
+
+La baja del miembro o cambio de rol se comprueba en la solicitud siguiente;
+no revierte una operación ya en curso. Staging y producción rechazan email si
+no es confiable; la configuración se revalida como máximo cada 30 segundos.
+Las respuestas administrativas, incluidos errores, llevan `no-store`.
+
+Las pruebas reales se preparan exclusivamente para Supabase efímero local en
+CI, con contactos ficticios, claves aleatorias en memoria, origen loopback y
+limpieza de sus propias filas. Su resultado debe verificarse antes de afirmar
+que la contraseña fue probada contra Auth real. No se modificó producción,
+RLS, permisos remotos, pagos, Site ni credenciales reales. Quedan como puertas
+de salida a producción: revisión independiente final, QA real Auth/navegador,
+alta segura del equipo, recuperación de acceso y revisión del binding de
+staff por email y la revocación inmediata de sesiones del servidor.
+
+## Integración de despliegues en curso (2026-11-12)
+
+La rama de integración consolida main y PR 103–106, autenticación individual
+con contraseña revisada y la adaptación privada de Sites en una fuente común.
+`docs/unified-source-and-deployments.md` define los dos perfiles explícitos,
+los límites de sesión, la separación de bases y cómo compilar ambos desde un
+mismo commit. No equivale a aprobación de producción ni a QA de Auth real.
+El Site vigente permanece privado; su control de propietario no se presenta
+como una cuenta de equipo con contraseña. Los datos de prueba y sus migraciones
+quedan fuera de la cadena productiva.

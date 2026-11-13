@@ -1,3 +1,4 @@
+import {isSiteTest} from "@deployment/booking-policy";
 /**
  * Cerrar la atención.
  *
@@ -10,7 +11,7 @@
  * estima: sin costo, el margen es NO DISPONIBLE.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCloseService, type AgendaEntry, type PaymentMethod } from "@/lib/api/admin-hooks";
 
 const METHODS: { id: PaymentMethod; label: string }[] = [
@@ -42,6 +43,13 @@ export function CloseServiceDialog({
   const [observation, setObservation] = useState("");
   const close = useCloseService();
 
+  // Si otra persona cerró mientras el formulario estaba abierto, no
+  // enviar un cierre vacío por encima. Durante nuestro propio guardado
+  // hay que esperar onSuccess: el refetch llega antes que ese callback.
+  useEffect(() => {
+    if (entry.hasServiceClosure && !close.isPending) onClose();
+  }, [entry.hasServiceClosure, close.isPending, onClose]);
+
   const priceNum = Number(finalPrice) || 0;
   const amountNum = Number(amount) || 0;
   // La seña ya acreditada cuenta como cobrada: no se le pide dos veces.
@@ -57,6 +65,7 @@ export function CloseServiceDialog({
           <button
             type="button"
             onClick={onClose}
+            disabled={close.isPending}
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
             Cerrar
@@ -66,9 +75,11 @@ export function CloseServiceDialog({
           {entry.customer.firstName} {entry.customer.lastName ?? ""}
         </p>
 
+        {isSiteTest && <p>Sólo registra importes ficticios. No cobra ni transfiere dinero.</p>}
         <Field label="Qué se hizo">
           <input
-            value={servicesDone}
+            value={isSiteTest ? "Atención de prueba" : servicesDone}
+            readOnly={isSiteTest}
             onChange={(e) => setServicesDone(e.target.value)}
             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
@@ -146,13 +157,13 @@ export function CloseServiceDialog({
               Vacío está bien. Sin costo no se calcula margen, y no se inventa ninguno.
             </p>
           </Field>
-          <Field label="Nota">
+          {!isSiteTest && <Field label="Nota">
             <input
               value={observation}
               onChange={(e) => setObservation(e.target.value)}
               className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-          </Field>
+          </Field>}
         </details>
 
         {close.isError && (
@@ -161,16 +172,16 @@ export function CloseServiceDialog({
 
         <button
           type="button"
-          disabled={!priceNum || close.isPending}
+          disabled={!priceNum || close.isPending || entry.hasServiceClosure !== false}
           onClick={() =>
             close.mutate(
               {
                 bookingId: entry.id,
                 finalPrice: priceNum,
-                servicesDone: servicesDone.trim() || undefined,
+                servicesDone: isSiteTest ? "Atención de prueba" : servicesDone.trim() || undefined,
                 durationMin: durationMin ? Number(durationMin) : null,
                 costAmount: cost ? Number(cost) : null,
-                observation: observation.trim() || undefined,
+                ...(!isSiteTest ? {observation:observation.trim() || undefined} : {}),
                 payments: amountNum > 0 ? [{ amount: amountNum, method, kind: "balance" }] : [],
               },
               { onSuccess: (r) => onClosed(r.message) },

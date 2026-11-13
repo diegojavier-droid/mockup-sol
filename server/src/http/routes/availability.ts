@@ -1,12 +1,12 @@
 /**
- * GET /api/v1/availability — horarios viables para un servicio.
+ * POST /api/v1/availability (GET legacy) — horarios viables para un servicio.
  *
  * La duración que se ubica es la ventana operativa (C = M + setup), que
  * el backend deriva de la cotización. La clienta nunca envía duración ni
  * ve el setup.
  */
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { recordAssistedActivityInBackground, waitUntilContextOf } from "../../lib/assisted/record";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -56,6 +56,36 @@ const querySchema = z.object({
   personalization: z.string().max(512).optional(),
 });
 
+// JSON preserves field/option boundaries and keeps answers out of URLs.
+const requestSchema = querySchema.extend({
+  personalization: z
+    .record(z.string().min(1).max(64), z.string().max(64))
+    .refine(
+      (answers) =>
+        Object.entries(answers).reduce(
+          (size, [field, option]) => size + field.length + option.length + 2,
+          0,
+        ) <= 512,
+    )
+    .optional(),
+});
+
+type AvailabilityInput = z.infer<typeof requestSchema>;
+
+// Explicit adapters keep HTTP tests isolated without replacing shared modules.
+const defaultDependencies = {
+  createSupabaseAnonClient,
+  createSupabaseAdminClient,
+  createCatalogRepository,
+  loadServiceParts,
+  loadArea,
+  loadAvailabilitySettings,
+  loadBusinessHours,
+  loadScheduleExceptions,
+  loadBlockingDemands,
+  recordAssistedActivityInBackground,
+};
+
 function parsePersonalization(raw: string | undefined): Record<string, string> | undefined {
   if (!raw) return undefined;
   const out: Record<string, string> = {};
@@ -66,19 +96,49 @@ function parsePersonalization(raw: string | undefined): Record<string, string> |
   return Object.keys(out).length ? out : undefined;
 }
 
-export function createAvailabilityRoute(env: ServerEnv) {
+export function createAvailabilityRoute(
+  env: ServerEnv,
+  dependencies: typeof defaultDependencies = defaultDependencies,
+) {
   const route = new Hono();
+
+  route.use("*", async (c, next) => {
+    c.header("Cache-Control", "no-store");
+    await next();
+    c.header("Cache-Control", "no-store");
+  });
 
   route.get("/", async (c) => {
     const parsed = querySchema.safeParse(c.req.query());
     if (!parsed.success) {
       throw new HTTPException(400, { message: "Invalid availability query" });
     }
+    const personalization = parsePersonalization(parsed.data.personalization);
+    return respond(c, { ...parsed.data, personalization });
+  });
 
-    const anon = createSupabaseAnonClient(env);
-    const catalog = createCatalogRepository(anon);
-    const slugs = parsed.data.service.split(",").filter(Boolean);
-    const lengths = parsed.data.length ? parsed.data.length.split(",") : [];
+  route.post("/", async (c) => {
+    const parsed = requestSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) {
+      throw new HTTPException(400, { message: "Invalid availability query" });
+    }
+    return respond(c, parsed.data);
+  });
+
+  async function respond(c: Context, input: AvailabilityInput) {
+    // Health context is not needed to calculate slots, on either transport.
+    // Rejection cannot erase legacy URLs already received by infrastructure.
+    if (
+      Object.keys(input.personalization ?? {}).some(
+        (field) => field.trim().toLowerCase() === "alergias",
+      )
+    ) {
+      throw new HTTPException(400, { message: "Invalid availability query" });
+    }
+    const anon = dependencies.createSupabaseAnonClient(env);
+    const catalog = dependencies.createCatalogRepository(anon);
+    const slugs = input.service.split(",").filter(Boolean);
+    const lengths = input.length ? input.length.split(",") : [];
     const partsInput = slugs.map((serviceSlug, i) => ({
       serviceSlug,
       // Un solo largo se aplica a todo: pedir «medio» para color y corte
@@ -92,14 +152,14 @@ export function createAvailabilityRoute(env: ServerEnv) {
         | undefined,
       // La personalización acompaña al primer servicio: es el que la
       // pantalla pregunta.
-      personalization: i === 0 ? parsePersonalization(parsed.data.personalization) : undefined,
+      personalization: i === 0 ? input.personalization : undefined,
     }));
 
     let loaded;
     try {
-      loaded = await loadServiceParts(anon, catalog, {
+      loaded = await dependencies.loadServiceParts(anon, catalog, {
         parts: normalizeServiceParts({ services: partsInput }),
-        extraCodes: parsed.data.extras ? parsed.data.extras.split(",").filter(Boolean) : [],
+        extraCodes: input.extras ? input.extras.split(",").filter(Boolean) : [],
       });
     } catch (error) {
       if (error instanceof ServicePartsError) {
@@ -122,8 +182,8 @@ export function createAvailabilityRoute(env: ServerEnv) {
       throw error;
     }
 
-    const admin = createSupabaseAdminClient(env);
-    const area = await loadArea(admin, context.areaSlug);
+    const admin = dependencies.createSupabaseAdminClient(env);
+    const area = await dependencies.loadArea(admin, context.areaSlug);
     if (!area) {
       throw new HTTPException(404, { message: "Area not found" });
     }
@@ -133,16 +193,25 @@ export function createAvailabilityRoute(env: ServerEnv) {
       });
     }
 
-    const settings = await loadAvailabilitySettings(anon);
+    const settings = await dependencies.loadAvailabilitySettings(anon);
     const now = new Date();
-    const rangeStart = parsed.data.from ? new Date(parsed.data.from) : now;
-    const days = parsed.data.days ?? Math.min(settings.maxAdvanceDays, 21);
+    const rangeStart = input.from ? new Date(input.from) : now;
+    const days = input.days ?? Math.min(settings.maxAdvanceDays, 21);
     const rangeEnd = new Date(rangeStart.getTime() + days * 24 * 60 * 60_000);
 
     const [businessHours, exceptions, existing] = await Promise.all([
-      loadBusinessHours(anon),
-      loadScheduleExceptions(admin, { areaId: area.id, from: rangeStart, to: rangeEnd }),
-      loadBlockingDemands(admin, { areaId: area.id, from: rangeStart, to: rangeEnd, now }),
+      dependencies.loadBusinessHours(anon),
+      dependencies.loadScheduleExceptions(admin, {
+        areaId: area.id,
+        from: rangeStart,
+        to: rangeEnd,
+      }),
+      dependencies.loadBlockingDemands(admin, {
+        areaId: area.id,
+        from: rangeStart,
+        to: rangeEnd,
+        now,
+      }),
     ]);
 
     const slots = computeAvailability({
@@ -161,9 +230,13 @@ export function createAvailabilityRoute(env: ServerEnv) {
 
     // La web acaba de contestar qué horarios hay, sin que nadie del
     // salón coordinara nada.
-    recordAssistedActivityInBackground(admin, "availability_self_service", waitUntilContextOf(c));
+    dependencies.recordAssistedActivityInBackground(
+      admin,
+      "availability_self_service",
+      waitUntilContextOf(c),
+    );
     return c.json({ data: { bookableOnline: true, days: slots } });
-  });
+  }
 
   return route;
 }

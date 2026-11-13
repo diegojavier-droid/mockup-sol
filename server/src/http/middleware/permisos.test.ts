@@ -108,12 +108,11 @@ describe("lo que hoy puede quien atiende el mostrador", () => {
     expect(puede(mostrador, PERMISOS["POST /customers/:id/notes"]!)).toBe(true);
   });
 
-  it("sigue pudiendo cerrar un turno y marcar una seña devuelta", () => {
-    // Son operaciones del turno, no de la caja: quien está con la clienta
-    // enfrente tiene que poder hacerlas.
-    expect(puede(mostrador, PERMISOS["POST /bookings/:id/close"]!)).toBe(true);
-    expect(puede(mostrador, PERMISOS["POST /bookings/:id/refund-done"]!)).toBe(true);
-    expect(puede(mostrador, PERMISOS["GET /refunds-pending"]!)).toBe(true);
+  it("no puede cerrar financieramente ni marcar una seña devuelta sin Finanzas", () => {
+    // Atención y dinero son capacidades distintas.
+    expect(puede(mostrador, PERMISOS["POST /bookings/:id/close"]!)).toBe(false);
+    expect(puede(mostrador, PERMISOS["POST /bookings/:id/refund-done"]!)).toBe(false);
+    expect(puede(mostrador, PERMISOS["GET /refunds-pending"]!)).toBe(false);
   });
 
   it("no ve la plata", () => {

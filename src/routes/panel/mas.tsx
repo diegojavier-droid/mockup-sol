@@ -1,10 +1,11 @@
+import {modulosDisponibles} from "@/lib/panel-nav";
+import {isSiteTest} from "@deployment/booking-policy";
 /**
  * «Más», en el teléfono.
  *
  * No es un menú escondido: es una pantalla completa, con el nombre de
- * cada módulo y qué hay adentro. Los que todavía no existen se ven,
- * apagados y dichos —esconderlos haría parecer el sistema más chico de
- * lo que va a ser—, y el separador marca el corte de frecuencia sin
+ * cada módulo disponible y qué hay adentro. Los módulos sin pantalla
+ * no se ofrecen como destinos. El separador marca el corte de frecuencia sin
  * ponerle nombre: es lo que reemplaza a «Casi nunca, pero tiene que
  * estar».
  *
@@ -28,7 +29,7 @@ function MasRoute() {
   const { identidad, cargando, cerrar } = useSesionPanel();
   // Sin identidad no pasa ningún módulo el filtro, así que mientras el
   // pedido viaja esta pantalla quedaba en blanco y sin decir por qué.
-  const visibles = cargando ? [] : ARBOL.filter((m) => puede(identidad, m.permiso));
+  const visibles = cargando ? [] : modulosDisponibles(identidad);
 
   return (
     <div className="min-h-svh bg-background pb-24">
@@ -51,7 +52,7 @@ function MasRoute() {
               </span>
             )}
             <button type="button" onClick={cerrar} className="underline-offset-4 hover:underline">
-              Salir
+              {isSiteTest ? "Volver a la web" : "Salir"}
             </button>
           </div>
         </div>

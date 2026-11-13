@@ -78,12 +78,7 @@ export function BookingWizard({
 
   if (wizard.paymentPending) {
     return (
-      <BookingConfirmation
-        data={wizard.data}
-        onClose={wizard.closeAndClearDraft}
-        wasDraftRestored={wizard.wasDraftRestored}
-        booking={wizard.confirmedBooking}
-      />
+      <BookingConfirmation onClose={wizard.closeAndClearDraft} booking={wizard.confirmedBooking} />
     );
   }
 
@@ -173,6 +168,7 @@ export function BookingWizard({
                 personal={wizard.personal}
                 error={wizard.bookingRequestError}
                 onConfirm={wizard.confirmBookingRequest}
+                isConfirming={wizard.isConfirming}
                 quote={wizard.quote}
               />
             )}

@@ -1,3 +1,6 @@
+import {isSiteTest} from "@deployment/booking-policy";
+import { z } from "zod";
+import { bookingCustomerSchema } from "@/lib/api/booking-requests";
 /**
  * Tomar un turno desde el mostrador.
  *
@@ -10,6 +13,7 @@
  * lugares hay ocupados y ofrece tomarlo igual.
  */
 
+import { ApiError } from "@/lib/api/client";
 import { useState } from "react";
 import {
   useCreateInternalBooking,
@@ -17,7 +21,7 @@ import {
   type BookingSource,
 } from "@/lib/api/admin-hooks";
 import { useServiceDetail } from "@/lib/api/booking-hooks";
-import type { LengthTier } from "@/lib/api/catalog-types";
+import type { ApiServiceDetail, LengthTier } from "@/lib/api/catalog-types";
 import { useCatalog } from "@/lib/catalog-context";
 
 const LENGTH_LABEL: Record<string, string> = {
@@ -49,17 +53,18 @@ export function NewBookingDialog({
 }) {
   const { categories, services: servicesByCategory } = useCatalog();
   const [source, setSource] = useState<Exclude<BookingSource, "online">>("walk_in");
+  const [customer, setCustomer] = useState({ firstName: "", lastName: "", phone: "", email: "" });
+  const [search,setSearch]=useState("");
+  const hits=useCustomerSearch(isSiteTest ? "" : search);
+  const parsedCustomer = parseInternalCustomer(customer);
   const [serviceSlug, setServiceSlug] = useState("");
   const [when, setWhen] = useState(salonNowValue());
-  const [firstName, setFirstName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [note, setNote] = useState("");
-  const [search, setSearch] = useState("");
   const [lengthTier, setLengthTier] = useState<LengthTier | "">("");
   const [conflict, setConflict] = useState<string | null>(null);
-  const [overrideReason, setOverrideReason] = useState("");
 
-  const hits = useCustomerSearch(search);
+  const [originalReason,setOriginalReason]=useState("");
+  const [note,setNote]=useState("");
+  const overrideReason=isSiteTest ? "Prueba de sobreturno" : originalReason;
   const create = useCreateInternalBooking();
   // Igual que en el flujo público: se pregunta sólo lo que ESE servicio
   // necesita. La mayoría de Peluquería cobra por largo y sin ese dato el
@@ -68,7 +73,7 @@ export function NewBookingDialog({
   const lengthOptions = (detail.data?.tiers ?? [])
     .map((t) => t.lengthTier)
     .filter((t): t is LengthTier => Boolean(t) && t !== "unico");
-  const needsLength = lengthOptions.length > 1;
+  const needsLength = lengthOptions.length > 0;
 
   // Agrupados por categoría, no en una lista plana de cuarenta y tres.
   // Suelta obligaba a recorrerla entera hasta encontrar lo que se
@@ -80,17 +85,18 @@ export function NewBookingDialog({
     .filter((g) => g.items.length > 0);
 
   const canSubmit =
-    serviceSlug && firstName.trim() && phone.trim() && when && (!needsLength || lengthTier);
+    parsedCustomer !== null && canSubmitInternalBooking(serviceSlug, detail.data, detail.isError || detail.isFetching, when, lengthTier);
 
   function submit(withOverride: boolean) {
+    if (!canSubmit || !parsedCustomer || create.isPending) return;
     setConflict(null);
     create.mutate(
       {
         serviceSlug,
         lengthTier: lengthTier || null,
         startsAt: `${when}:00-03:00`,
-        customer: { firstName: firstName.trim(), phone: phone.trim() },
-        note: note.trim() || undefined,
+        customer: parsedCustomer,
+        ...(isSiteTest ? {testCustomerScenario:true as const} : {note:note.trim() || undefined}),
         source,
         override: withOverride,
         overrideReason: withOverride ? overrideReason.trim() : undefined,
@@ -102,7 +108,7 @@ export function NewBookingDialog({
               ? "Turno tomado como excepción. Queda registrado quién lo creó y por qué."
               : "Turno tomado.",
           ),
-        onError: (e) => setConflict((e as Error).message),
+        onError: (e) => { if (e instanceof ApiError && e.status === 409) setConflict(e.message); },
       },
     );
   }
@@ -142,46 +148,19 @@ export function NewBookingDialog({
         </Field>
 
         <Field label="Clienta">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre o teléfono"
-            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          {(hits.data ?? []).length > 0 && (
-            <ul className="mt-2 max-h-36 overflow-y-auto rounded-xl border border-border">
-              {(hits.data ?? []).slice(0, 6).map((h) => (
-                <li key={h.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFirstName(h.firstName);
-                      setPhone(h.phone);
-                      setSearch("");
-                    }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-cream/60"
-                  >
-                    {h.firstName} {h.lastName ?? ""} · {h.phone}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            <input
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Nombre"
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Teléfono"
-              inputMode="tel"
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
+          {!isSiteTest && <><input aria-label="Buscar por nombre o teléfono" placeholder="Buscar por nombre o teléfono" value={search} onChange={e=>setSearch(e.target.value)}/>
+          <ul>{(hits.data??[]).slice(0,6).map(hit=><li key={hit.id}><button type="button" onClick={()=>{setCustomer({firstName:hit.firstName,lastName:hit.lastName??"",phone:hit.phone,email:hit.email??""});setSearch("");}}>{hit.firstName} {hit.lastName??""} · {hit.phone}</button></li>)}</ul></>}
+          {isSiteTest && <p className="mb-2 text-xs text-muted-foreground">Usá datos ficticios para este turno.</p>}
+          <div className="grid gap-2 sm:grid-cols-2">
+            {([
+              ["firstName", "Nombre", "text", 80], ["lastName", "Apellido", "text", 80],
+              ["phone", "Teléfono", "tel", 30], ["email", "Email", "email", 160],
+            ] as const).map(([key,label,type,max]) => <input key={key} aria-label={label}
+              placeholder={label} type={type} maxLength={max} autoComplete="off"
+              value={customer[key]} onChange={e => setCustomer(previous => ({...previous,[key]:e.target.value}))}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />)}
           </div>
+          {Object.values(customer).some(Boolean) && !parsedCustomer && <p role="status" className="mt-2 text-xs text-muted-foreground">Completá el nombre, el teléfono y un email válido.</p>}
         </Field>
 
         <Field label="Servicio">
@@ -206,6 +185,8 @@ export function NewBookingDialog({
           </select>
         </Field>
 
+        {serviceSlug && detail.isFetching && <p role="status">Buscando detalles del servicio…</p>}
+        {detail.isError && <p role="alert">{detail.error.message}</p>}
         {needsLength && (
           <Field label="Largo del pelo">
             <div className="flex flex-wrap gap-2">
@@ -234,21 +215,16 @@ export function NewBookingDialog({
         <Field label="Cuándo">
           <input
             type="datetime-local"
+            aria-label="Fecha y hora del turno"
+            step={60}
             value={when}
             onChange={(e) => setWhen(e.target.value)}
             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </Field>
 
-        <Field label="Nota (opcional)">
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Algo que convenga recordar"
-            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </Field>
 
+        {!isSiteTest && <Field label="Nota (opcional)"><input value={note} maxLength={500} onChange={e=>setNote(e.target.value)}/></Field>}
         {/* El conflicto no cierra el camino: explica y ofrece seguir. */}
         {conflict && (
           <div className="mt-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
@@ -258,7 +234,8 @@ export function NewBookingDialog({
                 responderse sin adivinar. */}
             <input
               value={overrideReason}
-              onChange={(e) => setOverrideReason(e.target.value)}
+              readOnly={isSiteTest}
+              onChange={e=>setOriginalReason(e.target.value)}
               placeholder="¿Por qué lo tomás igualmente?"
               aria-label="Motivo de la excepción"
               className="mt-2.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -266,7 +243,7 @@ export function NewBookingDialog({
             <div className="mt-2.5 flex flex-wrap gap-2">
               <button
                 type="button"
-                disabled={create.isPending || overrideReason.trim().length === 0}
+                disabled={!canSubmit || create.isPending || overrideReason.trim().length === 0}
                 title={
                   overrideReason.trim().length === 0 ? "Contá por qué antes de tomarlo" : undefined
                 }
@@ -299,7 +276,7 @@ export function NewBookingDialog({
           {create.isPending ? "Tomando el turno…" : "Tomar turno"}
         </button>
         <p className="mt-2 text-center text-xs text-muted-foreground">
-          Queda confirmado. Los turnos que toma el salón no piden seña.
+          {isSiteTest ? "Queda confirmado sin seña ni cobro real." : "Queda confirmado. Los turnos que toma el salón no piden seña."}
         </p>
       </div>
     </div>
@@ -315,4 +292,30 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+/** Fail closed until the selected service has supplied its tiers. */
+export function canSubmitInternalBooking(
+  slug: string, detail: ApiServiceDetail | undefined, loadingOrError: boolean,
+  when: string, tier: LengthTier | "",
+): boolean {
+  if (!slug || !detail || detail.slug !== slug || loadingOrError || !detail.tiers.length) return false;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(when)) return false;
+  const date = new Date(`${when}:00-03:00`);
+  if (!Number.isFinite(date.getTime()) || new Date(date.getTime() - 180 * 60_000).toISOString().slice(0,16) !== when) return false;
+  const lengths = detail.tiers.map(t => t.lengthTier).filter(t => t !== "unico");
+  return lengths.length ? lengths.some(length => length === tier) : !tier;
+}
+
+const internalCustomerSchema = z.object({
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().max(80),
+  phone: bookingCustomerSchema.shape.phone,
+  email: z.string().trim().email().max(160),
+});
+export function parseInternalCustomer(input: {firstName:string;lastName:string;phone:string;email:string}) {
+  const parsed = internalCustomerSchema.safeParse({...input,email:input.email.trim()});
+  if (!parsed.success) return null;
+  return {firstName:parsed.data.firstName, lastName:parsed.data.lastName,
+    phone:parsed.data.phone, ...(parsed.data.email ? {email:parsed.data.email} : {}), acceptsMarketing:false as const};
 }

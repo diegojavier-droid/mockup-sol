@@ -1,3 +1,9 @@
+import {useSesionPanel} from "@/lib/panel-sesion";
+import {puede} from "@/lib/staff-session";
+import {AttentionActions} from "./AttentionActions";
+import {CustomerNote} from "./CustomerNote";
+import {AllergyScenarioNotice} from "./AllergyScenarioNotice";
+import {isSiteTest} from "@deployment/booking-policy";
 /**
  * La agenda del salón.
  *
@@ -16,7 +22,9 @@ import {
   useUpdateBookingStatus,
   useRevertAutoNoShow,
   type AgendaEntry,
+  type AgendaRowEntry,
 } from "@/lib/api/admin-hooks";
+import { agendaActions } from "@/lib/agenda-actions";
 import { NewBookingDialog } from "./NewBookingDialog";
 import { CloseServiceDialog } from "./CloseServiceDialog";
 
@@ -78,6 +86,10 @@ export function AgendaScreen({ range, fecha }: { range: Range; fecha?: string })
   //
   // Ahora la contesta Mes, que además muestra dónde hay algo en vez de
   // hacerte adivinar el día. `fecha` es lo que manda esa pantalla.
+  const {identidad}=useSesionPanel();
+  const assigned=identidad?.agendaScope === "assigned";
+  const financialView=puede(identidad,"finanzas");
+  const canCreate=!assigned && puede(identidad,"finanzas","full") && puede(identidad,"calendario","full");
   const [area, setArea] = useState<string>("");
   const [creating, setCreating] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -86,11 +98,11 @@ export function AgendaScreen({ range, fecha }: { range: Range; fecha?: string })
   const date = fecha || salonToday(cfg.offset);
   const days = fecha ? 1 : cfg.days;
   const agenda = useAgenda({ date, days, area: area || undefined });
-  const areas = useAreas();
+  const areas = useAreas(!assigned && puede(identidad,"configuracion"));
 
-  const entries = agenda.data?.entries ?? [];
+  const entries = (agenda.data?.entries ?? []).filter(entry => (!assigned && financialView) || entry.view === "operational");
   const byDay = useMemo(() => {
-    const groups = new Map<string, AgendaEntry[]>();
+    const groups = new Map<string, AgendaRowEntry[]>();
     for (const e of entries) {
       const key = new Date(new Date(e.startsAt).getTime() - 180 * 60_000)
         .toISOString()
@@ -111,13 +123,13 @@ export function AgendaScreen({ range, fecha }: { range: Range; fecha?: string })
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          {canCreate && <button
             type="button"
             onClick={() => setCreating(true)}
             className="rounded-full bg-primary px-5 py-2.5 font-serif text-sm text-primary-foreground shadow-sm transition-all hover:translate-y-[-1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             + Nuevo turno
-          </button>
+          </button>}
         </div>
       </header>
 
@@ -139,12 +151,13 @@ export function AgendaScreen({ range, fecha }: { range: Range; fecha?: string })
       )}
 
       {agenda.isError && (
-        <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {(agenda.error as Error).message}
-        </p>
+        <div role="alert" className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <p>{(agenda.error as Error).message}</p>
+          <button type="button" disabled={agenda.isFetching} onClick={()=>void agenda.refetch()}>Volver a intentar</button>
+        </div>
       )}
 
-      {!agenda.isLoading && entries.length === 0 && (
+      {!agenda.isLoading && !agenda.isError && entries.length === 0 && (
         <div className="rounded-2xl border border-dashed border-border px-5 py-8 text-center">
           <p className="text-sm text-muted-foreground">
             No hay turnos{" "}
@@ -157,13 +170,13 @@ export function AgendaScreen({ range, fecha }: { range: Range; fecha?: string })
                   : "esta semana"}
             {area ? " en esta área" : ""}.
           </p>
-          <button
+          {canCreate && <button
             type="button"
             onClick={() => setCreating(true)}
             className="mt-3 text-sm text-foreground underline-offset-4 hover:underline"
           >
             Tomar un turno
-          </button>
+          </button>}
         </div>
       )}
 
@@ -175,12 +188,12 @@ export function AgendaScreen({ range, fecha }: { range: Range; fecha?: string })
             </h2>
           )}
           {dayEntries.map((entry) => (
-            <BookingRow key={entry.id} entry={entry} onFeedback={setFeedback} />
+            entry.view === "operational" ? <OperationalRow key={entry.id} entry={entry} /> : <BookingRow key={entry.id} entry={entry} onFeedback={setFeedback} />
           ))}
         </section>
       ))}
 
-      {creating && (
+      {creating && canCreate && (
         <NewBookingDialog
           onClose={() => setCreating(false)}
           onCreated={(msg) => {
@@ -225,13 +238,17 @@ function BookingRow({
   entry: AgendaEntry;
   onFeedback: (msg: string) => void;
 }) {
+  const {identidad}=useSesionPanel();
+  const canCharge=puede(identidad,"finanzas","full") && puede(identidad,"calendario","full");
   const [confirmingNoShow, setConfirmingNoShow] = useState(false);
   const [closing, setClosing] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const noShow = useMarkNoShow();
   const updateStatus = useUpdateBookingStatus();
   const revertNoShow = useRevertAutoNoShow();
-  const open = entry.status === "confirmed" || entry.status === "pending_payment";
+  const allowed = agendaActions(entry);
+  const actions = {markArrival:canCharge && allowed.markArrival,closeService:canCharge && allowed.closeService,manageBooking:canCharge && allowed.manageBooking};
+  const open = actions.closeService || actions.manageBooking;
 
   return (
     <article className={`rounded-2xl border px-4 py-3 ${statusTone(entry.status)}`}>
@@ -247,10 +264,10 @@ function BookingRow({
               Va acá arriba, a un toque, sin desplegar nada: si marcar una
               llegada cuesta tres clics, no se marca, y de ese dato depende
               que el sistema no dé por ausente a alguien que sí vino. */}
-          {entry.status === "confirmed" && (
+          {actions.markArrival && (
             <button
               type="button"
-              disabled={updateStatus.isPending}
+              disabled={updateStatus.isPending || noShow.isPending || closing}
               onClick={() =>
                 updateStatus.mutate(
                   { bookingId: entry.id, status: "attended" },
@@ -266,7 +283,7 @@ function BookingRow({
               ausente a alguien que sí vino, tiene que poder arreglarse en
               un toque. Si la ausencia la marcó una persona, la base
               rechaza el pedido y el mensaje lo explica. */}
-          {entry.status === "no_show" && (
+          {!isSiteTest && canCharge && entry.status === "no_show" && (
             <button
               type="button"
               disabled={revertNoShow.isPending}
@@ -283,7 +300,9 @@ function BookingRow({
             </button>
           )}
           <span className="text-[11px] uppercase tracking-wider opacity-80">
-            {STATUS_LABEL[entry.status] ?? entry.status}
+            {entry.status === "attended" && entry.hasServiceClosure === false
+              ? "Llegó"
+              : (STATUS_LABEL[entry.status] ?? entry.status)}
           </span>
         </div>
       </div>
@@ -292,6 +311,8 @@ function BookingRow({
         {entry.services.join(" + ") || "Servicio"} · {entry.shownDurationMin} min · {entry.area}
       </p>
 
+      <AllergyScenarioNotice scenarios={entry.allergyScenarios} /><CustomerNote entry={entry}/>
+      <AttentionActions entry={entry}/>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wider">
         <span className="rounded-full border border-current/20 px-2 py-0.5 opacity-70">
           {SOURCE_LABEL[entry.source] ?? entry.source}
@@ -318,49 +339,64 @@ function BookingRow({
 
       {open && (
         <div className="mt-3 flex flex-wrap gap-2 border-t border-current/10 pt-2.5">
-          {entry.status === "confirmed" && (
-            <RowAction onClick={() => setClosing(true)}>Cerrar atención</RowAction>
-          )}
-
-          {assigning ? (
-            <StationPicker entry={entry} onDone={() => setAssigning(false)} />
-          ) : (
-            <RowAction onClick={() => setAssigning(true)}>
-              {entry.station ? "Cambiar el puesto" : "Asignar un puesto"}
+          {actions.closeService && canCharge && (
+            <RowAction
+              disabled={updateStatus.isPending || noShow.isPending}
+              onClick={() => setClosing(true)}
+            >
+              Cerrar atención
             </RowAction>
           )}
 
-          {confirmingNoShow ? (
+          {actions.manageBooking && (
             <>
-              <span className="text-xs opacity-80">
-                ¿No vino?{" "}
-                {entry.depositStatus === "paid"
-                  ? "La seña queda retenida."
-                  : "No hay seña que retener."}
-              </span>
-              <RowAction
-                danger
-                disabled={noShow.isPending}
-                onClick={() =>
-                  noShow.mutate(entry.id, {
-                    onSuccess: (r) => {
-                      setConfirmingNoShow(false);
-                      onFeedback(r.message);
-                    },
-                  })
-                }
-              >
-                Sí, no vino
-              </RowAction>
-              <RowAction onClick={() => setConfirmingNoShow(false)}>Cancelar</RowAction>
+              {assigning ? (
+                <StationPicker entry={entry} onDone={() => setAssigning(false)} />
+              ) : (
+                <RowAction onClick={() => setAssigning(true)}>
+                  {entry.station ? "Cambiar el puesto" : "Asignar un puesto"}
+                </RowAction>
+              )}
+
+              {confirmingNoShow ? (
+                <>
+                  <span className="text-xs opacity-80">
+                    ¿No vino?{" "}
+                    {entry.depositStatus === "paid"
+                      ? "La seña queda retenida."
+                      : "No hay seña que retener."}
+                  </span>
+                  <RowAction
+                    danger
+                    disabled={noShow.isPending}
+                    onClick={() =>
+                      noShow.mutate(entry.id, {
+                        onSuccess: (r) => {
+                          setConfirmingNoShow(false);
+                          onFeedback(r.message);
+                        },
+                      })
+                    }
+                  >
+                    Sí, no vino
+                  </RowAction>
+                  <RowAction onClick={() => setConfirmingNoShow(false)}>Cancelar</RowAction>
+                </>
+              ) : (
+                <RowAction onClick={() => setConfirmingNoShow(true)}>No vino</RowAction>
+              )}
             </>
-          ) : (
-            <RowAction onClick={() => setConfirmingNoShow(true)}>No vino</RowAction>
           )}
         </div>
       )}
 
-      {closing && (
+      {(updateStatus.isError || noShow.isError) && (
+        <p role="alert" className="mt-2 text-xs text-destructive">
+          {((updateStatus.error ?? noShow.error) as Error).message}
+        </p>
+      )}
+
+      {closing && canCharge && (
         <CloseServiceDialog
           entry={entry}
           onClose={() => setClosing(false)}
@@ -451,4 +487,14 @@ function StationPicker({ entry, onDone }: { entry: AgendaEntry; onDone: () => vo
       {error && <span className="w-full text-xs text-destructive">{error}</span>}
     </div>
   );
+}
+
+function OperationalRow({entry}:{entry:import("@/lib/api/admin-hooks").OperationalAgendaEntry}) {
+ return <article className="rounded-2xl border px-4 py-3">
+  <div className="flex justify-between"><span>{salonTime(entry.startsAt)}</span><span>{entry.customer.firstName} {entry.customer.lastName}</span></div>
+  <p>{entry.services.join(" + ")} · {entry.shownDurationMin} min · {entry.area}</p>
+  {entry.station && <p>{entry.station.name}</p>}
+  <AllergyScenarioNotice scenarios={entry.allergyScenarios}/><CustomerNote entry={entry}/>
+  <AttentionActions entry={entry}/>
+ </article>;
 }

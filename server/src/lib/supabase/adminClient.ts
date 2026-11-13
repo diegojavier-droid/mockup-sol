@@ -1,3 +1,4 @@
+import { supabaseTransport } from './transport';
 /**
  * Supabase ADMIN client — SERVER-ONLY.
  *
@@ -45,6 +46,7 @@ export function createSupabaseAdminClient(env: ServerEnv): SupabaseAdminClient {
       detectSessionInUrl: false,
     },
     global: {
+      fetch: supabaseTransport(env),
       headers: {
         "x-sol-mai-client": "server-admin",
       },

@@ -15,6 +15,8 @@ export interface AgendaEntry {
   endsAt: string;
   shownDurationMin: number;
   status: string;
+  /** La llegada no es un cierre: éste existe sólo si hay registro de atención. */
+  hasServiceClosure: boolean;
   source: string;
   depositStatus: string;
   /** Se creó superando la disponibilidad. La agenda lo distingue. */
@@ -35,10 +37,11 @@ export interface AgendaEntry {
     email: string | null;
   };
   services: string[];
+  allergyScenarios?: { serviceName: string; answer: "no" | "si-leves" | "si-importantes" }[];
 }
 
 const AGENDA_SELECT =
-  "id, public_token, starts_at, ends_at, shown_duration_min, status, source, deposit_status, created_via_override, override_reason, price_estimated_min, price_display_mode, deposit_amount, customer_note, resource_id, resources(id, code, name), areas!inner(slug), customers!inner(id, first_name, last_name, phone_e164, email), booking_items(snapshot_name, role, sort_order)";
+  "id, public_token, starts_at, ends_at, shown_duration_min, status, source, deposit_status, created_via_override, override_reason, price_estimated_min, price_display_mode, deposit_amount, customer_note, resource_id, resources(id, code, name), areas!inner(slug), customers!inner(id, first_name, last_name, phone_e164, email), booking_items(snapshot_name, role, sort_order, personalization), service_execution_records(booking_id)";
 
 type AgendaRow = {
   id: string;
@@ -65,10 +68,19 @@ type AgendaRow = {
     phone_e164: string;
     email: string | null;
   };
-  booking_items: { snapshot_name: string; role: string; sort_order: number }[];
+  booking_items: { snapshot_name: string; role: string; sort_order: number; personalization?: unknown }[];
+  service_execution_records: { booking_id: string } | { booking_id: string }[] | null;
 };
 
-function toAgendaEntry(row: AgendaRow): AgendaEntry {
+export type TestContextProvenance = (bookingIds: readonly string[]) => Promise<ReadonlySet<string>>;
+export type AgendaContextPolicy = {mode:'staff'} | {mode:'site'; resolveTrusted:TestContextProvenance};
+async function trustedContext(policy: AgendaContextPolicy, ids: string[]): Promise<ReadonlySet<string>> {
+  if(policy.mode==='staff') return new Set(ids);
+  if(typeof policy.resolveTrusted!=='function') throw new Error('SITE_PROVENANCE_REQUIRED');
+  return policy.resolveTrusted(ids);
+}
+
+function toAgendaEntry(row: AgendaRow, trustedTestBooking = true, site = false): AgendaEntry {
   return {
     id: row.id,
     publicToken: row.public_token,
@@ -76,6 +88,9 @@ function toAgendaEntry(row: AgendaRow): AgendaEntry {
     endsAt: row.ends_at,
     shownDurationMin: row.shown_duration_min,
     status: row.status,
+    hasServiceClosure: Array.isArray(row.service_execution_records)
+      ? row.service_execution_records.length > 0
+      : row.service_execution_records != null,
     source: row.source,
     depositStatus: row.deposit_status,
     createdViaOverride: row.created_via_override,
@@ -84,7 +99,7 @@ function toAgendaEntry(row: AgendaRow): AgendaEntry {
     priceEstimatedMin: row.price_estimated_min,
     priceDisplayMode: row.price_display_mode,
     depositAmount: row.deposit_amount,
-    customerNote: row.customer_note,
+    customerNote: site ? projectTestCustomerNote(trustedTestBooking, row.customer_note) : row.customer_note,
     station: row.resources
       ? { id: row.resources.id, code: row.resources.code, name: row.resources.name }
       : null,
@@ -95,6 +110,7 @@ function toAgendaEntry(row: AgendaRow): AgendaEntry {
       phone: row.customers.phone_e164,
       email: row.customers.email,
     },
+    allergyScenarios: trustedTestBooking ? projectTestAllergyScenarios(row.booking_items ?? []) : [],
     services: (row.booking_items ?? [])
       .slice()
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -105,6 +121,7 @@ function toAgendaEntry(row: AgendaRow): AgendaEntry {
 export async function listAgenda(
   admin: SupabaseAdminClient,
   params: { from: Date; to: Date; area?: string },
+  context: AgendaContextPolicy = {mode:'staff'},
 ): Promise<AgendaEntry[]> {
   let query = admin
     .from("bookings")
@@ -116,7 +133,9 @@ export async function listAgenda(
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []).map((r) => toAgendaEntry(r as unknown as AgendaRow));
+  const rows=(data ?? []) as unknown as AgendaRow[];
+  const trusted=await trustedContext(context,rows.map(r=>r.id));
+  return rows.map(row=>toAgendaEntry(row,trusted.has(row.id),context.mode==='site'));
 }
 
 /**
@@ -183,6 +202,7 @@ export function agruparPorDia(marcas: string[]): { dia: string; turnos: number }
 export async function getBookingForStaff(
   admin: SupabaseAdminClient,
   bookingId: string,
+  context: AgendaContextPolicy = {mode:'staff'},
 ): Promise<AgendaEntry | null> {
   const { data, error } = await admin
     .from("bookings")
@@ -190,7 +210,10 @@ export async function getBookingForStaff(
     .eq("id", bookingId)
     .maybeSingle();
   if (error) throw error;
-  return data ? toAgendaEntry(data as unknown as AgendaRow) : null;
+  if(!data) return null;
+  const row=data as unknown as AgendaRow;
+  const trusted=await trustedContext(context,[row.id]);
+  return toAgendaEntry(row,trusted.has(row.id),context.mode==='site');
 }
 
 export class TransitionError extends Error {
@@ -240,6 +263,7 @@ export async function updateBookingStatus(
     actorLabel?: string | null;
     depositOutcome?: DepositOutcome | null;
   },
+  context: AgendaContextPolicy = {mode:'staff'},
 ): Promise<AgendaEntry> {
   const { error } = await admin.rpc("set_booking_status", {
     p_booking_id: params.bookingId,
@@ -258,7 +282,7 @@ export async function updateBookingStatus(
     throw new Error(message || "set_booking_status failed");
   }
 
-  const updated = await getBookingForStaff(admin, params.bookingId);
+  const updated = await getBookingForStaff(admin, params.bookingId, context);
   if (!updated) throw new Error("booking_not_found");
   return updated;
 }
@@ -773,4 +797,23 @@ export async function blockStation(
 export async function unblockStation(admin: SupabaseAdminClient, blockId: string): Promise<void> {
   const { error } = await admin.from("resource_blocks").delete().eq("id", blockId);
   if (error) throw error;
+}
+
+/** Only an allowlisted test scenario is projected; never raw personalization. */
+export function projectTestAllergyScenarios(items: {
+  snapshot_name: string; role: string; sort_order: number; personalization?: unknown;
+}[]): {serviceName:string;answer:"no"|"si-leves"|"si-importantes"}[] {
+  return items.slice().sort((a,b) => a.sort_order - b.sort_order).flatMap(item => {
+    if (item.role !== "main" || !item.personalization || typeof item.personalization !== "object" || Array.isArray(item.personalization)) return [];
+    const answer = (item.personalization as Record<string, unknown>).alergias;
+    if (answer !== "no" && answer !== "si-leves" && answer !== "si-importantes") return [];
+    return [{serviceName:item.snapshot_name, answer}];
+  });
+}
+
+/** Private Site context requires durable booking provenance, never name matching. */
+export function projectTestCustomerNote(trustedTestBooking: boolean, note: unknown): string | null {
+  if (!trustedTestBooking) return null;
+  if (typeof note !== "string" || !note.trim() || note.length > 500) return null;
+  return note;
 }
