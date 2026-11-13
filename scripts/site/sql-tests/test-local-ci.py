@@ -21,6 +21,23 @@ class Guards(unittest.TestCase):
   result=m.connection_env(e)
   for key in ('PGHOSTADDR','PGSERVICE','PGSERVICEFILE','DATABASE_URL'):self.assertNotIn(key,result)
   self.assertEqual(result['PGPASSFILE'],'/dev/null');self.assertEqual(result['PGPASSWORD'],'synthetic')
+ def test_diagnostics_never_return_contents(self):
+  self.assertEqual(m.sqlstate_only('ERROR:  42501 secret-value'), '42501')
+  for line in ('password=secret', 'DETAIL: token abc', 'ERROR: password rejected', 'ERROR: abcde secret'):
+   self.assertIsNone(m.sqlstate_only(line))
+  self.assertEqual(m.SafeFailure('secret contents').code,'unknown')
+ def test_assertion_allowlist_exact_and_noninterpolated(self):
+  literal='anon table leak'
+  diagnostic=m.assertion_id_only('ERROR:  P0001: '+literal+'\n')
+  self.assertRegex(diagnostic,r'^acceptance_line_[0-9]+$')
+  self.assertNotIn(literal,diagnostic)
+  for message in (literal+' token=secret','token=secret '+literal,'Expected RLS rejection, got: private','private customer data',literal+' '):
+   self.assertIsNone(m.assertion_id_only('ERROR:  P0001: '+message))
+  self.assertIsNone(m.assertion_id_only('DETAIL: '+literal))
+  self.assertIsNone(m.assertion_id_only('ERROR:  42501: '+literal))
+  self.assertEqual(m.sqlstate_only('ERROR:  P0001: private'),'P0001')
+  self.assertEqual(m.SafeFailure('P0001','private').assertion,'unclassified')
+  self.assertTrue(all('%' not in item for item in m.ASSERTION_IDS))
  def test_integer_parser(self):
   self.assertEqual(m.scalar_int(['123']),123)
   for value in ([],['1','2'],['bad'],['1; DROP'],['-1']):

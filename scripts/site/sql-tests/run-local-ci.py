@@ -2,6 +2,35 @@
 import hashlib, os, pathlib, queue, re, subprocess, threading, time, uuid
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
+PHASE = 'initialization'
+# Only exact, non-interpolated exception literals in our checked-in acceptance
+# can produce a diagnostic ID. Never forward the database message itself.
+ACCEPTANCE_FILE = ROOT/'scripts/site/sql-tests/team-scope-attention.sql'
+ASSERTION_IDS = {}
+for number, source_line in enumerate(ACCEPTANCE_FILE.read_text().splitlines(), 1):
+    for literal in re.findall(r"raise exception '([^']*)'", source_line, re.IGNORECASE):
+        if re.fullmatch(r'[A-Za-z0-9 _-]+', literal):
+            ASSERTION_IDS[literal] = 'acceptance_line_'+str(number)
+
+
+class SafeFailure(RuntimeError):
+    def __init__(self, code='unknown', assertion=None):
+        self.phase = PHASE
+        self.assertion = assertion if assertion in ASSERTION_IDS.values() else 'unclassified'
+        self.code = code if re.fullmatch(r'[0-9A-Z]{5}|process_exit|timeout|unknown', code) else 'unknown'
+
+def phase(label):
+    global PHASE
+    PHASE=label
+    print('stage '+label, flush=True)
+
+def sqlstate_only(line):
+    match=re.search(r'\b(?:ERROR|FATAL|PANIC):\s+([0-9A-Z]{5})(?:[:\s]|$)', line)
+    return match.group(1) if match else None
+
+def assertion_id_only(line):
+    match=re.search(r'\bERROR:\s+P0001:\s+([^\r\n]*)', line)
+    return ASSERTION_IDS.get(match.group(1)) if match else None
 
 def connection_env(source):
     # No URLs, hostnames, sockets, service files, alternate hosts, or remote fallbacks.
@@ -28,10 +57,20 @@ def scalar_int(lines):
 
 class Session:
     def __init__(self, env):
-        self.p = subprocess.Popen(['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1'],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        self.p = subprocess.Popen(['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose'],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, env=env)
         self.q = queue.Queue()
+        self.error_codes=[]
+        self.assertion_ids=[]
+        def errors():
+            for line in self.p.stderr:
+                code=sqlstate_only(line)
+                if code: self.error_codes.append(code)
+                assertion=assertion_id_only(line)
+                if assertion: self.assertion_ids.append(assertion)
+        self.errthread=threading.Thread(target=errors,daemon=True)
+        self.errthread.start()
         def read():
             for line in self.p.stdout: self.q.put(line.rstrip('\n'))
             self.q.put(None)
@@ -45,8 +84,11 @@ class Session:
     def wait(self, token, seconds=20):
         end=time.monotonic()+seconds; out=[]
         while True:
-            line=self.q.get(timeout=max(0.001,end-time.monotonic()))
-            if line is None: raise RuntimeError('psql exited; SQL details suppressed')
+            try: line=self.q.get(timeout=max(0.001,end-time.monotonic()))
+            except queue.Empty: raise SafeFailure('timeout')
+            if line is None:
+                self.errthread.join(timeout=.5)
+                raise SafeFailure(self.error_codes[-1] if self.error_codes else 'process_exit', self.assertion_ids[-1] if self.assertion_ids else None)
             if line == token: return out
             out.append(line)
     def sql(self, sql): return self.wait(self.send(sql))
@@ -86,9 +128,11 @@ def scenario(env, observer, kind):
     SELECT '{booking}','{c}',id,now()+interval '10 days',now()+interval '10 days 30 minutes',30,'confirmed','manual','fixed',1000,0,0,'{a}' FROM public.areas ORDER BY id LIMIT 1;
     {assert_sql(f"EXISTS(SELECT 1 FROM public.bookings WHERE id='{booking}')")}
     COMMIT;"""
+    phase(kind+'.setup')
     observer.sql(setup)
     first=second=None
     try:
+        phase(kind+'.sessions')
         first=Session(env);second=Session(env)
         first.sql('BEGIN;')
         if kind in ('double_start','reassign_then_finish'):
@@ -100,7 +144,9 @@ def scenario(env, observer, kind):
         else:
             sql='SELECT '+call('start',a)+';' if kind=='double_start' else expected_call(call('start',a),'PT404' if kind=='reassignment' else 'PT403')
             pending=second.send('SET ROLE service_role; '+sql)
+        phase(kind+'.blocking_barrier')
         blocked(observer,second,first)
+        phase(kind+'.commit_and_result')
         first.sql('COMMIT;');result=second.wait(pending)
         if kind=='double_start' and result!=initial_result: raise RuntimeError('double start changed result')
         if kind=='reassign_then_finish':
@@ -112,6 +158,7 @@ def scenario(env, observer, kind):
     finally:
         if first: first.close()
         if second: second.close()
+        phase(kind+'.cleanup')
         observer.sql(f"""BEGIN;
         DELETE FROM public.booking_attention WHERE booking_id='{booking}';
         DELETE FROM public.audit_log WHERE entity_id IN ('{booking}','{a}','{b}','{c}');
@@ -124,6 +171,7 @@ def scenario(env, observer, kind):
     print(kind+' PASS')
 
 def main():
+    phase('connection_guard')
     env=connection_env(os.environ); observer=Session(env)
     try:
         observer.sql(assert_sql("inet_server_addr() IS NOT NULL AND current_database()='postgres' AND current_user='postgres'",'local_fixture_connection_required'))
@@ -131,14 +179,18 @@ def main():
         observer.sql(assert_sql("to_regclass('auth.users') IS NOT NULL AND (SELECT count(*) FROM pg_roles WHERE rolname IN ('anon','authenticated','service_role'))=3 AND EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role' AND rolbypassrls) AND EXISTS(SELECT 1 FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace WHERE e.extname='pgcrypto' AND n.nspname='extensions')", 'supabase_local_contract_required'))
         for folder in ('supabase/migrations','supabase/site-migrations'):
             for f in sorted((ROOT/folder).glob('*.sql')):
+                phase('migration.'+f.stem)
                 content=f.read_bytes()
                 observer.sql('BEGIN;\n'+content.decode()+'\nCOMMIT;')
                 print('applied '+str(f.relative_to(ROOT))+' sha256='+hashlib.sha256(content).hexdigest())
+        phase('site_owner_check')
         # Site migration provisions the sole fixture owner; never insert it twice.
         observer.sql(assert_sql("(SELECT count(*) FROM public.staff_members)=1 AND EXISTS(SELECT 1 FROM public.staff_members WHERE email='site-owner@example.invalid' AND role='owner' AND is_active AND deleted_at IS NULL)", 'site_owner_fixture_required'))
+        phase('draft_application')
         draft=ROOT/'supabase/site-migrations/drafts/team-scope-attention.sql'
         observer.sql("SET sol_mai.target_project_ref='ijzpmwwjuvsgcsbcbzav'; SET sol_mai.apply_team_scope='yes';\n"+draft.read_text())
         print('applied '+str(draft.relative_to(ROOT))+' sha256='+hashlib.sha256(draft.read_bytes()).hexdigest())
+        phase('sql_acceptance')
         observer.sql("SET sol_mai.test_attention='yes';\n"+(ROOT/'scripts/site/sql-tests/team-scope-attention.sql').read_text())
         for kind in ('double_start','reassignment','deactivation','downgrade','reassign_then_finish'): scenario(env,observer,kind)
         observer.sql(assert_sql("NOT EXISTS(SELECT 1 FROM auth.users) AND NOT EXISTS(SELECT 1 FROM public.payments) AND NOT EXISTS(SELECT 1 FROM public.bookings) AND NOT EXISTS(SELECT 1 FROM public.customers) AND (SELECT count(*) FROM public.staff_members)=1 AND (SELECT value FROM public.business_settings WHERE key='refund_window_hours')='24'::jsonb"))
@@ -148,5 +200,8 @@ def main():
 
 if __name__=='__main__':
     try: main()
-    except Exception:
-        raise SystemExit('Local SQL CI failed; credentials, SQL and process output suppressed')
+    except Exception as error:
+        code=error.code if isinstance(error,SafeFailure) else 'unknown'
+        failed_phase=error.phase if isinstance(error,SafeFailure) else PHASE
+        assertion=error.assertion if isinstance(error,SafeFailure) else 'unclassified'
+        raise SystemExit('Local SQL CI failed at '+failed_phase+'; SQLSTATE/category='+code+'; assertion='+assertion+'; contents suppressed')

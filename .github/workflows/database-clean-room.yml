@@ -2983,21 +2983,9 @@ jobs:
             exit 1
           fi
 
-          # src/server.ts is the Cloudflare Worker entry (wrangler main): it
-          # mounts the Hono API from server/ and never ships to the browser.
-          # Every other src/ file remains forbidden from importing server/.
-          if command -v rg >/dev/null 2>&1; then
-            SERVER_IMPORTS=$(rg -n "from ['\"].*\\bserver/" src --glob '!server.ts' || true)
-          else
-            SERVER_IMPORTS=$(grep -RIn -E "from ['\"].*\\bserver/" src \
-              | grep -v '^src/server\.ts:' || true)
-          fi
-
-          if [ -n "$SERVER_IMPORTS" ]; then
-            echo "::error::src/ must not import from server/:"
-            echo "$SERVER_IMPORTS"
-            exit 1
-          fi
+          # Validate the two exact server entrypoints against their Wrangler
+          # configs; all browser source remains forbidden from server imports.
+          bun run check:deployment
 
           # G-03: el cierre de una atención se escribe por un solo camino,
           # `close_service`. `service_execution_records.payment_method` es

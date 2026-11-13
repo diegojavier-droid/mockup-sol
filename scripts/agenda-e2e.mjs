@@ -3,6 +3,7 @@
  * No requiere credenciales, Supabase ni datos del salón.
  * bun run test:e2e:agenda (SOLMAI_CHROME opcional si Chromium ya está instalado).
  */
+import {browserProfile} from "./fixtures/browser-profile.mjs";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
@@ -15,7 +16,7 @@ const server = await createServer({
   configFile: false,
   root,
   plugins: [react(), tailwindcss()],
-  resolve: { alias: { "@": `${root}src` } },
+  resolve: { alias: browserProfile(root,"original").alias },
   optimizeDeps: { entries: ["scripts/fixtures/agenda.html"] },
   server: { host: "127.0.0.1", port: 0, hmr: false },
 });

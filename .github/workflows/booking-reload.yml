@@ -9,7 +9,7 @@ on:
       - "src/routes/index.tsx"
       - "src/routes/reserva.$token.tsx"
       - "scripts/booking-reload-e2e.mjs"
-      - "scripts/fixtures/booking-reload.jsx"
+      - "scripts/fixtures/**"
       - "package.json"
       - "bun.lock"
       - ".github/workflows/booking-reload.yml"
@@ -27,6 +27,8 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
+      - name: Validate profile-aware browser fixtures without network
+        run: bun test --preload ./scripts/test-no-network.ts scripts/fixtures/browser-profile.test.ts
       - run: bunx playwright install --with-deps chromium
       - name: Test client booking recovery without a backend
         run: bun scripts/booking-reload-e2e.mjs

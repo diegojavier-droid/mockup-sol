@@ -79,6 +79,9 @@ jobs:
       - name: Run domain and behaviour tests
         run: bun run test
 
+      - name: Validate profile-aware browser fixtures without network
+        run: bun test --preload ./scripts/test-no-network.ts scripts/fixtures/browser-profile.test.ts
+
       - name: Install Chromium for isolated agenda regression
         run: bunx playwright install --with-deps chromium
 
@@ -123,18 +126,7 @@ jobs:
           fi
 
       - name: Guard frontend against server/ imports
-        run: |
-          set -e
-          if command -v rg >/dev/null 2>&1; then
-            MATCHES=$(rg -n --glob '!server.ts' --glob '!server-site-test.ts' "from ['\"].*\\bserver/" src || true)
-          else
-            MATCHES=$(grep -RIn --exclude=server.ts --exclude=server-site-test.ts -E "from ['\"].*\\bserver/" src || true)
-          fi
-          if [ -n "$MATCHES" ]; then
-            echo "::error::src/ must not import from server/. Offending lines:"
-            echo "$MATCHES"
-            exit 1
-          fi
+        run: bun run check:deployment
 
       - name: Smoke test /api/v1/health
         run: |

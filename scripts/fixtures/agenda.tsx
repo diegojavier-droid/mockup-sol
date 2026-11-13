@@ -1,4 +1,6 @@
 // Harness aislado: el componente y los hooks reales, sin Auth ni base real.
+import {staffFixture} from "./staff.mjs";
+import {SesionPanelCtx} from "../../src/lib/panel-sesion";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -13,6 +15,8 @@ window.addEventListener("test:refresh-agenda", () => {
 });
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={client}>
-    <AgendaScreen range="hoy" fecha="2026-11-12" />
+    <SesionPanelCtx.Provider value={{identidad:staffFixture(),cargando:false,cerrar:()=>{}}}>
+      <AgendaScreen range="hoy" fecha="2026-11-12" />
+    </SesionPanelCtx.Provider>
   </QueryClientProvider>,
 );

@@ -4,10 +4,14 @@
  * Runs the actual client components without the Cloudflare development runtime.
  * CHROME_PATH may select an installed Chromium; otherwise uses Playwright's.
  */
+import {browserProfile} from "./fixtures/browser-profile.mjs";
+import {fileURLToPath} from "node:url";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
+const root=fileURLToPath(new URL("../",import.meta.url));
 const build = await Bun.build({
+  ...browserProfile(root,"original"),
   entrypoints: [new URL("./fixtures/booking-reload.jsx", import.meta.url).pathname],
   target: "browser",
   define: { "process.env.NODE_ENV": '"development"' },

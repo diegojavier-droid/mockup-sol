@@ -1,4 +1,6 @@
 /** Component QA against synthetic HTTP fixtures only. Never contacts Supabase. */
+import {browserProfile} from "./fixtures/browser-profile.mjs";
+import {staffFixture} from "./fixtures/staff.mjs";
 import { chromium } from "playwright";
 import { mkdtemp, rm, symlink, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -32,10 +34,10 @@ createRoot(document.getElementById("root")).render(<QueryClientProvider client={
 `,
 );
 const build = await Bun.build({
+  ...browserProfile(root,"original"),
   entrypoints: [entry],
   outdir: temp,
   target: "browser",
-  tsconfig: join(root, "tsconfig.json"),
   naming: "app.js",
   define: { "process.env.NODE_ENV": '"development"' },
 });
@@ -68,7 +70,7 @@ const server = Bun.serve({
     if (url.pathname === "/style.css") return new Response(Bun.file(join(assets, css)));
     if (url.pathname === "/app.js") return new Response(Bun.file(join(temp, "app.js")));
     if (url.pathname === "/api/v1/admin/me")
-      return Response.json({ data: { permisos: { configuracion: level } } });
+      return Response.json({ data: staffFixture({permisos: { configuracion: level }}) });
     if (url.pathname === "/api/v1/admin/business-hours")
       return getFailure
         ? Response.json({ error: { message: "No pudimos cargar los horarios." } }, { status: 503 })

@@ -1,5 +1,6 @@
 // Client-only test shell: the real index, wizard, hooks and booking route.
 // No Worker, production credentials or backend writes are used here.
+import {expectedTermsVersion} from "@deployment/booking-policy";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRoute, createRouter, Outlet, RouterProvider } from "@tanstack/react-router";
@@ -25,7 +26,7 @@ client.setQueryData(
 );
 client.setQueryData(["catalog", "extras"], []);
 client.setQueryData(["catalog", "personalization"], []);
-client.setQueryData(["salon-info"], { hours: [], depositRatePct: 20, termsVersion: "test-v1" });
+client.setQueryData(["salon-info"], { hours: [], depositRatePct: 20, termsVersion: expectedTermsVersion });
 
 const root = createRootRoute({
   component: () => (
