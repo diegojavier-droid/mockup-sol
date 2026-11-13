@@ -1,3 +1,4 @@
+import {isSiteTest} from "@deployment/booking-policy";
 export const solMaiContact = {
   whatsappDisplay: "+54 9 342 515-6726",
   whatsappNumber: "5493425156726",
@@ -16,6 +17,7 @@ export const solMaiContact = {
  * ofrecer un canal que no llega a Sol.
  */
 export function whatsappLink(message: string): string | null {
+  if (isSiteTest) return null;
   const digits = solMaiContact.whatsappNumber.replace(/\D/g, "");
   // E.164 sin el «+»: entre 8 y 15 dígitos.
   if (digits.length < 8 || digits.length > 15) return null;

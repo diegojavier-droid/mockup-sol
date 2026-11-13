@@ -150,8 +150,8 @@ function SeccionRoute() {
       ) : (
         (contenido ?? (
           <Cartel
-            titulo="Todavía no"
-            texto={`${modulo.label} › ${seccion.label} está en el árbol del sistema pero todavía no tiene pantalla.`}
+            titulo="Esta función no está disponible"
+            texto={`${seccion.label} todavía no se puede usar. Podés volver a las opciones disponibles del panel.`}
           />
         ))
       )}

@@ -1,3 +1,4 @@
+import {isSiteTest} from "@deployment/booking-policy";
 /**
  * El armazón del panel: lo que no cambia cuando cambiás de pantalla.
  *
@@ -29,6 +30,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   ARBOL,
+  modulosDisponibles,
   BARRA_TELEFONO,
   buscarModulo,
   primeraSeccion,
@@ -97,8 +99,8 @@ export function PanelShell({
   onSalir: () => void;
   children: ReactNode;
 }) {
-  const visibles = ARBOL.filter((m) => puede(identidad, m.permiso));
-  const secciones = modulo.secciones;
+  const visibles = modulosDisponibles(identidad);
+  const secciones = visibles.find(m=>m.slug===modulo.slug)?.secciones ?? [];
 
   return (
     <div className="min-h-svh bg-background lg:flex">
@@ -137,7 +139,7 @@ export function PanelShell({
                 onClick={onSalir}
                 className="underline-offset-4 hover:underline"
               >
-                Salir
+                {isSiteTest ? "Volver a la web" : "Salir"}
               </button>
             </div>
           </div>
@@ -217,7 +219,7 @@ export function BarraAbajo({
     >
       {BARRA_TELEFONO.map((slug) => {
         const m = buscarModulo(slug)!;
-        if (!puede(identidad, m.permiso)) return null;
+        if (!modulosDisponibles(identidad).some(visible=>visible.slug===m.slug)) return null;
         return (
           <DestinoAbajo
             key={slug}

@@ -1,3 +1,4 @@
+import {isSiteTest} from "@deployment/booking-policy";
 import { useState, type FocusEvent } from "react";
 import { StepShell } from "../wizard/StepShell";
 
@@ -63,7 +64,7 @@ export function CustomerDataStep({
   return (
     <StepShell title="¿Cómo podemos contactarte?">
       <p className="-mt-1 text-sm leading-relaxed text-muted-foreground">
-        Con esto te llega la confirmación, el link para pagar la seña y el recordatorio del turno.
+        {isSiteTest ? "El teléfono y el email son obligatorios para continuar. Usá datos ficticios." : "Con esto te llega la confirmación, el link para pagar la seña y el recordatorio del turno."}
       </p>
       <div
         className="mt-5 rounded-3xl border border-border bg-card p-5 shadow-sm lg:p-6"
@@ -81,6 +82,7 @@ export function CustomerDataStep({
             autoComplete="given-name"
             error={errors.firstName}
             label="Nombre"
+            maxLength={80}
             onChange={(value) => onChangeCustomerField("firstName", value)}
             placeholder="Tu nombre"
             required
@@ -91,6 +93,7 @@ export function CustomerDataStep({
             error={errors.whatsapp}
             inputMode="tel"
             label="WhatsApp"
+            maxLength={30}
             onChange={(value) => onChangeCustomerField("whatsapp", value)}
             placeholder="Ej: 342 555 1234"
             required
@@ -102,6 +105,7 @@ export function CustomerDataStep({
             error={errors.email}
             inputMode="email"
             label="Email"
+            maxLength={160}
             onChange={(value) => onChangeCustomerField("email", value)}
             placeholder="tu@email.com"
             required
@@ -128,7 +132,7 @@ export function CustomerDataStep({
             type="checkbox"
           />
           <span className="text-sm leading-relaxed text-foreground" id="terminos-detalle">
-            Acepto los términos y la política de privacidad.
+            {isSiteTest ? "Confirmo que ingresé datos ficticios y acepto los términos y la política de privacidad para guardar el turno, el comentario y las alergias elegidas en el panel privado. No se reserva en el salón ni se cobra dinero." : "Acepto los términos y la política de privacidad."}
             <span className="mt-1 block text-xs text-muted-foreground">
               Tus datos los usamos sólo para tu turno.{" "}
               <a
@@ -145,7 +149,7 @@ export function CustomerDataStep({
 
         {showTermsRequired && !acceptedTerms && (
           <p className="mt-2 text-sm text-primary" role="alert">
-            Necesitamos que lo aceptes para poder guardar tu turno.
+            {isSiteTest ? "Marcá la casilla para continuar." : "Necesitamos que lo aceptes para poder guardar tu turno."}
           </p>
         )}
       </div>
@@ -160,6 +164,7 @@ function CustomerInput({
   label,
   onChange,
   placeholder,
+  maxLength,
   required = false,
   type = "text",
   value,
@@ -170,6 +175,7 @@ function CustomerInput({
   label: string;
   onChange: (value: string) => void;
   placeholder: string;
+  maxLength: number;
   required?: boolean;
   type?: "email" | "tel" | "text";
   value: string;
@@ -182,6 +188,8 @@ function CustomerInput({
       <input
         autoComplete={autoComplete}
         className="mt-2 w-full rounded-2xl border border-border bg-background px-4 py-3 text-base text-foreground shadow-sm transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30"
+        maxLength={maxLength}
+        required={required}
         inputMode={inputMode}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}

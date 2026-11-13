@@ -68,23 +68,9 @@ export interface Permiso {
 export const SIN_MODULO = new Set<string>(["GET /me"]);
 
 /**
- * EL REPARTO, Y LA REGLA QUE LO ORDENÓ
- *
- * Nadie gana ni pierde acceso el día que esto se aplica. Las rutas que
- * hoy atiende cualquiera del salón quedan en `calendario` y `clientas`,
- * que son los dos módulos que el rol `mostrador` tiene completos; las que
- * hoy están detrás de `requireOwner()` quedan repartidas en los módulos
- * que les corresponden, y como el rol `owner` los tiene todos, la dueña
- * sigue llegando exactamente a lo mismo.
- *
- * DOS DECISIONES, YA CONFIRMADAS POR DIRECCIÓN (2026-09-10)
- *
- * · Cerrar un turno y devolver una seña quedan en `calendario`, no en
- *   `finanzas`. Son operaciones de un turno que hace quien está en el
- *   mostrador con la clienta enfrente; moverlas a Finanzas se la sacaría.
- *   La caja se mira en Finanzas; el turno se cierra en Calendario.
- * · Las estaciones se listan desde `calendario` (para sentar a alguien) y
- *   se crean desde `configuracion` (para cambiar el salón).
+ * Scope and finance hardening (isolated, 2026-11-13): calendar permissions
+ * never authorize financial closure/refund completion. Assigned staff cannot
+ * reach global routes even if a modular permission is accidentally broad.
  */
 export const PERMISOS: Record<string, Permiso> = {
   // ---------------------------------------------------------- calendario
@@ -95,14 +81,16 @@ export const PERMISOS: Record<string, Permiso> = {
   "GET /bookings/:id": { modulo: "calendario", nivel: "view" },
   "GET /capacity": { modulo: "calendario", nivel: "view" },
   "GET /stations": { modulo: "calendario", nivel: "view" },
-  "GET /refunds-pending": { modulo: "calendario", nivel: "view" },
+  "GET /refunds-pending": { modulo: "finanzas", nivel: "view" },
   "GET /schedule-exceptions": { modulo: "calendario", nivel: "view" },
+  "POST /bookings/:id/attention/start": { modulo: "calendario", nivel: "full" },
+  "POST /bookings/:id/attention/finish": { modulo: "calendario", nivel: "full" },
   "POST /bookings": { modulo: "calendario", nivel: "full" },
   "PATCH /bookings/:id/status": { modulo: "calendario", nivel: "full" },
   "POST /bookings/:id/no-show": { modulo: "calendario", nivel: "full" },
   "POST /bookings/:id/no-show/revert": { modulo: "calendario", nivel: "full" },
-  "POST /bookings/:id/refund-done": { modulo: "calendario", nivel: "full" },
-  "POST /bookings/:id/close": { modulo: "calendario", nivel: "full" },
+  "POST /bookings/:id/refund-done": { modulo: "finanzas", nivel: "full" },
+  "POST /bookings/:id/close": { modulo: "finanzas", nivel: "full" },
   "POST /bookings/:id/station": { modulo: "calendario", nivel: "full" },
   "POST /stations/:id/block": { modulo: "calendario", nivel: "full" },
   "POST /stations/blocks/:blockId/remove": { modulo: "calendario", nivel: "full" },
@@ -178,6 +166,16 @@ export const PERMISOS: Record<string, Permiso> = {
   "POST /salon/stations/:id/active": { modulo: "configuracion", nivel: "full" },
 };
 
+const FINANCE_READ_ROUTES = new Set(["GET /customers/:id", "GET /audit"]);
+const FINANCE_WRITE_ROUTES = new Set([
+  "POST /bookings", "PATCH /bookings/:id/status", "POST /bookings/:id/no-show",
+  "POST /bookings/:id/no-show/revert",
+]);
+const ASSIGNED_ROUTES = new Set([
+  "GET /me", "GET /agenda", "GET /agenda/resumen", "GET /bookings/:id",
+  "POST /bookings/:id/attention/start", "POST /bookings/:id/attention/finish",
+]);
+
 /** `full` alcanza para mirar; `view` no alcanza para cambiar. */
 export function alcanza(guardado: NivelGuardado | undefined, pedido: NivelPedido): boolean {
   if (guardado === "full") return true;
@@ -241,8 +239,19 @@ export function requirePermission() {
     if (!ruta) return next();
 
     const clave = claveDeRuta(ruta.method, ruta.path, prefijo);
+    const identity = c.get("staff");
+    const globalAgenda = identity?.role === "owner" || identity?.agendaScope === "all";
+    if (!globalAgenda && !ASSIGNED_ROUTES.has(clave)) {
+      throw new HTTPException(403, { message: "Tu cuenta no tiene acceso a esta parte del panel." });
+    }
     if (SIN_MODULO.has(clave)) return next();
 
+    // Legacy endpoints include money/history in responses or mutate deposit decisions.
+    // Until separately projected, global scope alone must not disclose them.
+    if (FINANCE_READ_ROUTES.has(clave) && !alcanza(identity?.permisos.finanzas,"view") ||
+        FINANCE_WRITE_ROUTES.has(clave) && !alcanza(identity?.permisos.finanzas,"full")) {
+      throw new HTTPException(403,{message:"No tenés acceso a Finanzas."});
+    }
     const permiso = PERMISOS[clave];
     if (!permiso) {
       // Fallar cerrado. Si esto aparece en los logs, alguien agregó una

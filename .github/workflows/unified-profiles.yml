@@ -1,0 +1,61 @@
+name: Unified deployment profiles CI
+
+on:
+  pull_request:
+    branches: [main, mvp/sol-mai-v2]
+    paths: ["src/**", "server/**", "supabase/**", "scripts/**", "build/**", "package.json", "bun.lock", "vite.config.ts", "tsconfig*.json", "wrangler*.jsonc", ".github/workflows/unified-profiles.yml"]
+  push:
+    branches: [main, mvp/sol-mai-v2]
+    paths: ["src/**", "server/**", "supabase/**", "scripts/**", "build/**", "package.json", "bun.lock", "vite.config.ts", "tsconfig*.json", "wrangler*.jsonc", ".github/workflows/unified-profiles.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unified-profiles-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  profiles:
+    name: Validate ${{ matrix.profile }} without deployment credentials
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [original, site-test]
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run check:deployment
+      - run: bun run typecheck:server
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run test:site-server
+      # Site browser contract tests use their compile-time alias configuration,
+      # not a browser flag or a mock replacement for the production profile.
+      - run: bun run typecheck:site-test
+      - run: bun run test:site-client
+      - run: bun run build:${{ matrix.profile }}
+      - run: git diff --exit-code -- src/routeTree.gen.ts
+      - name: Verify the built source is this exact clean commit
+        env:
+          EXPECTED_PROFILE: ${{ matrix.profile }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const m=JSON.parse(fs.readFileSync('dist/server/build-provenance.json','utf8'));
+          assert.equal(m.sourceCommit,process.env.GITHUB_SHA);
+          assert.equal(m.profile,process.env.EXPECTED_PROFILE);
+          assert.equal(m.dirty,false);
+          JS
+      - name: Validate original deployment package without publishing
+        if: matrix.profile == 'original'
+        run: bunx wrangler deploy --dry-run --config dist/server/wrangler.json

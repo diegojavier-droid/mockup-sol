@@ -26,10 +26,10 @@ const listQuerySchema = z.object({
   category: slugSchema.optional(),
 });
 
-export function createCatalogRoute(env: ServerEnv) {
+export function createCatalogRoute(env: ServerEnv, policy?: { termsVersion: string }) {
   const route = new Hono();
 
-  const repo = () => createCatalogRepository(createSupabaseAnonClient(env));
+  const repo = () => createCatalogRepository(createSupabaseAnonClient(env), policy);
 
   // Lo que la portada dice del salón —cuándo atiende, cuánto es la
   // seña— sale de acá y no de texto escrito a mano en el componente,

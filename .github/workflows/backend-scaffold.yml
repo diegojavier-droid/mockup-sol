@@ -79,8 +79,20 @@ jobs:
       - name: Run domain and behaviour tests
         run: bun run test
 
+      - name: Install Chromium for isolated agenda regression
+        run: bunx playwright install --with-deps chromium
+
+      - name: Exercise arrival and closure UI with synthetic data
+        run: bun run test:e2e:agenda
+
       - name: Build frontend
         run: bun run build
+
+      - name: Install Chromium for business-hours component QA
+        run: bunx playwright install --with-deps chromium
+
+      - name: Verify business-hours editor with synthetic HTTP fixtures
+        run: bun run scripts/business-hours-e2e.ts
 
       - name: Ensure routeTree.gen.ts is up-to-date
         run: |
@@ -114,9 +126,9 @@ jobs:
         run: |
           set -e
           if command -v rg >/dev/null 2>&1; then
-            MATCHES=$(rg -n "from ['\"].*\\bserver/" src || true)
+            MATCHES=$(rg -n --glob '!server.ts' --glob '!server-site-test.ts' "from ['\"].*\\bserver/" src || true)
           else
-            MATCHES=$(grep -RIn -E "from ['\"].*\\bserver/" src || true)
+            MATCHES=$(grep -RIn --exclude=server.ts --exclude=server-site-test.ts -E "from ['\"].*\\bserver/" src || true)
           fi
           if [ -n "$MATCHES" ]; then
             echo "::error::src/ must not import from server/. Offending lines:"

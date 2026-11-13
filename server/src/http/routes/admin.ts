@@ -9,9 +9,10 @@
 import { Hono, type Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import type { ServerEnv } from "../../config/env";
+import { assertTeamScopeTarget, type ServerEnv } from "../../config/env";
 import { createSupabaseAdminClient } from "../../lib/supabase";
 import { staffAuth, type StaffVars } from "../middleware/staffAuth";
+import {attachAttention,countAssignedAgenda,hasGlobalAgenda,operationalOnly,readOperationalAgenda} from "../../lib/admin/operational-agenda";
 import { MODULOS, requirePermission } from "../middleware/permisos";
 import {
   INVOICING_MESSAGES,
@@ -73,6 +74,7 @@ import {
 import {
   addCustomerNote,
   getBookingForStaff,
+  type AgendaContextPolicy,
   getCustomerDetail,
   countAgendaByDay,
   listAgenda,
@@ -153,12 +155,29 @@ function quoteErrorMessage(code: string): string {
   return messages[code] ?? "Falta un dato para calcular el turno.";
 }
 
-export function createAdminRoute(env: ServerEnv) {
+export function createAdminRoute(env: ServerEnv, adapter?: {authenticate: ReturnType<typeof staffAuth>; context: AgendaContextPolicy}) {
+  assertTeamScopeTarget(env);
   const route = new Hono<{ Variables: StaffVars }>();
+  // Private staff responses, including authentication/permission errors.
+  route.use("*", async (c, next) => {
+    await next();
+    c.header("Cache-Control", "no-store");
+  });
   // Primero quién es y qué puede; después, si eso le alcanza para la
   // ruta que pidió. El orden importa: `requirePermission` lee lo que
   // `staffAuth` dejó en `staff`.
-  route.use("*", staffAuth(env));
+  route.use("*", adapter?.authenticate ?? staffAuth(env));
+  route.use("*", async(c,next)=>{
+    const staff=c.get("staff");
+    // Stable, non-secret authorization snapshot. Consumers only invalidate on
+    // mismatch; neither the header nor an earlier /me result grants access.
+    const canonical=JSON.stringify([staff.staffId,staff.role,hasGlobalAgenda(staff)?"all":"assigned",staff.attentionEnabled===true,MODULOS.map(m=>[m,staff.permisos[m]??"none"])]);
+    const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(canonical));
+    const accessVersion=Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,"0")).join("");
+    c.set("staff",{...staff,accessVersion});
+    c.header("X-Staff-Access-Version",accessVersion);
+    await next();
+  });
   route.use("*", requirePermission());
 
   route.get("/me", (c) => c.json({ data: c.get("staff") }));
@@ -172,7 +191,7 @@ export function createAdminRoute(env: ServerEnv) {
         .optional(),
       days: z.coerce.number().int().min(1).max(31).default(1),
       area: z.string().max(32).optional(),
-    });
+    }).strict();
     const parsed = schema.safeParse(c.req.query());
     if (!parsed.success) throw new HTTPException(400, { message: "Consulta inválida." });
 
@@ -180,11 +199,12 @@ export function createAdminRoute(env: ServerEnv) {
     const from = new Date(`${day}T00:00:00${SALON_TZ}`);
     const to = new Date(from.getTime() + parsed.data.days * 24 * 60 * 60_000);
 
-    const entries = await listAgenda(createSupabaseAdminClient(env), {
-      from,
-      to,
-      area: parsed.data.area,
-    });
+    const staff=c.get("staff");
+    const admin=createSupabaseAdminClient(env);
+    const params={from,to,area:parsed.data.area};
+    const entries = operationalOnly(staff)
+      ? await readOperationalAgenda(admin,staff,params,adapter?.context)
+      : await attachAttention(admin,staff,await listAgenda(admin,params,adapter?.context));
     return c.json({ data: { date: day, days: parsed.data.days, entries } });
   });
 
@@ -204,7 +224,7 @@ export function createAdminRoute(env: ServerEnv) {
       desde: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       hasta: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       area: z.string().max(32).optional(),
-    });
+    }).strict();
     const parsed = schema.safeParse(c.req.query());
     if (!parsed.success) throw new HTTPException(400, { message: "Consulta inválida." });
 
@@ -221,18 +241,42 @@ export function createAdminRoute(env: ServerEnv) {
       throw new HTTPException(400, { message: "El rango no puede pasar de un año." });
     }
 
-    const porDia = await countAgendaByDay(createSupabaseAdminClient(env), {
-      from,
-      to,
-      area: parsed.data.area,
-    });
+    const staff=c.get("staff");
+    const admin=createSupabaseAdminClient(env);
+    const params={from,to,area:parsed.data.area};
+    const porDia = hasGlobalAgenda(staff) ? await countAgendaByDay(admin,params) : await countAssignedAgenda(admin,staff,params);
     return c.json({ data: { desde: parsed.data.desde, hasta: parsed.data.hasta, porDia } });
   });
 
   route.get("/bookings/:id", async (c) => {
-    const booking = await getBookingForStaff(createSupabaseAdminClient(env), c.req.param("id"));
+    if(new URL(c.req.url).search) throw new HTTPException(400,{message:"Consulta inválida."});
+    const staff=c.get("staff");
+    const admin=createSupabaseAdminClient(env);
+    if(!z.string().uuid().safeParse(c.req.param("id")).success) throw new HTTPException(404,{message:"No encontramos ese turno."});
+    const legacy=operationalOnly(staff)?null:await getBookingForStaff(admin,c.req.param("id"),adapter?.context);
+    const booking=operationalOnly(staff)
+      ? (await readOperationalAgenda(admin,staff,{id:c.req.param("id")},adapter?.context))[0]
+      : legacy ? (await attachAttention(admin,staff,[legacy]))[0] : null;
     if (!booking) throw new HTTPException(404, { message: "No encontramos ese turno." });
     return c.json({ data: booking });
+  });
+
+  for(const action of ["start","finish"] as const) route.post(`/bookings/:id/attention/${action}`,async(c)=>{
+    const staff=c.get("staff");
+    if(staff.attentionEnabled!==true) throw new HTTPException(503,{message:"Esta parte del panel todavía no está habilitada."});
+    if(!z.string().uuid().safeParse(c.req.param("id")).success) throw new HTTPException(404,{message:"No encontramos ese turno."});
+    if(!z.object({}).strict().safeParse(await c.req.json().catch(()=>null)).success || new URL(c.req.url).search) throw new HTTPException(400,{message:"Consulta inválida."});
+    const {data,error}=await createSupabaseAdminClient(env).rpc("record_booking_attention",{p_booking_id:c.req.param("id"),p_action:action,p_actor_id:staff.staffId});
+    if(error) {
+      // No raw database message or caller-provided context is exposed.
+      if(["booking_not_found","booking_not_accessible"].includes(error.message)) throw new HTTPException(404,{message:"No encontramos ese turno."});
+      if(["actor_required","actor_not_authorized","attention_forbidden"].includes(error.message)) throw new HTTPException(403,{message:"Tu cuenta no tiene acceso a esta parte del panel."});
+      if(["attention_not_started","attention_invalid_status","attention_already_finished"].includes(error.message)) throw new HTTPException(409,{message:"No se puede cambiar la atención de este turno."});
+      throw new HTTPException(503,{message:"Esta parte del panel todavía no está habilitada."});
+    }
+    const result=z.object({booking_id:z.string().uuid(),started_at:z.string().nullable(),finished_at:z.string().nullable()}).safeParse(data);
+    if(!result.success||result.data.booking_id!==c.req.param("id")) throw new HTTPException(503,{message:"Esta parte del panel todavía no está habilitada."});
+    return c.json({data:{bookingId:result.data.booking_id,startedAt:result.data.started_at,finishedAt:result.data.finished_at}});
   });
 
   route.patch("/bookings/:id/status", async (c) => {
@@ -253,7 +297,7 @@ export function createAdminRoute(env: ServerEnv) {
         actorId: staff.staffId,
         actorLabel: staff.email,
         depositOutcome: parsed.data.depositOutcome ?? null,
-      });
+      }, adapter?.context);
       return c.json({ data: updated });
     } catch (error) {
       if (error instanceof TransitionError) {
@@ -1719,44 +1763,81 @@ export function createAdminRoute(env: ServerEnv) {
     const { data, error } = await createSupabaseAdminClient(env)
       .from("business_hours")
       .select("id, weekday, opens_at, closes_at, is_active")
-      .order("weekday");
+      .order("weekday")
+      .order("opens_at");
     if (error) throw error;
     return c.json({ data });
   });
 
   owner.patch("/business-hours/:id", async (c) => {
-    const schema = z.object({
-      opensAt: z
-        .string()
-        .regex(/^\d{2}:\d{2}$/)
-        .optional(),
-      closesAt: z
-        .string()
-        .regex(/^\d{2}:\d{2}$/)
-        .optional(),
-      isActive: z.boolean().optional(),
-    });
+    const time = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
+    const schema = z
+      .object({
+        opensAt: time.optional(),
+        closesAt: time.optional(),
+        isActive: z.boolean().optional(),
+        // Comparación atómica con lo que la persona vio al abrir el editor.
+        // No cambia el contrato de los clientes anteriores que no lo envían.
+        expected: z
+          .object({
+            opensAt: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,6})?)?$/),
+            closesAt: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,6})?)?$/),
+            isActive: z.boolean(),
+          })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .refine(
+        (v) => v.opensAt !== undefined || v.closesAt !== undefined || v.isActive !== undefined,
+      );
     const parsed = schema.safeParse(await c.req.json().catch(() => null));
-    if (!parsed.success) throw new HTTPException(400, { message: "Horario inválido." });
+    if (!z.string().uuid().safeParse(c.req.param("id")).success || !parsed.success)
+      throw new HTTPException(400, { message: "Horario inválido." });
+    if (parsed.data.opensAt && parsed.data.closesAt && parsed.data.opensAt >= parsed.data.closesAt)
+      throw new HTTPException(400, {
+        message: "El horario de cierre tiene que ser posterior al de apertura.",
+      });
 
     const patch: Record<string, unknown> = {};
-    if (parsed.data.opensAt) patch.opens_at = parsed.data.opensAt;
-    if (parsed.data.closesAt) patch.closes_at = parsed.data.closesAt;
+    if (parsed.data.opensAt !== undefined) patch.opens_at = parsed.data.opensAt;
+    if (parsed.data.closesAt !== undefined) patch.closes_at = parsed.data.closesAt;
     if (parsed.data.isActive !== undefined) patch.is_active = parsed.data.isActive;
 
-    const { error } = await createSupabaseAdminClient(env)
+    let update = createSupabaseAdminClient(env)
       .from("business_hours")
       .update(patch)
       .eq("id", c.req.param("id"));
+    if (parsed.data.expected) {
+      update = update
+        .eq("opens_at", parsed.data.expected.opensAt)
+        .eq("closes_at", parsed.data.expected.closesAt)
+        .eq("is_active", parsed.data.expected.isActive);
+    }
+    const { data, error } = await update
+      .select("id, weekday, opens_at, closes_at, is_active")
+      .maybeSingle();
     if (error) {
       if (String(error.message).includes("business_hours_time_order")) {
         throw new HTTPException(400, {
           message: "El horario de cierre tiene que ser posterior al de apertura.",
         });
       }
+      if (error.code === "23P01") {
+        throw new HTTPException(409, {
+          message: "Este horario se superpone con otra franja del mismo día. Revisá las horas.",
+        });
+      }
       throw error;
     }
-    return c.json({ data: { ok: true } });
+    if (!data) {
+      throw new HTTPException(parsed.data.expected ? 409 : 404, {
+        message: parsed.data.expected
+          ? "El horario cambió o ya no está disponible. Cancelá la edición y volvé a abrirlo."
+          : "No encontramos ese horario.",
+      });
+    }
+    return c.json({ data: { ok: true, hour: data } });
   });
 
   owner.get("/areas", async (c) => {

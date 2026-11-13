@@ -197,7 +197,7 @@ async function loadBusinessHours(client: SupabaseAnonServerClient): Promise<Busi
   });
 }
 
-export function createCatalogRepository(client: SupabaseAnonServerClient): CatalogRepository {
+export function createCatalogRepository(client: SupabaseAnonServerClient, policy: { termsVersion: string } = { termsVersion: TERMS_VERSION }): CatalogRepository {
   return {
     async getSalonInfo() {
       const hours = await loadBusinessHours(client);
@@ -218,7 +218,7 @@ export function createCatalogRepository(client: SupabaseAnonServerClient): Catal
       const parsed = typeof raw === "number" ? raw : Number(raw);
       const depositRatePct = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 
-      return { hours, depositRatePct, termsVersion: TERMS_VERSION };
+      return { hours, depositRatePct, termsVersion: policy.termsVersion };
     },
 
     listBusinessHours: () => loadBusinessHours(client),

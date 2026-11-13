@@ -3,7 +3,7 @@
  * vive en este repositorio. Estas pruebas fijan la única regla que
  * importa: ante la duda, NO se confía.
  */
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it, spyOn } from "bun:test";
 import {
   __resetSupabaseSettingsCache,
   emailEsConfiable,
@@ -121,7 +121,7 @@ describe("qué proveedores se admiten de verdad", () => {
     expect(await proveedoresAdmitidos(ENV())).toEqual(["google", "email"]);
   });
 
-  it("fuera de producción no pregunta nada", async () => {
+  it("en local explícito no pregunta nada", async () => {
     // El stack local emite tokens `email` y no tiene este endpoint.
     globalThis.fetch = (async () => {
       throw new Error("no debería preguntar");
@@ -136,5 +136,25 @@ describe("qué proveedores se admiten de verdad", () => {
     expect(await proveedoresAdmitidos(ENV({ INTERNAL_AUTH_ALLOWED_PROVIDERS: ["google"] }))).toEqual(
       ["google"],
     );
+  });
+});
+
+
+describe("deployed email policy freshness", () => {
+  it("staging applies the same fail-closed check as production", async () => {
+    responderCon({ mailer_autoconfirm: true, disable_signup: false });
+    expect(await proveedoresAdmitidos(ENV({ APP_ENV: "staging" }))).toEqual(["google"]);
+  });
+  it("after 30 seconds a failed refresh cannot reuse safe stale settings", async () => {
+    const clock = spyOn(Date, "now").mockReturnValue(100_000);
+    try {
+      responderCon({ mailer_autoconfirm: false });
+      expect(await proveedoresAdmitidos(ENV())).toEqual(["google", "email"]);
+      responderCon({}, false);
+      clock.mockReturnValue(129_999);
+      expect(await proveedoresAdmitidos(ENV())).toEqual(["google", "email"]);
+      clock.mockReturnValue(130_000);
+      expect(await proveedoresAdmitidos(ENV())).toEqual(["google"]);
+    } finally { clock.mockRestore(); }
   });
 });

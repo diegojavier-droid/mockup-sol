@@ -1,0 +1,32 @@
+name: Booking reload regression
+
+on:
+  pull_request:
+    branches: [main, mvp/sol-mai-v2]
+    paths:
+      - "src/components/booking/**"
+      - "src/lib/**"
+      - "src/routes/index.tsx"
+      - "src/routes/reserva.$token.tsx"
+      - "scripts/booking-reload-e2e.mjs"
+      - "scripts/fixtures/booking-reload.jsx"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/booking-reload.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - name: Test client booking recovery without a backend
+        run: bun scripts/booking-reload-e2e.mjs

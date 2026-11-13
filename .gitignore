@@ -45,3 +45,6 @@ diseno/**/*.html
 
 # capturas de scripts/reserva-e2e.mjs
 reserva-e2e-fallo.png
+
+# Reproducible private Site bundles and local evidence
+.sites-runtime/

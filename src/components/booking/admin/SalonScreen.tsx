@@ -1,3 +1,4 @@
+import {isSiteTest} from "@deployment/booking-policy";
 import { useMemo, useState } from "react";
 import {
   useAplicarPropuesta,
@@ -150,7 +151,7 @@ function Servicios({ onAviso }: { onAviso: Aviso }) {
         Tocá el número y escribí el nuevo. Se guarda al salir del campo.
       </p>
 
-      <Asistente onAviso={onAviso} />
+      {!isSiteTest && <Asistente onAviso={onAviso} />}
 
       {servicios.isLoading && <p className="mt-4 text-sm text-muted-foreground">Cargando…</p>}
 

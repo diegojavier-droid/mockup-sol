@@ -44,19 +44,20 @@ interface RespuestaCruda {
 }
 
 /**
- * Se cachea por instancia del Worker. Cambiar una opción en Supabase se
- * refleja cuando la instancia se recicla; para una opción que se toca una
- * vez en la vida del proyecto, preguntar en cada pedido sería gastar una
- * ida a la red por pedido para no enterarse de nada nuevo.
+ * Caché máximo de 30 segundos por instancia. Staging y producción aplican
+ * la misma política. Tras vencer, un error nunca reutiliza la configuración
+ * anterior; sólo APP_ENV=local permite pruebas con Auth local autoconfirmado.
  */
-let cache: { url: string; settings: SupabaseAuthSettings } | null = null;
+const SETTINGS_TTL_MS = 30_000;
+let cache: { url: string; settings: SupabaseAuthSettings; expiresAt: number } | null = null;
 
 export function __resetSupabaseSettingsCache() {
   cache = null;
 }
 
 export async function leerAuthSettings(env: ServerEnv): Promise<SupabaseAuthSettings | null> {
-  if (cache && cache.url === env.SUPABASE_URL) return cache.settings;
+  if (cache && cache.url === env.SUPABASE_URL && Date.now() < cache.expiresAt) return cache.settings;
+  cache = null; // Never reuse stale safety settings after a failed refresh.
 
   let crudo: RespuestaCruda;
   try {
@@ -80,7 +81,7 @@ export async function leerAuthSettings(env: ServerEnv): Promise<SupabaseAuthSett
     google: crudo.external?.google === true,
     email: crudo.external?.email === true,
   };
-  cache = { url: env.SUPABASE_URL, settings };
+  cache = { url: env.SUPABASE_URL, settings, expiresAt: Date.now() + SETTINGS_TTL_MS };
   return settings;
 }
 
@@ -103,7 +104,7 @@ export function emailEsConfiable(settings: SupabaseAuthSettings | null): boolean
  */
 export async function proveedoresAdmitidos(env: ServerEnv): Promise<string[]> {
   const configurados = env.INTERNAL_AUTH_ALLOWED_PROVIDERS;
-  if (env.APP_ENV !== "production" || !configurados.includes("email")) return configurados;
+  if (env.APP_ENV === "local" || !configurados.includes("email")) return configurados;
 
   const confiable = emailEsConfiable(await leerAuthSettings(env));
   if (confiable) return configurados;

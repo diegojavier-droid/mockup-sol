@@ -1,5 +1,5 @@
 /**
- * Entrar al panel: un link al correo, y Google como alternativa.
+ * Entrar al panel: correo y contraseña, con link y Google como alternativas.
  *
  * Hasta este bloque, la pantalla de ingreso pedía que alguien pegara a
  * mano un token de sesión de Supabase. Funcionaba para probar, pero
@@ -28,8 +28,9 @@
  * entra al panel por eso.
  */
 
+import { StaffAuthStorage, StaffAuthPersistence, authDeadline, staffAuthFetch, finishStaffLogout, createStaffAuthMirror, type StaffLogoutResult } from "./staff-auth-lifecycle";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { clearStaffToken, writeStaffToken } from "./staff-session";
+import { clearStaffToken, writeStaffToken, subscribeStaffExpiration } from "./staff-session";
 
 export interface PanelAuthConfig {
   supabaseUrl: string;
@@ -39,6 +40,31 @@ export interface PanelAuthConfig {
 
 let configPrometida: Promise<PanelAuthConfig | null> | null = null;
 let clientePrometido: Promise<SupabaseClient | null> | null = null;
+let epoch = 0;
+const persistence=new StaffAuthPersistence();
+let activeClient: SupabaseClient | null = null;
+let activeStorage: StaffAuthStorage | null = null;
+let unsubscribeAuth: (() => void) | null = null;
+let removeStorageListener: (() => void) | null = null;
+let closing: Promise<StaffLogoutResult> | null = null;
+function disposeRetired(retired: ReturnType<typeof retireClient>) {
+  retired.storage?.dispose();
+  // Never await SDK auth work inside its own event callback.
+  queueMicrotask(() => { void retired.client?.auth.stopAutoRefresh().catch(() => undefined); void retired.client?.auth.dispose().catch(() => undefined); });
+}
+subscribeStaffExpiration(() => { void salir(); });
+function vigente(generation:number) { return generation === epoch && (!activeStorage || activeStorage.current()); }
+function retireClient(broadcast=true) {
+  epoch++;
+  unsubscribeAuth?.(); unsubscribeAuth=null;
+  removeStorageListener?.(); removeStorageListener=null;
+  const client=activeClient, storage=activeStorage;
+  activeClient=null; activeStorage=null; clientePrometido=null;
+  const localCleared=storage?.retire(broadcast) ?? persistence.canRestore();
+  persistence.recordCleanup(localCleared);
+  clearStaffToken();
+  return {client,storage,localCleared};
+}
 
 /**
  * La configuración la sirve el Worker, no el build: así el sitio
@@ -48,7 +74,7 @@ let clientePrometido: Promise<SupabaseClient | null> | null = null;
 export function leerConfig(): Promise<PanelAuthConfig | null> {
   configPrometida ??= (async () => {
     try {
-      const res = await fetch("/api/v1/auth/panel-config");
+      const res = await staffAuthFetch("/api/v1/auth/panel-config");
       if (!res.ok) return null;
       const { data } = (await res.json()) as { data?: PanelAuthConfig };
       if (!data?.supabaseUrl || !data?.publishableKey) return null;
@@ -65,13 +91,23 @@ export function leerConfig(): Promise<PanelAuthConfig | null> {
  * Supabase de entrada lo metería en el bundle de la web de las clientas,
  * que no lo usa para nada.
  */
-async function cliente(): Promise<SupabaseClient | null> {
+async function cliente(explicitLogin=false): Promise<SupabaseClient | null> {
+  if (!persistence.canRestore() && !explicitLogin && !activeClient) return null;
+  const generation=epoch;
+  if (closing) await closing;
+  if (!persistence.canRestore() && !explicitLogin && !activeClient) return null;
+  if (generation !== epoch) return null;
   clientePrometido ??= (async () => {
     const config = await leerConfig();
-    if (!config) return null;
+    if (!config || generation !== epoch) return null;
 
     const { createClient } = await import("@supabase/supabase-js");
+    if (generation !== epoch) return null;
+    const storageKey = `sb-${new URL(config.supabaseUrl).hostname.split(".")[0]}-auth-token`;
+    const storage = new StaffAuthStorage(persistence.canRestore() ? almacenamientoDelNavegador() : undefined, storageKey);
+    activeStorage=storage;
     const supabase = createClient(config.supabaseUrl, config.publishableKey, {
+      global: { fetch: ((input:RequestInfo|URL,init?:RequestInit) => staffAuthFetch(input,init)) as typeof fetch },
       auth: {
         // PKCE y no el flujo implícito: con el implícito los tokens
         // vuelven en el fragmento de la URL y quedan en el historial.
@@ -96,18 +132,32 @@ async function cliente(): Promise<SupabaseClient | null> {
         // cada mañana, con un tope de un par de correos por hora. El
         // mostrador compartido se resuelve con el botón «Salir», que ya
         // está, no dejando a todo el mundo afuera todos los días.
-        storage: almacenamientoDelNavegador(),
+        storageKey,
+        storage,
       },
     });
 
     // El espejo. `onAuthStateChange` avisa también cuando Supabase renovó
     // el token solo, que es lo que evita que a Sol se le corte la sesión
     // a la hora sin explicación.
-    supabase.auth.onAuthStateChange((_evento, sesion) => {
-      if (sesion?.access_token) writeStaffToken(sesion.access_token);
-      else clearStaffToken();
-    });
+    activeClient=supabase;
+    const {data:{subscription}} = supabase.auth.onAuthStateChange(createStaffAuthMirror({
+      current:() => vigente(generation), matchesToken:token => storage.matchesAccessToken(token),
+      isEmpty:() => storage.shouldEndSession(), token:writeStaffToken, empty:clearStaffToken,
+      signedOut:() => { if (storage.shouldEndSession()) disposeRetired(retireClient(false)); },
+    }));
 
+    unsubscribeAuth=() => subscription.unsubscribe();
+    if (typeof window !== "undefined") {
+      const changed = (event:StorageEvent) => {
+        const sessionRemoved=event.key === null || (event.key === storage.key && event.newValue === null);
+        if (!sessionRemoved && event.key !== storage.markerKey) return;
+        if (!storage.shouldEndSession()) return;
+        disposeRetired(retireClient(false));
+      };
+      window.addEventListener("storage",changed);
+      removeStorageListener=() => window.removeEventListener("storage",changed);
+    }
     return supabase;
   })();
   return clientePrometido;
@@ -190,6 +240,7 @@ export interface EstadoDeIngreso {
  * Supabase canjea el código por la sesión.
  */
 export async function recuperarSesion(): Promise<EstadoDeIngreso> {
+  const generation=epoch;
   // La URL se mira ANTES de tocar Supabase. Cuando el canje sale bien el
   // SDK la limpia, así que mirarla después no permitiría distinguir
   // «volvió del mail y falló» de «entró de cero».
@@ -198,10 +249,14 @@ export async function recuperarSesion(): Promise<EstadoDeIngreso> {
 
   const supabase = await cliente();
   if (!supabase) {
+    await leerSesionVigente(null, () => vigente(generation));
     return { adentro: false, problema: explicarLaVuelta({ search, hash, adentro: null }) };
   }
 
-  const { data } = await supabase.auth.getSession();
+  const response = await leerSesionVigente(supabase.auth, () => vigente(generation));
+  if (!response) return {adentro:false,problema:null};
+  const {data} = response;
+  if (data.session?.access_token && !activeStorage?.matchesAccessToken(data.session.access_token)) return {adentro:false,problema:null};
   const adentro = Boolean(data.session?.access_token);
   if (data.session?.access_token) writeStaffToken(data.session.access_token);
 
@@ -219,10 +274,56 @@ export async function recuperarSesion(): Promise<EstadoDeIngreso> {
   return { adentro, problema };
 }
 
+export const ERROR_INGRESO = "No pudimos iniciar sesión. Revisá los datos o consultá con quien administra el panel.";
+
+export function correoValido(email: string): boolean {
+  return email.trim().length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+/** Dependencias estrechas para probar sin red ni credenciales reales. */
+export function crearIngresoConContrasena(deps: {
+  config: () => Promise<PanelAuthConfig | null>;
+  cliente: () => Promise<Pick<SupabaseClient, "auth"> | null>;
+  guardarToken: (token: string) => void;
+  generation?: () => number;
+  beginTransition?: () => number;
+  matchesToken?: (token:string) => boolean;
+  vigente?: (generation:number) => boolean;
+}) {
+  return async (email: string, password: string): Promise<{ok: boolean; mensaje?: string}> => {
+    if (!correoValido(email) || !password || password.length > 1024) return {ok: false, mensaje: ERROR_INGRESO};
+    const generation=deps.beginTransition?.() ?? deps.generation?.() ?? 0;
+    try {
+      const config = await deps.config();
+      if ((deps.vigente && !deps.vigente(generation)) || !config?.proveedores?.includes("email")) return {ok: false, mensaje: ERROR_INGRESO};
+      const supabase = await deps.cliente();
+      if (!supabase || (deps.vigente && !deps.vigente(generation))) return {ok: false, mensaje: ERROR_INGRESO};
+      const {data, error} = await supabase.auth.signInWithPassword({email: email.trim(), password});
+      if (error || !data.session?.access_token || (deps.vigente && !deps.vigente(generation))) return {ok: false, mensaje: ERROR_INGRESO};
+      if (deps.matchesToken && !deps.matchesToken(data.session.access_token)) return {ok:false,mensaje:ERROR_INGRESO};
+      deps.guardarToken(data.session.access_token);
+      return {ok: true};
+    } catch {
+      return {ok: false, mensaje: ERROR_INGRESO};
+    }
+  };
+}
+
+/** Identifica solamente. El backend todavía debe autorizar el acceso al panel. */
+export const entrarConContrasena = crearIngresoConContrasena({
+  config: leerConfig, cliente:() => cliente(true), guardarToken: writeStaffToken,
+  matchesToken:token => activeStorage?.matchesAccessToken(token) ?? false, generation:() => epoch, vigente,
+  beginTransition:() => {
+    // A different login is a new SDK/storage lifecycle, not an ordinary refresh.
+    disposeRetired(retireClient());
+    return epoch;
+  },
+});
+
 /**
  * Pide un link de un solo uso al correo.
  *
- * POR QUÉ ESTE ES EL CAMINO PRINCIPAL Y NO GOOGLE
+ * ALTERNATIVA AL INGRESO CON CONTRASEÑA
  *
  * Prueba lo mismo que probaría Google —que la casilla es suya, porque
  * para entrar hay que abrirla— sin exigir un cliente de OAuth en Google
@@ -240,22 +341,17 @@ export async function recuperarSesion(): Promise<EstadoDeIngreso> {
  * par de envíos por hora. Alcanza para probar y no para usarlo todos los
  * días; antes de que Sol dependa de esto hay que cargar un SMTP propio.
  *
- * SÍ crea la cuenta de Supabase si no existe, y tiene que ser así: la
- * primera vez que entra la administradora todavía no tiene ninguna. Eso
- * no regala nada. Tener cuenta de Supabase no abre el panel: el servidor
- * exige además una fila activa en `staff_members`, que se administra
- * desde adentro. Cualquiera puede pedirse un link y confirmar que el
- * mail es suyo; entrar es otra cosa.
+ * No crea cuentas: el equipo debe tener su cuenta habilitada previamente.
  */
 export async function pedirLinkPorMail(email: string): Promise<{ ok: boolean; mensaje?: string }> {
-  const supabase = await cliente();
+  const supabase = await cliente(true);
   if (!supabase) {
     return { ok: false, mensaje: "Todavía no está configurado el ingreso al panel." };
   }
 
   const { error } = await supabase.auth.signInWithOtp({
     email: email.trim(),
-    options: { emailRedirectTo: `${window.location.origin}/agenda` },
+    options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/agenda` },
   });
 
   if (error) {
@@ -274,7 +370,7 @@ export async function pedirLinkPorMail(email: string): Promise<{ ok: boolean; me
 }
 
 export async function entrarConGoogle(): Promise<{ ok: boolean; mensaje?: string }> {
-  const supabase = await cliente();
+  const supabase = await cliente(true);
   if (!supabase) {
     return { ok: false, mensaje: "Todavía no está configurado el ingreso con Google." };
   }
@@ -310,17 +406,46 @@ export async function entrarConGoogle(): Promise<{ ok: boolean; mensaje?: string
  * va a arreglar nada y que además consume el cupo de correos por hora.
  */
 export async function correoDeLaSesion(): Promise<string | null> {
+  const generation=epoch;
   const supabase = await cliente();
   if (!supabase) return null;
   const { data } = await supabase.auth.getSession();
-  return data.session?.user?.email ?? null;
+  return vigente(generation) && data.session?.access_token && activeStorage?.matchesAccessToken(data.session.access_token) ? data.session.user?.email ?? null : null;
 }
 
-export async function salir(): Promise<void> {
-  clearStaffToken();
-  const supabase = await cliente();
-  // `scope: "local"` cierra la sesión de esta pestaña. Cerrarla en todos
-  // los dispositivos es otra decisión, y es la que falta para poder
-  // cortarle el acceso a un teléfono perdido.
-  await supabase?.auth.signOut({ scope: "local" }).catch(() => undefined);
+/** Reject late getSession results before restoring an access-token mirror. */
+export async function leerSesionVigente(
+  auth: Pick<SupabaseClient["auth"],"getSession"> | null,
+  current:()=>boolean,
+  clear:()=>void=clearStaffToken,
+) {
+  try {
+    const response=auth ? await auth.getSession() : null;
+    if (!current()) return null;
+    if (!response || response.error || !response.data.session?.access_token) clear();
+    return response && !response.error ? response : null;
+  } catch {
+    if (current()) clear();
+    return null;
+  }
+}
+
+export function salir(): Promise<StaffLogoutResult> {
+  if (closing) return closing;
+  const retired=retireClient();
+  closing=(async () => {
+    // A logout can race initial configuration before the SDK exists.
+    if (!retired.storage && persistence.canRestore() && configPrometida) {
+      const config=await authDeadline(configPrometida).catch(() => null);
+      if (!config) retired.localCleared=false;
+      if (config) {
+        const backing=almacenamientoDelNavegador();
+        retired.storage=new StaffAuthStorage(backing,`sb-${new URL(config.supabaseUrl).hostname.split(".")[0]}-auth-token`);
+        retired.localCleared=retired.storage.retire() && Boolean(backing);
+      }
+    }
+    persistence.recordCleanup(retired.localCleared);
+    return finishStaffLogout({auth:retired.client?.auth ?? null,storage:retired.storage,localCleared:retired.localCleared});
+  })().finally(() => { closing=null; });
+  return closing;
 }

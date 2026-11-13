@@ -1,3 +1,4 @@
+import {isSiteTest} from "@deployment/booking-policy";
 /**
  * Estado de una reserva, por su token público.
  *
@@ -14,6 +15,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useBooking, useCancelBooking, useDepositCheckout } from "@/lib/api/booking-hooks";
 import { formatPrice } from "@/lib/catalog-context";
+import { BookingLink } from "@/components/booking/summary/BookingLink";
+import { solMaiContact } from "@/lib/sol-mai-contact";
 
 export const Route = createFileRoute("/reserva/$token")({
   head: () => ({
@@ -53,6 +56,10 @@ function Shell({ children }: { children: React.ReactNode }) {
         <div className="rounded-3xl border border-champagne-deep/20 bg-card p-6 shadow-sm sm:p-8">
           {children}
         </div>
+        {!isSiteTest && <p className="mt-5 break-words text-xs text-muted-foreground">
+          ¿Alguna duda? Escribinos: <span className="break-all">{solMaiContact.email}</span> ·{" "}
+          {solMaiContact.whatsappDisplay}
+        </p>}
         <Link
           to="/"
           className="mt-6 inline-flex rounded-full border border-border bg-card px-4 py-2 text-sm text-foreground transition-colors hover:border-champagne"
@@ -74,6 +81,7 @@ function cancellationWarning(booking: {
   startsAt: string;
   depositAmount: number;
 }): string {
+  if (isSiteTest) return "¿Cancelás este turno?";
   if (booking.status === "pending_payment" || booking.depositAmount === 0) {
     return "¿Confirmás que querés cancelar? No abonaste la seña, así que no hay nada pendiente.";
   }
@@ -131,13 +139,14 @@ function BookingStatus() {
         {main?.name} · {formatWhen(booking.startsAt)}
       </p>
 
-      {(booking.status === "confirmed" || booking.status === "attended") && (
+      {!isSiteTest && (booking.status === "confirmed" || booking.status === "attended") && (
         <p className="text-sm text-muted-foreground">
           Te esperamos. Si necesitás cambiarlo, escribinos con 24 horas de anticipación.
         </p>
       )}
 
-      {booking.status === "pending_payment" && !holdExpired && (
+      {isSiteTest && booking.status === "pending_payment" && <p>Los pagos están deshabilitados. Este turno retiene el horario durante 10 minutos y vence sin pago. No tenés que pagar nada.</p>}
+      {!isSiteTest && booking.status === "pending_payment" && !holdExpired && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Reservás con una seña de {formatPrice(booking.depositAmount)}. El resto lo abonás en el
@@ -178,7 +187,7 @@ function BookingStatus() {
         </p>
       )}
 
-      {booking.status === "cancelled" && !cancel.isSuccess && (
+      {!isSiteTest && booking.status === "cancelled" && !cancel.isSuccess && (
         <p className="text-sm text-muted-foreground">
           {booking.refundDue
             ? "Te devolvemos la seña."
@@ -190,6 +199,8 @@ function BookingStatus() {
           seña nunca abonada). Se muestra fuera del bloque de cancelación
           porque al refrescar el estado ese bloque deja de existir. */}
       {cancel.isSuccess && <p className="text-sm text-foreground/80">{cancel.data.message}</p>}
+
+      <BookingLink key={token} token={token} />
 
       {/* Cancelar. La regla de 24 h se dice ANTES de decidir, no después:
           enterarse de que se pierde la seña una vez cancelado es la peor

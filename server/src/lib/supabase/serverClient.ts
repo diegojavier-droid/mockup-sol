@@ -1,3 +1,4 @@
+import { supabaseTransport } from './transport';
 /**
  * Supabase ANON / publishable client — SERVER-ONLY variant.
  *
@@ -56,6 +57,7 @@ export function createSupabaseAnonClient(
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
-    global: { headers },
+    global: {
+      fetch: supabaseTransport(env), headers },
   });
 }

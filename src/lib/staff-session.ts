@@ -30,6 +30,9 @@ export type Modulo =
 export type Nivel = "none" | "view" | "full";
 
 export interface StaffIdentity {
+  agendaScope?: "assigned" | "all";
+  attentionEnabled?: boolean;
+  accessVersion?: string;
   email: string;
   staffId: string;
   displayName: string;
@@ -54,31 +57,101 @@ export function puede(
   modulo: Modulo,
   nivel: "view" | "full" = "view",
 ): boolean {
+  if (identidad?.agendaScope === "assigned" && modulo !== "calendario") return false;
   const tiene = identidad?.permisos?.[modulo];
   if (tiene === "full") return true;
   return nivel === "view" && tiene === "view";
 }
 
+export function staffAccessKey(identity: StaffIdentity): string {
+ return JSON.stringify([identity.staffId,identity.role,identity.agendaScope??'legacy',identity.attentionEnabled===true,Object.entries(identity.permisos).sort(([a],[b])=>a.localeCompare(b))]);
+}
+const outcomeListeners=new Set<()=>void>();
+let uncertainOutcome=false;
+export function readUncertainStaffOutcome(): boolean { return uncertainOutcome; }
+export function subscribeUncertainStaffOutcome(listener:()=>void):()=>void { outcomeListeners.add(listener);return ()=>{outcomeListeners.delete(listener);}; }
+export function reportUncertainStaffOutcome(): void { if(!uncertainOutcome){uncertainOutcome=true;for(const listener of outcomeListeners)listener();} }
+export function dismissUncertainStaffOutcome(): void { if(uncertainOutcome){uncertainOutcome=false;for(const listener of outcomeListeners)listener();} }
+
+let accessKey: string | null = null;
+let accessVersion: string | null = null;
+let accessDenied=false;
+export function isStaffAccessDenied(): boolean { return accessDenied; }
+export function denyStaffAccess(): void {
+ if(accessDenied)return;
+ accessDenied=true;
+ changed();
+}
+export function readStaffAccessVersion(): string | null { return accessVersion; }
+export function acceptStaffAccessVersion(value: string | null): void { accessVersion=value; }
+export function invalidateStaffAccess(): void { changed(); }
+export function observeStaffAccess(identity: StaffIdentity): void {
+ const next=staffAccessKey(identity), previous=accessKey;
+ accessKey=next;
+ accessDenied=false;
+ if(previous!==null && previous!==next) changed();
+}
+
+// Generación local, no credencial: cambia al cambiar/cerrar sesión. Las
+// respuestas que comenzaron con otra generación nunca se muestran al equipo.
+let generation = 0;
+let memoryToken: string | null = null;
+let initialized = false;
+const listeners = new Set<() => void>();
+const expirationListeners = new Set<() => void>();
+function changed() {
+  generation += 1;
+  for (const listener of listeners) listener();
+}
+export function readStaffSessionGeneration(): number { return generation; }
+export function subscribeStaffSession(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
+export function subscribeStaffExpiration(listener: () => void): () => void {
+  expirationListeners.add(listener);
+  return () => { expirationListeners.delete(listener); };
+}
 export function readStaffToken(): string | null {
-  try {
-    return window.sessionStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
+  if (!initialized) {
+    initialized = true;
+    try { memoryToken = window.sessionStorage.getItem(TOKEN_KEY); } catch { /* memoria */ }
   }
+  return memoryToken;
 }
-
+/** Unverified claims partition LOCAL caches only; never grant server access. */
+function sessionScope(token: string | null): string | null {
+  if (!token || token.length > 16_384) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g,"+").replace(/_/g,"/"))) as Record<string,unknown>;
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return typeof payload.sub === "string" && uuid.test(payload.sub) && typeof payload.session_id === "string" && uuid.test(payload.session_id)
+      ? `${payload.sub}:${payload.session_id}` : null;
+  } catch { return null; }
+}
 export function writeStaffToken(token: string): void {
-  try {
-    window.sessionStorage.setItem(TOKEN_KEY, token);
-  } catch {
-    /* modo privado o almacenamiento bloqueado: la sesión dura lo que la pestaña */
-  }
+  const previous = readStaffToken();
+  initialized = true;
+  memoryToken = token;
+  try { window.sessionStorage.setItem(TOKEN_KEY, token); } catch { /* memoria */ }
+  const before = sessionScope(previous), after = sessionScope(token);
+  // Refresh of the same user/session must not interrupt a mutation that may
+  // already have committed. Missing/ambiguous identity remains conservative.
+  if (previous !== token && (!before || !after || before !== after)) { accessKey=null; accessVersion=null; accessDenied=false; changed(); }
 }
-
 export function clearStaffToken(): void {
-  try {
-    window.sessionStorage.removeItem(TOKEN_KEY);
-  } catch {
-    /* nada que limpiar */
-  }
+  initialized = true;
+  memoryToken = null;
+  accessKey=null;
+  accessVersion=null;
+  accessDenied=false;
+  try { window.sessionStorage.removeItem(TOKEN_KEY); } catch { /* memoria */ }
+  changed();
+}
+/** Sólo un 401 de la generación vigente invalida también la sesión del SDK. */
+export function expireStaffSession(): void {
+  clearStaffToken();
+  for (const listener of expirationListeners) listener();
 }

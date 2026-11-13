@@ -7,7 +7,20 @@ permissions:
   contents: read
 
 jobs:
+  production-release-gate:
+    name: Hold isolated pilot from production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require separately approved production rollout
+        run: node scripts/deployment/team-scope-release-hold.mjs
+
   deploy-schema:
+    needs: production-release-gate
     name: Push canonical migrations to owned Supabase
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -30,6 +43,14 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN" || { echo "::error::Missing SUPABASE_ACCESS_TOKEN secret"; exit 1; }
           test -n "$SUPABASE_DB_PASSWORD" || { echo "::error::Missing SUPABASE_DB_PASSWORD secret"; exit 1; }
           test -n "$SUPABASE_PROJECT_ID" || { echo "::error::Missing SUPABASE_PROJECT_ID repository variable"; exit 1; }
+
+      - name: Reject isolated Site migrations in canonical deployment
+        run: |
+          set -euo pipefail
+          if grep -RinE 'site[_-](operating|test)|site-owner@example\.invalid' supabase/migrations; then
+            echo "::error::Isolated Site migrations must never be applied by this production workflow."
+            exit 1
+          fi
 
       - name: Link owned Supabase project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"

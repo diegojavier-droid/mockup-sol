@@ -51,7 +51,24 @@ const csvEmails = z
   )
   .pipe(z.array(z.string().email()).min(1));
 
+/** Target restriction for the isolated team pilot. A hostname is not tunnel attestation. */
+export function assertTeamScopeTarget(env:{TEAM_SCOPE_ENABLED?:boolean;SUPABASE_URL?:string}):void {
+  if(env.TEAM_SCOPE_ENABLED!==true) return;
+  let url:URL;
+  try { url=new URL(env.SUPABASE_URL??""); } catch { throw new Error("TEAM_SCOPE_ENABLED requires an explicit isolated target"); }
+  const raw=env.SUPABASE_URL??"";
+  const local=/^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::[0-9]+)?\/?$/i.test(raw)
+    && ["localhost","127.0.0.1","[::1]"].includes(url.hostname);
+  const isolated=/^https:\/\/ijzpmwwjuvsgcsbcbzav\.supabase\.co\/?$/.test(raw);
+  if((!local&&!isolated)||url.username||url.password||url.search||url.hash||url.pathname!=="/") {
+    throw new Error("TEAM_SCOPE_ENABLED requires an explicit isolated target");
+  }
+}
+
 const serverEnvSchema = z.object({
+  // Isolated pilot only. Missing RPC/schema must never fall back to broader access.
+  TEAM_SCOPE_ENABLED: z.enum(["true", "false"]).default("false").transform(v => v === "true"),
+
   // Runtime
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_ENV: z.enum(["local", "staging", "production"]),
@@ -195,6 +212,7 @@ export function loadServerEnv(source: NodeJS.ProcessEnv = process.env): ServerEn
     }
   }
 
+  assertTeamScopeTarget(parsed.data);
   cached = parsed.data;
   return cached;
 }
